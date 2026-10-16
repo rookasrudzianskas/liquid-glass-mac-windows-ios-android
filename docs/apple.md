@@ -360,6 +360,10 @@ LiquidGlass uses **per-surface copies**, after building and measuring both:
 
 Each copy measures its own on-screen frame at render time with `visualEffect` and moves (and under an ancestor's scale, rescales) the backdrop back into place, so the glass refracts what is exactly beneath it while it moves. The press growth and drag stretch are evaluated in the shader instead of as transforms, so the rim stays one device pixel wide while the glass grows. The glass layer outputs only the glass (`rim + glass·(1 − rim.a)` without the base term) and SwiftUI composites it over the visible backdrop, which is the spec's composite exactly.
 
+### Touches
+
+Interactive glass follows the finger without owning the touch. On iOS 18 and later a UIKit long-press recognizer with no minimum duration runs simultaneously with every other recognizer, never cancels or delays touches, and ends the press when an enclosing scroll view starts to pan; on iOS 17 and macOS, simultaneous SwiftUI drag gestures do the same job. Buttons keep their own taps and a scroll that starts on glass still scrolls (the Studio UI tests check both). On macOS, hover lights glass at the 0.35 level.
+
 ### Colors and blur, measured
 
 - In SwiftUI's default (non-linear) rendering mode, layer effects receive **premultiplied, gamma-encoded sRGB** colors, on iOS 18 and macOS 15, on screen and in `ImageRenderer` (measured by rendering known colors through probe shaders). The shader unpremultiplies, runs the tone math on sRGB values and returns premultiplied sRGB. Under `drawingGroup(colorMode: .linear)` shaders would receive linear values; don't put a scene in a linear drawing group.
@@ -415,7 +419,7 @@ platforms/apple/scripts/package-macos.sh DerivedData/Build/Products/Release
 - `OpticsVectorTests` checks the Swift port against every category of [`spec/vectors.json`](../spec/vectors.json) at 1e-4: shape parameters, all 640 field samples, the outline, edge profile, refraction offset, tone curves, material color, tint, frost, all 328 rim samples, all 57 composited glass pixels, the six springs, rubber band, stretch limit, press scale, glow and progressive weights.
 - `ShaderVectorTests` runs the Metal functions the glass shader uses (`LiquidGlassCore.h`) on the GPU in a compute kernel and checks the same vectors at the GPU tolerance, 2e-3.
 - `RenderTests` renders a real `GlassScene` with a `GlassSurface` through SwiftUI and compares the pixels with the model, checking the backdrop alignment, the color pipeline and the composite end to end.
-- `StudioUITests` drives the demo: navigation, menus (open, outside tap, choose), switches and sliders inside a scroll view, scrolling and a held press-and-drag.
+- `StudioUITests` drives the demo: navigation, menus (open, outside tap, choose), switches and sliders inside a scroll view, a scroll that starts on a glass button, `GlassScrollView` scrolling and a held press-and-drag.
 
 CI ([`.github/workflows/apple.yml`](../.github/workflows/apple.yml)) runs the package tests on macOS and the iOS Simulator, builds the Studio app for macOS in Release, runs its UI tests and uploads the packaged app.
 

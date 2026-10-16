@@ -147,6 +147,8 @@ private struct ScrollInput: ViewModifier {
     let enabled: Bool
     let frame: CGRect
 
+    @GestureState private var touching = false
+
     func body(content: Content) -> some View {
         if enabled {
             content
@@ -154,12 +156,11 @@ private struct ScrollInput: ViewModifier {
                 #if os(macOS)
                 .background(ScrollWheelMonitor(position: position, frame: frame))
                 #else
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            if value.translation == .zero { position.touchDown() }
-                        }
-                )
+                // A finger landing stops the coasting content where it is.
+                .modifier(GlassTouchInput(
+                    space: LocalCoordinateSpace.local, tracking: $touching,
+                    changed: { _ in position.touchDown() }, changedGlobally: { _ in }, ended: {}
+                ))
                 .gesture(
                     DragGesture(minimumDistance: 8)
                         .onChanged { position.drag(translation: $0.translation) }
