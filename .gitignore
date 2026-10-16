@@ -1,0 +1,47 @@
+# OS / editors
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# Apple
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+build/
+
+# Android / Gradle
+.gradle/
+local.properties
+.kotlin/
+captures/
+*.apk
+*.aab
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# .NET
+bin/
+obj/
+*.user
+*.nupkg
+TestResults/
+
+# Web
+node_modules/
+dist/
+.vercel/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+
+# Release artifacts are built, not committed (scripts/build-downloads.sh)
+/website/public/downloads/
+/website/public/maven/
+/website/public/nuget/
+/artifacts/
+.plans/
