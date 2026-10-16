@@ -71,7 +71,10 @@ type Screen = { src: string; width: number; height: number; alt: string; name: s
 const SCREEN_LABELS: Record<string, string> = { apple: "macOS and iOS", android: "Android", windows: "Windows" };
 
 function Screens() {
-  const groups = Object.entries(screens as Record<string, Screen[]>).filter(([, list]) => list.length);
+  const order = ["apple", "android", "windows"];
+  const groups = Object.entries(screens as Record<string, Screen[]>)
+    .filter(([, list]) => list.length)
+    .sort(([a], [b]) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
   if (!groups.length) return null;
   return (
     <section className="section screens" aria-labelledby="screens-title">
