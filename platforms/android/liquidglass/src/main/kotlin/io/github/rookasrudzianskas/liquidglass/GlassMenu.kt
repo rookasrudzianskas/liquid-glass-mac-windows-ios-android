@@ -179,19 +179,21 @@ public fun GlassMenu(
         }
     }
     if (!present || scene == null) return
-    val overlay = remember(menu) {
+    // Menus open in the outermost scene so they draw above every nested scene's glass.
+    val host = scene.root
+    val overlay = remember(menu, host) {
         GlassOverlay(menu) {
             val captured = menu.locals ?: return@GlassOverlay
             CompositionLocalProvider(captured) {
-                CompositionLocalProvider(LocalGlassOverlayLevel provides OVERLAY_LEVEL) {
+                CompositionLocalProvider(LocalGlassOverlayLevel provides OVERLAY_LEVEL, LocalGlassScene provides host) {
                     MenuOverlay(menu, expanded = menu.expanded, onDismiss = { dismiss() }, panel = menu.panel)
                 }
             }
         }
     }
-    DisposableEffect(scene, overlay) {
-        scene.overlays += overlay
-        onDispose { scene.overlays -= overlay }
+    DisposableEffect(host, overlay) {
+        host.overlays += overlay
+        onDispose { host.overlays -= overlay }
     }
 }
 
@@ -264,7 +266,7 @@ private val LocalMenuDismiss = staticCompositionLocalOf<() -> Unit> { {} }
 private fun MenuOverlay(menu: MenuState, expanded: Boolean, onDismiss: () -> Unit, panel: @Composable () -> Unit) {
     val insets = WindowInsets.safeDrawing
     val density = LocalDensity.current
-    Box(Modifier.fillMaxSize().onGloballyPositioned { menu.host = it }) {
+    Box(Modifier.fillMaxSize()) {
         if (expanded) {
             Spacer(
                 Modifier
@@ -280,20 +282,29 @@ private fun MenuOverlay(menu: MenuState, expanded: Boolean, onDismiss: () -> Uni
         }
         Layout(content = panel) { measurables, constraints ->
             val placeable = measurables.first().measure(Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight))
-            val anchor = menu.triggerInHost()
             val margin = 8.dp.roundToPx()
             val top = insets.getTop(density) + margin
             val bottom = constraints.maxHeight - insets.getBottom(density) - margin
             val left = insets.getLeft(density, layoutDirection) + margin
             val right = constraints.maxWidth - insets.getRight(density, layoutDirection) - margin
-            val position = placePanel(anchor, IntSize(placeable.width, placeable.height), left, top, right, bottom, constraints.maxWidth)
-            layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(position) }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                // The trigger is located against this layout's own coordinates, known while placing.
+                val anchor = coordinates?.let(menu::triggerIn) ?: Rect.Zero
+                placeable.place(placePanel(anchor, IntSize(placeable.width, placeable.height), left, top, right, bottom, constraints.maxWidth))
+            }
         }
     }
 }
 
-/** Covers the trigger: aligned to its top (or bottom when there is no room) and to its nearer side. */
-private fun placePanel(anchor: Rect, size: IntSize, left: Int, top: Int, right: Int, bottom: Int, width: Int): IntOffset {
+/**
+ * Covers the trigger: aligned to its top (or bottom when there is no room) and
+ * to its nearer side, kept inside the safe area widened to include the trigger.
+ */
+private fun placePanel(anchor: Rect, size: IntSize, safeLeft: Int, safeTop: Int, safeRight: Int, safeBottom: Int, width: Int): IntOffset {
+    val left = minOf(safeLeft, anchor.left.roundToInt())
+    val top = minOf(safeTop, anchor.top.roundToInt())
+    val right = maxOf(safeRight, anchor.right.roundToInt())
+    val bottom = maxOf(safeBottom, anchor.bottom.roundToInt())
     val alignStart = anchor.center.x <= width / 2f
     val x = if (alignStart) anchor.left.roundToInt() else anchor.right.roundToInt() - size.width
     val y = if (anchor.top + size.height <= bottom) anchor.top.roundToInt() else anchor.bottom.roundToInt() - size.height
@@ -391,7 +402,6 @@ private class MenuState {
     var motion = GlassMotion.Full
     var animator: FrameAnimator? = null
     var trigger: LayoutCoordinates? = null
-    var host: LayoutCoordinates? = null
     var panelCoordinates: LayoutCoordinates? = null
 
     /** Pixels per dp. */
@@ -449,10 +459,9 @@ private class MenuState {
         return spring.isSettled
     }
 
-    /** The trigger's bounds in the overlay host, for placing the panel. */
-    fun triggerInHost(): Rect {
-        val trigger = trigger?.takeIf { it.isAttached } ?: return Rect.Zero
-        val host = host?.takeIf { it.isAttached } ?: return Rect.Zero
+    /** The trigger's bounds in [host], for placing the panel. */
+    fun triggerIn(host: LayoutCoordinates): Rect {
+        val trigger = trigger?.takeIf { it.isAttached && host.isAttached } ?: return Rect.Zero
         return host.localBoundingBoxOf(trigger, clipBounds = false)
     }
 

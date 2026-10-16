@@ -104,6 +104,7 @@ public fun GlassSlider(
 
     val span = valueRange.endInclusive - valueRange.start
     val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
+    val currentFraction by rememberUpdatedState(fraction)
     SideEffect {
         thumb.motion = style.motion(motion)
         thumb.animator = animator
@@ -131,7 +132,10 @@ public fun GlassSlider(
         modifier
             .fillMaxWidth()
             .height(SliderHeight)
-            .onSizeChanged { geometry.width = it.width / density }
+            .onSizeChanged {
+                geometry.width = it.width / density
+                thumb.moveTo(geometry.thumbLeft(currentFraction))
+            }
             .progressSemantics(value, valueRange, steps)
             .semantics {
                 if (enabled) {

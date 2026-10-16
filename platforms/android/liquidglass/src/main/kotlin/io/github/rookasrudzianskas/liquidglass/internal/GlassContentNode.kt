@@ -56,7 +56,11 @@ internal class GlassContentElement(private val scene: GlassSceneState) : Modifie
  * - Android 12: the fallback material over the platform blur.
  * - Older: the fallback material over the sharp content.
  */
-internal class GlassContentNode(private var scene: GlassSceneState) : Modifier.Node(), DrawModifierNode, TraversableNode {
+internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawModifierNode, TraversableNode {
+
+    /** The scene whose backdrop this is. */
+    var scene: GlassSceneState = scene
+        private set
 
     override val traverseKey: Any get() = GlassContentKey
     override val shouldAutoInvalidate: Boolean get() = false

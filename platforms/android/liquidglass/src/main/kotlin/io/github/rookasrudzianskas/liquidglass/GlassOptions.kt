@@ -1,11 +1,13 @@
 package io.github.rookasrudzianskas.liquidglass
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.rookasrudzianskas.liquidglass.internal.rememberSystemIncreaseContrast
 import io.github.rookasrudzianskas.liquidglass.optics.DEFAULT_REFRACTION
 
 /** The two Liquid Glass materials. */
@@ -78,4 +80,12 @@ public object GlassDefaults {
 
     /** Foreground color for content on glass of the given darkness. */
     public fun contentColor(dark: Boolean): Color = if (dark) DarkContentColor else LightContentColor
+
+    /**
+     * Whether the system asks for more contrast (Android 14's contrast level at
+     * medium or above, or "High contrast text"); the default of
+     * [GlassScene]'s `increaseContrast`. Updates when the setting changes.
+     */
+    @Composable
+    public fun systemIncreaseContrast(): Boolean = rememberSystemIncreaseContrast()
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,8 +36,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
-import io.github.rookasrudzianskas.liquidglass.GlassButton
-import io.github.rookasrudzianskas.liquidglass.GlassButtonSize
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
 import io.github.rookasrudzianskas.liquidglass.GlassShape
 import io.github.rookasrudzianskas.liquidglass.GlassSlider
@@ -64,7 +63,7 @@ fun BoxScope.LabPage(launch: StudioLaunch) {
     var appearance by rememberSaveable { mutableStateOf<GlassAppearance?>(null) }
     var refraction by rememberSaveable { mutableFloatStateOf(60f) }
     var radius by rememberSaveable { mutableFloatStateOf(36f) }
-    var tint by rememberSaveable { mutableStateOf(0) }
+    var tint by rememberSaveable { mutableIntStateOf(0) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     GlassSurface(
@@ -105,11 +104,11 @@ fun BoxScope.LabPage(launch: StudioLaunch) {
             Choice("Appearance", listOf("Scene" to null, "Light" to GlassAppearance.Light, "Dark" to GlassAppearance.Dark), appearance) { appearance = it }
             Column {
                 LabValue("Refraction", "${refraction.roundToInt()} dp")
-                GlassSlider(refraction, { refraction = it }, valueRange = 0f..120f)
+                GlassSlider(refraction, { refraction = it }, valueRange = 0f..120f, tint = StudioColors.Blue)
             }
             Column {
                 LabValue("Corner radius", if (radius >= CapsuleRadius) "Capsule" else "${radius.roundToInt()} dp")
-                GlassSlider(radius, { radius = it }, valueRange = 0f..CapsuleRadius)
+                GlassSlider(radius, { radius = it }, valueRange = 0f..CapsuleRadius, tint = StudioColors.Blue)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassText("Tint", Modifier.weight(1f), style = StudioType.Label)
@@ -121,16 +120,35 @@ fun BoxScope.LabPage(launch: StudioLaunch) {
 
 @Composable
 private fun <T> Choice(label: String, options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         GlassText(label, Modifier.weight(1f), style = StudioType.Label)
+        Segmented(options, selected, onSelect)
+    }
+}
+
+/**
+ * A segmented control drawn as plain fills: controls sitting on a glass panel
+ * stay vibrant instead of becoming glass of their own.
+ */
+@Composable
+private fun <T> Segmented(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
+    val foreground = LocalGlassContentColor.current
+    Row(
+        Modifier
+            .background(foreground.copy(alpha = 0.1f), CircleShape)
+            .padding(3.dp),
+    ) {
         for ((name, value) in options) {
-            GlassButton(
-                text = name,
-                onClick = { onSelect(value) },
-                size = GlassButtonSize.Small,
-                tint = if (value == selected) StudioColors.Blue else Color.Unspecified,
-                modifier = Modifier.semantics { this.selected = value == selected },
-            )
+            val on = value == selected
+            Box(
+                Modifier
+                    .background(if (on) StudioColors.Blue else Color.Transparent, CircleShape)
+                    .clickable(role = Role.RadioButton) { onSelect(value) }
+                    .semantics { this.selected = on }
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            ) {
+                GlassText(name, style = StudioType.Caption, color = if (on) Color.White else foreground)
+            }
         }
     }
 }

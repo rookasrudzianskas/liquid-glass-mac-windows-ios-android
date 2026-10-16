@@ -61,7 +61,8 @@ android {
 
     lint {
         abortOnError = true
-        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
+        // targetSdk stays at the compileSdk this Android Gradle Plugin release supports (35).
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 }
 

@@ -93,11 +93,11 @@ fun BoxScope.ControlsPage() {
         GlassSurface(Modifier.fillMaxWidth(), shape = GlassShape(28.dp), material = GlassMaterial.Regular) {
             Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ValueRow("Volume", "${(volume * 100).roundToInt()}%")
-                GlassSlider(volume, { volume = it })
+                GlassSlider(volume, { volume = it }, tint = StudioColors.Blue)
                 ValueRow("Detents", steps.roundToInt().toString())
                 GlassSlider(steps, { steps = it }, valueRange = 0f..5f, steps = 4, tint = StudioColors.Orange)
-                SwitchRow("Liquid motion", motion) { motion = it }
-                SwitchRow("Haptics", haptics, tint = StudioColors.Green) { haptics = it }
+                SwitchRow("Liquid motion", motion, tint = StudioColors.Green) { motion = it }
+                SwitchRow("Haptics", haptics) { haptics = it }
             }
         }
 

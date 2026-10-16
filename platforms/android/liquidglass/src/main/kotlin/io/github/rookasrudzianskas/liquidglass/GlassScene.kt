@@ -20,7 +20,6 @@ import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassOverlayLevel
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.OVERLAY_LEVEL
-import io.github.rookasrudzianskas.liquidglass.internal.rememberSystemIncreaseContrast
 import io.github.rookasrudzianskas.liquidglass.internal.rememberSystemReduceMotion
 
 /**
@@ -71,7 +70,7 @@ public fun GlassScene(
     refraction: Dp = GlassDefaults.Refraction,
     motion: GlassMotion = GlassMotion.Full,
     reduceTransparency: Boolean = false,
-    increaseContrast: Boolean = rememberSystemIncreaseContrast(),
+    increaseContrast: Boolean = GlassDefaults.systemIncreaseContrast(),
     content: @Composable BoxScope.() -> Unit,
 ) {
     val style = GlassStyle(
@@ -84,7 +83,8 @@ public fun GlassScene(
         reduceTransparency = reduceTransparency,
         increaseContrast = increaseContrast,
     )
-    val scene = remember { GlassSceneState() }
+    val parent = LocalGlassScene.current
+    val scene = remember(parent) { GlassSceneState(parent) }
     CompositionLocalProvider(
         LocalGlassStyle provides style,
         LocalGlassScene provides scene,
@@ -136,7 +136,8 @@ private fun BoxScope.GlassOverlayHost(scene: GlassSceneState) {
  */
 @Composable
 internal fun GlassLocalScene(modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
-    val scene = remember { GlassSceneState() }
+    val parent = LocalGlassScene.current
+    val scene = remember(parent) { GlassSceneState(parent) }
     CompositionLocalProvider(LocalGlassScene provides scene) {
         Box(modifier, content = content)
     }

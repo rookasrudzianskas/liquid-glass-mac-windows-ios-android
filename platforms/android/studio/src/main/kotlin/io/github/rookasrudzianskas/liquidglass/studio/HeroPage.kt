@@ -107,6 +107,9 @@ fun StudioToolbar(settings: StudioSettings, modifier: Modifier = Modifier) {
             for (wallpaper in Wallpaper.entries) {
                 GlassMenuItem(wallpaper.title, onClick = { settings.wallpaper = wallpaper }, checked = settings.wallpaper == wallpaper)
             }
+            GlassMenuDivider()
+            GlassMenuItem("Reduce transparency", onClick = { settings.reduceTransparency = !settings.reduceTransparency }, checked = settings.reduceTransparency)
+            GlassMenuItem("Increase contrast", onClick = { settings.increaseContrast = !settings.increaseContrast }, checked = settings.increaseContrast)
         }
     }
 }

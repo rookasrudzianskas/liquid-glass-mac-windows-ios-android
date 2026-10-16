@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
@@ -178,7 +177,6 @@ public fun GlassTabBar(
                         }
                     }
                     .padding(TabBarInset)
-                    .heightIn(min = TabBarHeight - TabBarInset * 2)
                     .selectableGroup()
                     .onKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -191,6 +189,7 @@ public fun GlassTabBar(
                         if (next != selectedIndex) onSelect(next)
                         true
                     },
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 val shown = lens.shownIndex
                 tabs.forEachIndexed { index, tab ->
@@ -198,7 +197,7 @@ public fun GlassTabBar(
                     Column(
                         Modifier
                             .weight(1f)
-                            .fillMaxHeight()
+                            .heightIn(min = TabBarHeight - TabBarInset * 2)
                             .selectable(
                                 selected = index == selectedIndex,
                                 interactionSource = remember { MutableInteractionSource() },
@@ -215,7 +214,7 @@ public fun GlassTabBar(
                         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                     ) {
                         if (tab.icon != null) GlassIcon(tab.icon, contentDescription = null, tint = color, size = 24.dp)
-                        GlassText(tab.label, style = TabLabelStyle, color = color, maxLines = 1)
+                        GlassText(tab.label, style = if (tab.icon != null) TabLabelStyle else TabTextOnlyStyle, color = color, maxLines = 1)
                     }
                 }
             }
@@ -364,3 +363,4 @@ private const val UnselectedAlpha = 0.62f
 private const val LiftSpeed = 60f
 
 private val TabLabelStyle = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+private val TabTextOnlyStyle = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold)

@@ -8,13 +8,16 @@ import io.github.rookasrudzianskas.liquidglass.GlassMaterial
  * How the Studio opens. Defaults show the Hero page following the system;
  * intent extras open a given state directly, which keeps screenshots
  * reproducible, for example:
- * `adb shell am start -n io.github.rookasrudzianskas.liquidglass.studio/.MainActivity --es page lab --es appearance dark`.
+ * `adb shell am start -n io.github.rookasrudzianskas.liquidglass.studio/.MainActivity --es page lab --es appearance dark`
+ * (also `--es wallpaper`, `--es material`, `--ez reduceTransparency true`, `--ez increaseContrast true`).
  */
 data class StudioLaunch(
     val page: StudioPage = StudioPage.Hero,
     val appearance: GlassAppearance = GlassAppearance.Automatic,
     val wallpaper: Wallpaper? = null,
     val labMaterial: GlassMaterial = GlassMaterial.Clear,
+    val reduceTransparency: Boolean = false,
+    val increaseContrast: Boolean = false,
 ) {
     companion object {
         fun from(intent: Intent?): StudioLaunch {
@@ -26,6 +29,8 @@ data class StudioLaunch(
                 appearance = pick("appearance", GlassAppearance.entries.toTypedArray()) ?: GlassAppearance.Automatic,
                 wallpaper = pick("wallpaper", Wallpaper.entries.toTypedArray()),
                 labMaterial = pick("material", GlassMaterial.entries.toTypedArray()) ?: GlassMaterial.Clear,
+                reduceTransparency = intent.getBooleanExtra("reduceTransparency", false),
+                increaseContrast = intent.getBooleanExtra("increaseContrast", false),
             )
         }
     }

@@ -81,7 +81,13 @@ internal class GlassOverlay(val key: Any, val content: @Composable () -> Unit)
  * All access happens on the main thread.
  */
 @Stable
-internal class GlassSceneState {
+internal class GlassSceneState(
+    /** The scene this one is nested in (its content, or a control's private scene), if any. */
+    private val parent: GlassSceneState? = null,
+) {
+    /** The outermost scene: menus open there so they draw above all nested glass. */
+    val root: GlassSceneState get() = parent?.root ?: this
+
     private val surfaceList = mutableListOf<SceneSurface>()
     private val blurList = mutableListOf<SceneBlur>()
     private var order = 0L

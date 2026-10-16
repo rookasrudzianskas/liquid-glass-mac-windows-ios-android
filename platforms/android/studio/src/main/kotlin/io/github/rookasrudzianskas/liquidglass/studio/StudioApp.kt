@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassContent
+import io.github.rookasrudzianskas.liquidglass.GlassDefaults
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
 import io.github.rookasrudzianskas.liquidglass.GlassScene
 import io.github.rookasrudzianskas.liquidglass.GlassTab
@@ -37,10 +38,12 @@ import io.github.rookasrudzianskas.liquidglass.GlassTabBar
 /** The four pages, in tab order. */
 enum class StudioPage(val title: String) { Hero("Hero"), Controls("Controls"), Lab("Lab"), Blur("Blur") }
 
-/** Choices shared by every page: appearance and wallpaper (null = the page's own pairing). */
-class StudioSettings(appearance: GlassAppearance, wallpaper: Wallpaper?) {
+/** Choices shared by every page: appearance, wallpaper (null = the page's own pairing) and accessibility modes. */
+class StudioSettings(appearance: GlassAppearance, wallpaper: Wallpaper?, reduceTransparency: Boolean, increaseContrast: Boolean) {
     var appearance by mutableStateOf(appearance)
     var wallpaper by mutableStateOf(wallpaper)
+    var reduceTransparency by mutableStateOf(reduceTransparency)
+    var increaseContrast by mutableStateOf(increaseContrast)
 }
 
 /**
@@ -51,7 +54,9 @@ class StudioSettings(appearance: GlassAppearance, wallpaper: Wallpaper?) {
 @Composable
 fun StudioApp(launch: StudioLaunch = StudioLaunch()) {
     var page by rememberSaveable { mutableIntStateOf(launch.page.ordinal) }
-    val settings = remember { StudioSettings(launch.appearance, launch.wallpaper) }
+    val settings = remember { StudioSettings(launch.appearance, launch.wallpaper, launch.reduceTransparency, launch.increaseContrast) }
+    val systemContrast = GlassDefaults.systemIncreaseContrast()
+    val increaseContrast = settings.increaseContrast || systemContrast
     val systemDark = isSystemInDarkTheme()
     val dark = when (settings.appearance) {
         GlassAppearance.Automatic -> systemDark
@@ -62,25 +67,42 @@ fun StudioApp(launch: StudioLaunch = StudioLaunch()) {
     val wallpaper = settings.wallpaper ?: Wallpaper.pairedWith(current, dark)
     SystemBarIcons(lightContent = if (current == StudioPage.Blur) dark else !wallpaper.lightTop)
 
-    GlassScene(Modifier.fillMaxSize(), appearance = settings.appearance) {
+    // The tab bar floats above whole pages, glass included, so each page is a
+    // scene of its own nested in the content of the outer scene.
+    GlassScene(
+        Modifier.fillMaxSize(),
+        appearance = settings.appearance,
+        reduceTransparency = settings.reduceTransparency,
+        increaseContrast = increaseContrast,
+    ) {
         GlassContent(Modifier.fillMaxSize()) {
-            when (current) {
-                StudioPage.Blur -> JournalList(dark)
-                else -> WallpaperBackdrop(wallpaper)
+            GlassScene(
+                Modifier.fillMaxSize(),
+                appearance = settings.appearance,
+                reduceTransparency = settings.reduceTransparency,
+                increaseContrast = increaseContrast,
+            ) {
+                GlassContent(Modifier.fillMaxSize()) {
+                    when (current) {
+                        StudioPage.Blur -> JournalList(dark)
+                        else -> WallpaperBackdrop(wallpaper)
+                    }
+                }
+                when (current) {
+                    StudioPage.Hero -> HeroPage(settings)
+                    StudioPage.Controls -> ControlsPage()
+                    StudioPage.Lab -> LabPage(launch)
+                    StudioPage.Blur -> BlurPage()
+                }
             }
         }
-        when (current) {
-            StudioPage.Hero -> HeroPage(settings)
-            StudioPage.Controls -> ControlsPage()
-            StudioPage.Lab -> LabPage(launch)
-            StudioPage.Blur -> BlurPage()
-        }
-        StudioTabBar(page) { page = it }
+        // Every wallpaper darkens toward the bottom, so the bar is dark glass there, as glass adapts to what lies beneath it.
+        StudioTabBar(page, appearance = if (current == StudioPage.Blur) null else GlassAppearance.Dark) { page = it }
     }
 }
 
 @Composable
-private fun BoxScope.StudioTabBar(page: Int, onPage: (Int) -> Unit) {
+private fun BoxScope.StudioTabBar(page: Int, appearance: GlassAppearance?, onPage: (Int) -> Unit) {
     val tabs = remember {
         listOf(
             GlassTab(StudioPage.Hero.title, Icons.Filled.Home),
@@ -94,6 +116,7 @@ private fun BoxScope.StudioTabBar(page: Int, onPage: (Int) -> Unit) {
         selectedIndex = page,
         onSelectedIndexChange = onPage,
         material = GlassMaterial.Regular,
+        appearance = appearance,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .windowInsetsPadding(WindowInsets.navigationBars)

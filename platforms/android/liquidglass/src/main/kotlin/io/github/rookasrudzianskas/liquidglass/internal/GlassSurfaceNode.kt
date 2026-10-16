@@ -233,13 +233,7 @@ internal class GlassSurfaceNode(
 
     override fun onAttach() {
         readLocals()
-        var surfaces = 0
-        var inContent = false
-        traverseAncestors(GlassSurfaceKey) { surfaces++; true }
-        traverseAncestors(GlassContentKey) { inContent = true; false }
-        nested = surfaces > 0
-        depth = overlayLevel + surfaces
-        insideContent = inContent
+        resolveNesting()
         scene?.register(this)
         dynamics?.pointer?.node = this
         collectInteractions()
@@ -260,10 +254,29 @@ internal class GlassSurfaceNode(
         readLocals()
         if (previous !== scene) {
             previous?.unregister(this)
+            resolveNesting()
             scene?.register(this)
         }
         invalidateDraw()
         scene?.invalidate()
+    }
+
+    /**
+     * Depth among surfaces of the same scene, and whether this surface sits
+     * inside its own scene's content (where it cannot refract the layer it
+     * belongs to). Content of an outer scene is fine: nested scenes are its content.
+     */
+    private fun resolveNesting() {
+        var surfaces = 0
+        var inContent = false
+        traverseAncestors(GlassSurfaceKey) { surfaces++; true }
+        traverseAncestors(GlassContentKey) { node ->
+            if ((node as GlassContentNode).scene === scene) inContent = true
+            !inContent
+        }
+        nested = surfaces > 0
+        depth = overlayLevel + surfaces
+        insideContent = inContent
     }
 
     private fun readLocals() {
