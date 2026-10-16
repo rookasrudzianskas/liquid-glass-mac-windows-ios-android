@@ -17,7 +17,7 @@ Liquid Glass Engineering renders the same optical glass on four platforms: a bev
 | --- | --- | --- |
 | iOS 17+, macOS 14+ (SwiftUI) | Swift package `LiquidGlass` | `liquid-glass-swiftui` |
 | Android 7+ with glass on 13+ (Jetpack Compose) | `io.github.rookasrudzianskas:liquid-glass-compose` | `liquid-glass-compose` |
-| Windows 10/11 (WPF, .NET 8+) | NuGet `LiquidGlass.Wpf` | `liquid-glass-wpf` |
+| Windows 10/11 (WPF, .NET 8+) | NuGet `LiquidGlassEngineering.Wpf` | `liquid-glass-wpf` |
 | Anything else (Flutter, Unity, web canvas, games) | the shared optical model | `liquid-glass-port` |
 
 Read the platform skill before writing code. If the project mixes platforms, keep the same material, radius and tint choices everywhere: the optical model is identical, so matching options give matching pixels.
