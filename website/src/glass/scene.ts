@@ -210,7 +210,9 @@ export class GlassScene {
     const height = this.canvas.clientHeight;
     if (!width || !height) return;
     this.cssSize = { width, height };
-    const dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
+    // Cap the drawing buffer (about 12 megapixels) so very large displays stay smooth.
+    const budget = Math.sqrt(12e6 / Math.max(1, width * height));
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, this.maxDpr, budget));
     const real = window.devicePixelRatio || 1;
     let dw = width * dpr;
     let dh = height * dpr;

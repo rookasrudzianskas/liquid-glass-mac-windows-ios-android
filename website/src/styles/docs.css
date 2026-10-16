@@ -542,3 +542,19 @@ a.doc-card:hover {
   margin-top: 1.2em;
   margin-bottom: 1.2em;
 }
+
+/* Markdown tables with an empty header row (`| | |`) render without one. */
+.prose thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
+.prose p[align="center"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.3%;
+}
+
+.prose p[align="center"] img {
+  min-width: 0;
+}

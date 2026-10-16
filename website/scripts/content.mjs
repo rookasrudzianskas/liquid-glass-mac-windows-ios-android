@@ -167,14 +167,28 @@ function parseFrontmatter(src) {
 }
 
 async function copyMedia(rel) {
-  // rel is repo-relative; copy into public/media/<rel>.
+  // rel is repo-relative. Raster images become WebP (max 1600 px wide) in
+  // public/media; anything else is copied as is.
   const from = path.join(repo, rel);
   if (!exists(from)) return null;
+  if (/\.(png|jpe?g)$/i.test(rel)) {
+    const outRel = rel.replace(/\.(png|jpe?g)$/i, ".webp");
+    const to = path.join(pub, "media", outRel);
+    const input = await readFile(from);
+    const info = await cached(`media-${outRel.replace(/[^\w.-]+/g, "_")}`, sha(input), [to], async () => {
+      const s = await sharp();
+      const meta = await s(input).metadata();
+      await mkdir(path.dirname(to), { recursive: true });
+      const r = await s(input).resize({ width: Math.min(meta.width ?? 1600, 1600), withoutEnlargement: true }).webp({ quality: 86 }).toFile(to);
+      return { width: r.width, height: r.height };
+    });
+    return { src: `/media/${toPosix(outRel)}`, width: info.width, height: info.height };
+  }
   const to = path.join(pub, "media", rel);
   await mkdir(path.dirname(to), { recursive: true });
   const [a, b] = await Promise.all([stat(from), exists(to) ? stat(to) : null]);
   if (!b || b.size !== a.size || b.mtimeMs < a.mtimeMs) await copyFile(from, to);
-  return `/media/${toPosix(rel)}`;
+  return { src: `/media/${toPosix(rel)}` };
 }
 
 async function renderDoc(entry, slugByFile) {
@@ -254,12 +268,40 @@ async function renderDoc(entry, slugByFile) {
   for (let i = 0; i < media.length; i++) {
     const m = media[i];
     let src = m.href;
+    let dims = "";
     if (src && !/^(https?:|data:|\/)/i.test(src)) {
       const rel = path.posix.normalize(path.posix.join(docDir, decodeURIComponent(src)));
-      src = (await copyMedia(rel)) ?? `${REPO_URL}/raw/main/${encodeURI(rel)}`;
+      const copied = await copyMedia(rel);
+      if (!copied) {
+        if (!quiet) console.warn(`[content] ${entry.file}: missing image ${rel}`);
+        html = html.replace(`<p>@@IMG${i}@@</p>`, "").replace(`@@IMG${i}@@`, "");
+        continue;
+      }
+      src = copied.src;
+      if (copied.width && copied.height) dims = ` width="${copied.width}" height="${copied.height}"`;
     }
-    const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(m.alt || "")}" loading="lazy" decoding="async"${m.title ? ` title="${escapeHtml(m.title)}"` : ""}>`;
+    const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(m.alt || "")}"${dims} loading="lazy" decoding="async"${m.title ? ` title="${escapeHtml(m.title)}"` : ""}>`;
     html = html.replace(`@@IMG${i}@@`, img);
+  }
+
+  // Raw HTML images in the Markdown (for example a centered gallery) get the
+  // same treatment as Markdown images: copied, converted and lazy-loaded.
+  const rawImages = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+  for (const tag of new Set(rawImages)) {
+    const src = /\bsrc="([^"]+)"/.exec(tag)?.[1];
+    if (!src || /^(https?:|data:|\/)/i.test(src)) continue;
+    const rel = path.posix.normalize(path.posix.join(docDir, decodeURIComponent(src)));
+    const copied = await copyMedia(rel);
+    if (!copied) {
+      // Not in the repository yet: leave it out rather than show a broken image.
+      if (!quiet) console.warn(`[content] ${entry.file}: missing image ${rel}`);
+      html = html.split(tag).join("");
+      continue;
+    }
+    let next = tag.replace(/\bsrc="[^"]+"/, `src="${escapeHtml(copied.src)}"`);
+    if (copied.width && copied.height && !/\b(width|height)=/.test(next)) next = next.replace("<img", `<img width="${copied.width}" height="${copied.height}"`);
+    if (!/\bloading=/.test(next)) next = next.replace("<img", '<img loading="lazy" decoding="async"');
+    html = html.split(tag).join(next);
   }
 
   html = html

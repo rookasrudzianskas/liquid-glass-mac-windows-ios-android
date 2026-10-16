@@ -392,15 +392,15 @@
 
 .not-found__fallback {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 40%;
   z-index: -2;
-  display: grid;
-  place-items: center;
-  font-size: min(42vw, 62vh);
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: min(36vw, 48vh);
   font-weight: 800;
-  letter-spacing: -0.06em;
   line-height: 1;
-  padding-top: 6vh;
   background: var(--spectrum);
   -webkit-background-clip: text;
   background-clip: text;
@@ -438,7 +438,7 @@
   position: absolute;
   z-index: 2;
   left: calc(50% - 80px);
-  top: calc(30% - 80px);
+  top: calc(40% - min(13vw, 17vh) - 60px);
   width: 160px;
   height: 160px;
 }

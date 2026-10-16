@@ -51,12 +51,12 @@ function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number,
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
   if (pattern === "404") {
-    const glow = ctx.createRadialGradient(w * 0.5, h * 0.55, 0, w * 0.5, h * 0.55, Math.max(w, h) * 0.6);
+    const glow = ctx.createRadialGradient(w * 0.5, h * 0.4, 0, w * 0.5, h * 0.4, Math.max(w, h) * 0.6);
     glow.addColorStop(0, dark ? "rgba(122,92,255,0.45)" : "rgba(122,92,255,0.22)");
     glow.addColorStop(1, "rgba(122,92,255,0)");
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
-    const size = Math.min(w * 0.42, h * 0.62);
+    const size = Math.min(w * 0.36, h * 0.48);
     ctx.font = `800 ${size}px "Inter Variable", "Inter", system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -65,7 +65,7 @@ function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number,
     g.addColorStop(0.5, "#6a5cff");
     g.addColorStop(1, "#ff4f9a");
     ctx.fillStyle = g;
-    ctx.fillText("404", w / 2, h * 0.56);
+    ctx.fillText("404", w / 2, h * 0.4);
     return;
   }
   if (pattern === "grid") {
