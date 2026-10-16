@@ -11,7 +11,12 @@ const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(site, "dist");
 const SITE_URL = (process.env.LG_SITE_URL || "https://liquid-glass-engineering.vercel.app").replace(/\/$/, "");
 
-const template = await readFile(path.join(dist, "index.html"), "utf8");
+let template = await readFile(path.join(dist, "index.html"), "utf8");
+// Inline the stylesheet: one render-blocking request fewer on every page.
+for (const m of [...template.matchAll(/<link rel="stylesheet"[^>]*href="\/(assets\/[^"]+\.css)"[^>]*>/g)]) {
+  const css = await readFile(path.join(dist, m[1]), "utf8");
+  template = template.replace(m[0], () => `<style>${css}</style>`);
+}
 const manifest = JSON.parse(await readFile(path.join(dist, ".vite/manifest.json"), "utf8"));
 const { render, paths } = await import(pathToFileURL(path.join(site, "dist-ssr/entry-server.js")).href);
 

@@ -4,6 +4,7 @@ import { Glass, GlassStage } from "../glass/react";
 import { wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
 import type { WallpaperName } from "../glass/backdrop";
 import { useTheme } from "../theme";
+import { Static } from "../components/Static";
 import type { Head } from "../router";
 import { Hero } from "./home/Hero";
 import { Platforms } from "./home/Platforms";
@@ -192,11 +193,11 @@ export default function Home() {
           </ol>
 
           <div className="optics__grid">
-            {OPTICS.map(({ title, body, Diagram }) => (
+            {OPTICS.map(({ title, body, Diagram }, i) => (
               <article key={title} className="optic-card">
-                <div className="optic-card__figure">
+                <Static id={`optics-figure-${i}`} className="optic-card__figure">
                   <Diagram />
-                </div>
+                </Static>
                 <h3 className="optic-card__title">{title}</h3>
                 <p className="optic-card__body">{body}</p>
               </article>
