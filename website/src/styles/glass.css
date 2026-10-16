@@ -1,0 +1,223 @@
+/* Glass stages: a canvas of live WebGL2 glass over a static image, with DOM
+   content above. When WebGL2 is unavailable (or reduce transparency is on)
+   the same elements draw a CSS fallback material instead. */
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #2a2340;
+  --glass-fg: #111113;
+  --glass-fg-2: rgba(17, 17, 19, 0.62);
+}
+
+[data-theme="dark"] .stage {
+  --glass-fg: #ffffff;
+  --glass-fg-2: rgba(255, 255, 255, 0.66);
+}
+
+.stage__fallback,
+.stage__fallback img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 42%;
+}
+
+.stage__fallback {
+  z-index: -2;
+}
+
+.stage__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  touch-action: none;
+  pointer-events: none;
+}
+
+.stage[data-renderer="webgl"] .stage__canvas {
+  opacity: 1;
+}
+
+.glass {
+  position: relative;
+  color: var(--glass-fg);
+  border-radius: var(--glass-r);
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+@supports (corner-shape: superellipse(2)) {
+  /* The spec's continuous corner: extent 1.528 r, exponent 3.26 (= 2^1.705). */
+  .glass {
+    border-radius: var(--glass-rc);
+    corner-shape: superellipse(1.705);
+  }
+}
+
+.glass[data-draggable] {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.glass[data-draggable]:active {
+  cursor: grabbing;
+}
+
+.glass:focus-visible {
+  outline-offset: 4px;
+  border-radius: var(--glass-r);
+}
+
+/* A soft contact shadow so floating glass sits above the wallpaper. */
+.stage[data-renderer="webgl"] .glass:not(.tabbar__lens) {
+  box-shadow: 0 18px 40px -18px rgba(10, 10, 30, 0.45);
+}
+
+/* Before the renderer decides, keep glass invisible (it materializes). */
+.stage[data-renderer="pending"] .glass {
+  opacity: 0;
+}
+
+/* Fallback material: platform blur plus a drawn rim. */
+.stage:is([data-renderer="css"], [data-renderer="pending"]) .glass {
+  background: color-mix(in srgb, var(--glass-tint, #ffffff) 20%, rgba(255, 255, 255, 0.2));
+  -webkit-backdrop-filter: blur(2px) saturate(1.6) brightness(1.06);
+  backdrop-filter: blur(2px) saturate(1.6) brightness(1.06);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+    inset 1.5px 0 0 rgba(0, 0, 0, 0.07),
+    inset -1.5px 0 0 rgba(0, 0, 0, 0.07),
+    0 18px 40px -18px rgba(10, 10, 30, 0.45);
+}
+
+.stage:is([data-renderer="css"], [data-renderer="pending"]) .glass[data-material="regular"] {
+  background: color-mix(in srgb, var(--glass-tint, #ffffff) 26%, rgba(255, 255, 255, 0.46));
+  -webkit-backdrop-filter: blur(18px) saturate(1.8) brightness(1.05);
+  backdrop-filter: blur(18px) saturate(1.8) brightness(1.05);
+}
+
+[data-theme="dark"] .stage:is([data-renderer="css"], [data-renderer="pending"]) .glass {
+  background: color-mix(in srgb, var(--glass-tint, #1c1c22) 22%, rgba(20, 20, 28, 0.22));
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+    inset 1.5px 0 0 rgba(0, 0, 0, 0.3),
+    inset -1.5px 0 0 rgba(0, 0, 0, 0.3),
+    0 18px 40px -18px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .stage:is([data-renderer="css"], [data-renderer="pending"]) .glass[data-material="regular"] {
+  background: color-mix(in srgb, var(--glass-tint, #1c1c22) 26%, rgba(28, 28, 34, 0.58));
+}
+
+/* Reduce transparency: an opaque fill, rim kept (OPTICS.md section 8). */
+@media (prefers-reduced-transparency: reduce) {
+  .stage .glass,
+  .stage .glass[data-material="regular"] {
+    background: rgba(242, 242, 247, 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  [data-theme="dark"] .stage .glass,
+  [data-theme="dark"] .stage .glass[data-material="regular"] {
+    background: rgba(28, 28, 30, 0.94) !important;
+  }
+}
+
+/* Increase contrast: a 1-unit inner border. */
+@media (prefers-contrast: more) {
+  .stage .glass {
+    outline: 1px solid rgba(0, 0, 0, 0.18);
+    outline-offset: -1px;
+  }
+  [data-theme="dark"] .stage .glass {
+    outline-color: rgba(255, 255, 255, 0.28);
+  }
+}
+
+/* Tab bar with a sliding lens. */
+
+.tabbar {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  gap: 0;
+}
+
+.tabbar__lens {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 72px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.stage:is([data-renderer="css"], [data-renderer="pending"]) .tabbar__lens {
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.tabbar__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 78px;
+  height: 54px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+.tabbar__item[aria-checked="true"] {
+  opacity: 1;
+}
+
+.tabbar__item:focus-visible {
+  outline-offset: -2px;
+  border-radius: 999px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.tabbar__item[aria-checked="true"] .swatch {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 0 2px currentColor;
+}

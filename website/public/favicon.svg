@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1650"/><stop offset="1" stop-color="#0c0f2c"/></linearGradient>
+    <linearGradient id="w1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3ad9e6"/><stop offset="1" stop-color="#4b8df8"/></linearGradient>
+    <linearGradient id="w2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6f5cff"/><stop offset="1" stop-color="#b45cf0"/></linearGradient>
+    <linearGradient id="w3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#8a4dff"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="0.22" stop-color="#fff" stop-opacity="0.25"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="0.78" stop-color="#fff" stop-opacity="0.25"/><stop offset="1" stop-color="#fff" stop-opacity="0.9"/></linearGradient>
+    <radialGradient id="veil" cx="0.5" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="1" stop-color="#fff" stop-opacity="0.04"/></radialGradient>
+    <radialGradient id="edge" cx="0.5" cy="0.5" r="0.5"><stop offset="0.78" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.22"/></radialGradient>
+    <clipPath id="tile"><path d="M340.9 0.0L382.0 0.5L403.7 2.0L421.0 4.6L435.8 8.1L448.7 12.7L460.2 18.3L470.3 25.0L479.2 32.8L487.0 41.7L493.7 51.8L499.3 63.3L503.9 76.2L507.4 91.0L510.0 108.3L511.5 130.0L512.0 171.1L512.0 340.9L511.5 382.0L510.0 403.7L507.4 421.0L503.9 435.8L499.3 448.7L493.7 460.2L487.0 470.3L479.2 479.2L470.3 487.0L460.2 493.7L448.7 499.3L435.8 503.9L421.0 507.4L403.7 510.0L382.0 511.5L340.9 512.0L171.1 512.0L130.0 511.5L108.3 510.0L91.0 507.4L76.2 503.9L63.3 499.3L51.8 493.7L41.7 487.0L32.8 479.2L25.0 470.3L18.3 460.2L12.7 448.7L8.1 435.8L4.6 421.0L2.0 403.7L0.5 382.0L0.0 340.9L0.0 171.1L0.5 130.0L2.0 108.3L4.6 91.0L8.1 76.2L12.7 63.3L18.3 51.8L25.0 41.7L32.8 32.8L41.7 25.0L51.8 18.3L63.3 12.7L76.2 8.1L91.0 4.6L108.3 2.0L130.0 0.5L171.1 0.0Z"/></clipPath>
+    <clipPath id="lens"><circle cx="256" cy="258" r="132"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#sky)"/>
+    <path d="M0 206 C 110 166 200 246 300 210 S 460 166 512 192 V512 H0Z" fill="url(#w1)"/>
+    <path d="M0 288 C 120 246 220 326 330 288 S 470 248 512 266 V512 H0Z" fill="url(#w2)"/>
+    <path d="M0 366 C 130 332 230 406 340 368 S 470 338 512 352 V512 H0Z" fill="url(#w3)"/>
+    <g clip-path="url(#lens)">
+      <g transform="translate(256 258) scale(1.32) translate(-256 -258)"><rect width="512" height="512" fill="url(#sky)"/>
+    <path d="M0 206 C 110 166 200 246 300 210 S 460 166 512 192 V512 H0Z" fill="url(#w1)"/>
+    <path d="M0 288 C 120 246 220 326 330 288 S 470 248 512 266 V512 H0Z" fill="url(#w2)"/>
+    <path d="M0 366 C 130 332 230 406 340 368 S 470 338 512 352 V512 H0Z" fill="url(#w3)"/></g>
+      <circle cx="256" cy="258" r="132" fill="url(#veil)"/>
+      <circle cx="256" cy="258" r="132" fill="url(#edge)"/>
+    </g>
+    <circle cx="256" cy="258" r="130.5" fill="none" stroke="url(#rim)" stroke-width="5"/>
+  </g>
+</svg>

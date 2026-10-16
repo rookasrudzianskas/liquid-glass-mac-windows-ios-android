@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://liquid-glass-engineering.vercel.app/sitemap.xml

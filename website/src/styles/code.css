@@ -1,0 +1,153 @@
+/* Code blocks. Shiki emits CSS variables; these palettes follow Xcode's
+   default light and dark themes. */
+
+:root {
+  --code-bg: #ffffff;
+  --code-bar: #f7f7f9;
+  --code-line: rgba(0, 0, 0, 0.07);
+  --shiki-foreground: #1f1f24;
+  --shiki-background: transparent;
+  --shiki-token-keyword: #9b2393;
+  --shiki-token-string: #c41a16;
+  --shiki-token-string-expression: #c41a16;
+  --shiki-token-comment: #5d6c79;
+  --shiki-token-constant: #1c00cf;
+  --shiki-token-function: #326d74;
+  --shiki-token-parameter: #3e1f8a;
+  --shiki-token-punctuation: #4d4d55;
+  --shiki-token-link: #0e0eff;
+  --shiki-token-inserted: #1f7a3a;
+  --shiki-token-deleted: #b42318;
+  --shiki-token-changed: #9a6700;
+}
+
+[data-theme="dark"] {
+  --code-bg: #0e0e10;
+  --code-bar: #161619;
+  --code-line: rgba(255, 255, 255, 0.08);
+  --shiki-foreground: #e8e8ec;
+  --shiki-token-keyword: #fc5fa3;
+  --shiki-token-string: #fc6a5d;
+  --shiki-token-string-expression: #fc6a5d;
+  --shiki-token-comment: #7f8c98;
+  --shiki-token-constant: #d0bf69;
+  --shiki-token-function: #67b7a4;
+  --shiki-token-parameter: #a167e6;
+  --shiki-token-punctuation: #b4b4bc;
+  --shiki-token-link: #6699ff;
+  --shiki-token-inserted: #5dd27a;
+  --shiki-token-deleted: #ff7b72;
+  --shiki-token-changed: #e3b341;
+}
+
+.code {
+  margin: 0;
+  border-radius: 18px;
+  background: var(--code-bg);
+  box-shadow: 0 0 0 1px var(--code-line);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 42px;
+  padding: 0 8px 0 16px;
+  background: var(--code-bar);
+  border-bottom: 1px solid var(--code-line);
+}
+
+.code__lang {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.code pre {
+  margin: 0;
+  padding: 16px 18px 18px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.65;
+  tab-size: 4;
+  color: var(--shiki-foreground);
+  background: transparent !important;
+  scrollbar-width: thin;
+}
+
+.code pre:focus-visible {
+  outline-offset: -3px;
+}
+
+.code pre code {
+  font-size: inherit;
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+
+.code__caption {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--code-line);
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.copy-button,
+.code__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg-3);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.copy-button:hover,
+.code__copy:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  color: var(--fg);
+}
+
+.copy-button[data-copied],
+.code__copy[data-copied] {
+  color: var(--ok);
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 4px 6px 4px 16px;
+  border-radius: 14px;
+  background: var(--code-bg);
+  box-shadow: 0 0 0 1px var(--code-line);
+  min-width: 0;
+}
+
+.command code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--shiki-foreground);
+  scrollbar-width: none;
+}

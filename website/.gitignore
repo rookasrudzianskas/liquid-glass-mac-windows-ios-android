@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-ssr/
+.vercel/
+src/generated/
+public/fonts/
+public/wallpapers/
+public/media/
+public/docs/
+public/llms.txt
+public/llms-full.txt
+public/sitemap.xml
+.cache/
+.env*
+public/icons/

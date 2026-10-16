@@ -1,0 +1,54 @@
+{
+  "spm": {
+    "lang": "swift",
+    "code": "// Package.swift\ndependencies: [\n    .package(url: \"https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android\", from: \"1.0.0\"),\n],\ntargets: [\n    .target(name: \"App\", dependencies: [\n        .product(name: \"LiquidGlass\", package: \"liquid-glass-mac-windows-ios-android\"),\n    ]),\n]"
+  },
+  "gradleRepo": {
+    "lang": "kotlin",
+    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"https://liquid-glass-engineering.vercel.app/maven\")\n    }\n}"
+  },
+  "gradleDep": {
+    "lang": "kotlin",
+    "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:1.0.0\")\n}"
+  },
+  "jitpack": {
+    "lang": "kotlin",
+    "code": "// settings.gradle.kts: repositories { maven(\"https://jitpack.io\") }\nimplementation(\"com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0\")"
+  },
+  "nugetCli": {
+    "lang": "shellscript",
+    "code": "dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json --name liquid-glass\ndotnet add package LiquidGlass.Wpf --version 1.0.0"
+  },
+  "nugetConfig": {
+    "lang": "xml",
+    "code": "<!-- nuget.config -->\n<configuration>\n  <packageSources>\n    <add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />\n    <add key=\"liquid-glass\" value=\"https://liquid-glass-engineering.vercel.app/nuget/index.json\" />\n  </packageSources>\n</configuration>"
+  },
+  "pluginInstall": {
+    "lang": "shellscript",
+    "code": "/plugin marketplace add rookasrudzianskas/liquid-glass-mac-windows-ios-android\n/plugin install liquid-glass@liquid-glass-engineering"
+  },
+  "pluginShell": {
+    "lang": "shellscript",
+    "code": "claude plugin marketplace add rookasrudzianskas/liquid-glass-mac-windows-ios-android\nclaude plugin install liquid-glass@liquid-glass-engineering"
+  },
+  "skillsManual": {
+    "lang": "shellscript",
+    "code": "curl -LO https://liquid-glass-engineering.vercel.app/downloads/liquid-glass-skills.zip\nunzip liquid-glass-skills.zip -d ~/.claude/skills    # Claude Code\nunzip liquid-glass-skills.zip -d ~/.agents/skills    # Codex and other Agent Skills tools"
+  },
+  "verify": {
+    "lang": "shellscript",
+    "code": "shasum -a 256 liquid-glass-studio-macos.zip   # macOS / Linux\nGet-FileHash .\\liquid-glass-studio-windows.zip   # Windows PowerShell"
+  },
+  "fallbackApple": {
+    "lang": "swift",
+    "code": "import SwiftUI\nimport LiquidGlass\n\nstruct ContentView: View {\n    var body: some View {\n        GlassScene {\n            GlassContent {\n                Image(\"Wallpaper\").resizable().scaledToFill()\n            }\n            GlassSurface {\n                Text(\"Liquid Glass\").font(.title2.bold())\n            }\n        }\n    }\n}"
+  },
+  "fallbackAndroid": {
+    "lang": "kotlin",
+    "code": "import io.github.rookasrudzianskas.liquidglass.*\n\n@Composable\nfun Hero() {\n    GlassScene {\n        GlassContent {\n            Image(painterResource(R.drawable.wallpaper), null, contentScale = ContentScale.Crop)\n        }\n        GlassSurface(material = GlassMaterial.Regular) {\n            Text(\"Liquid Glass\", style = MaterialTheme.typography.titleLarge)\n        }\n    }\n}"
+  },
+  "fallbackWindows": {
+    "lang": "xml",
+    "code": "<lg:GlassScene>\n  <lg:GlassScene.Content>\n    <Image Source=\"Assets/Wallpaper.jpg\" Stretch=\"UniformToFill\" />\n  </lg:GlassScene.Content>\n  <lg:GlassSurface Material=\"Regular\" CornerRadius=\"24\">\n    <TextBlock Text=\"Liquid Glass\" FontSize=\"22\" FontWeight=\"SemiBold\" />\n  </lg:GlassSurface>\n</lg:GlassScene>"
+  }
+}
