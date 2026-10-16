@@ -122,8 +122,16 @@ export class GlassRenderer {
       premultipliedAlpha: true,
       preserveDrawingBuffer: false,
       powerPreference: "default",
+      // Software rasterizers (no GPU) get the CSS fallback instead: smoother than slow WebGL.
+      failIfMajorPerformanceCaveat: true,
     });
     if (!gl) throw new Error("WebGL2 unavailable");
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
+    if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(name)) {
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      throw new Error(`software renderer: ${name}`);
+    }
     this.gl = gl;
     this.init();
   }

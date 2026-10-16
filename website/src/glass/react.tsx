@@ -50,23 +50,35 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
   const [kind, setKind] = useState<RendererKind>("pending");
   const callback = useRef(onRenderer);
   callback.current = onRenderer;
+  const appearanceRef = useRef(appearance);
+  appearanceRef.current = appearance;
 
   useEffect(() => {
     const root = rootRef.current;
     const canvas = canvasRef.current;
     if (!root || !canvas) return;
-    const s = new GlassScene(root, canvas, {
-      appearance,
-      onRenderer: (k, reason) => {
-        setKind(k);
-        callback.current?.(k, reason);
-      },
-    });
-    setScene(s);
-    if (s.kind === "css") setKind("css");
-    if (import.meta.env.DEV) ((window as unknown as { __lgScenes?: GlassScene[] }).__lgScenes ??= []).push(s);
+    let s: GlassScene | null = null;
+    // Start the GPU work once the page has painted and hydrated: glass is
+    // decoration, the content comes first.
+    const start = () => {
+      s = new GlassScene(root, canvas, {
+        appearance: appearanceRef.current,
+        onRenderer: (k, reason) => {
+          setKind(k);
+          callback.current?.(k, reason);
+        },
+      });
+      setScene(s);
+      if (s.kind === "css") setKind("css");
+      if (import.meta.env.DEV) ((window as unknown as { __lgScenes?: GlassScene[] }).__lgScenes ??= []).push(s);
+    };
+    // Safari has no requestIdleCallback.
+    const idle = "requestIdleCallback" in window;
+    const handle = idle ? window.requestIdleCallback(start, { timeout: 900 }) : window.setTimeout(start, 120);
     return () => {
-      s.destroy();
+      if (idle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+      s?.destroy();
       setScene(null);
     };
     // The scene lives as long as the stage; appearance updates below.

@@ -27,7 +27,7 @@ const THEMES: { value: Preference; label: string; Icon: typeof SunIcon }[] = [
 ];
 
 function ThemeMenu() {
-  const { preference, theme, setPreference, mounted } = useTheme();
+  const { preference, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -60,7 +60,6 @@ function ThemeMenu() {
     };
   }, [open]);
 
-  const CurrentIcon = mounted ? (theme === "dark" ? MoonIcon : SunIcon) : SunIcon;
   return (
     <div className="theme-menu">
       <button
@@ -74,7 +73,9 @@ function ThemeMenu() {
         title="Appearance"
         onClick={() => setOpen((v) => !v)}
       >
-        <CurrentIcon size={18} />
+        {/* Both icons render; CSS shows the one matching <html data-theme>, so there is no flash. */}
+        <SunIcon size={18} className="theme-icon theme-icon--light" />
+        <MoonIcon size={18} className="theme-icon theme-icon--dark" />
       </button>
       {open && (
         <div ref={menuRef} id={id} role="menu" aria-label="Appearance" className="popover theme-menu__list">
@@ -103,6 +104,10 @@ function ThemeMenu() {
 
 function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) {
   const { path } = useRouter();
+  const [modKey, setModKey] = useState("⌘");
+  useEffect(() => {
+    if (!/Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent)) setModKey("Ctrl ");
+  }, []);
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -139,10 +144,12 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
           ))}
         </ul>
         <div className="nav__actions">
-          <button type="button" className="nav__search" onClick={onSearch} onMouseEnter={loadSearch} onFocus={loadSearch} aria-label="Search docs" aria-keyshortcuts="Meta+K Control+K">
+          <button type="button" className="nav__search" onClick={onSearch} onMouseEnter={loadSearch} onFocus={loadSearch} aria-keyshortcuts="Meta+K Control+K">
             <SearchIcon size={16} />
             <span className="nav__search-label">Search</span>
-            <kbd className="nav__kbd">⌘K</kbd>
+            <kbd className="nav__kbd" aria-hidden="true">
+              {modKey}K
+            </kbd>
           </button>
           <ThemeMenu />
           <a className="icon-button nav__github" href={REPO_URL} rel="noopener" target="_blank" aria-label="GitHub repository (opens in a new tab)" title="GitHub">
