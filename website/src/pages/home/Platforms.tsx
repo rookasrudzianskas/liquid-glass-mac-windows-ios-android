@@ -65,7 +65,7 @@ const PLATFORMS: {
     id: "windows",
     tab: "WPF",
     title: "WPF for Windows",
-    targets: [".NET 8+", "Windows 10+"],
+    targets: [".NET 8+", ".NET Framework 4.8", "Windows 10+"],
     gpu: "HLSL",
     install: "nugetCli",
     installTitle: ".NET CLI",

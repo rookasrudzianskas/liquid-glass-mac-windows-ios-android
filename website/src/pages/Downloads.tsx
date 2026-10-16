@@ -112,7 +112,7 @@ const PLATFORMS = [
   {
     id: "windows",
     title: "Windows",
-    subtitle: "WPF for .NET 8+ on Windows 10 and 11",
+    subtitle: "WPF for .NET 8+ and .NET Framework 4.8 on Windows 10 and 11",
     Icon: WindowIcon,
     install: [
       { key: "nugetCli", title: ".NET CLI" },
