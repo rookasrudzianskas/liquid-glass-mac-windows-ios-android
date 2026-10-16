@@ -7,11 +7,14 @@ import { resolve } from "./router";
 const root = document.getElementById("root");
 if (root) {
   const initial = await resolve(window.location.pathname);
-  if (root.firstElementChild) {
+  const stamp = initial.status === 404 ? "404" : initial.path;
+  if (root.firstElementChild && root.dataset.route === stamp) {
     hydrateRoot(root, <App initial={initial} />);
   } else {
-    // Development server: nothing was prerendered.
+    // Development server, or HTML prerendered for another route (a host's
+    // fallback page): render from scratch instead of hydrating.
     applyHead(initial.head);
+    root.textContent = "";
     createRoot(root).render(<App initial={initial} />);
   }
 }

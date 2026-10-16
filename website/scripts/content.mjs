@@ -112,6 +112,8 @@ function codeBlock({ html, label, lang }, title) {
 // Docs
 
 const GROUPS = ["Get started", "Platforms", "Reference", "Guides"];
+/** Alt text of every repository image the docs show, by repo-relative path. */
+const imageAlts = new Map();
 const KNOWN = {
   index: { group: "Get started", order: 0, title: "Overview" },
   readme: { group: "Get started", order: 0, title: "Overview", slug: "overview" },
@@ -271,6 +273,7 @@ async function renderDoc(entry, slugByFile) {
     let dims = "";
     if (src && !/^(https?:|data:|\/)/i.test(src)) {
       const rel = path.posix.normalize(path.posix.join(docDir, decodeURIComponent(src)));
+      if (m.alt) imageAlts.set(rel, m.alt);
       const copied = await copyMedia(rel);
       if (!copied) {
         if (!quiet) console.warn(`[content] ${entry.file}: missing image ${rel}`);
@@ -291,6 +294,8 @@ async function renderDoc(entry, slugByFile) {
     const src = /\bsrc="([^"]+)"/.exec(tag)?.[1];
     if (!src || /^(https?:|data:|\/)/i.test(src)) continue;
     const rel = path.posix.normalize(path.posix.join(docDir, decodeURIComponent(src)));
+    const alt = /\balt="([^"]*)"/.exec(tag)?.[1];
+    if (alt) imageAlts.set(rel, alt);
     const copied = await copyMedia(rel);
     if (!copied) {
       // Not in the repository yet: leave it out rather than show a broken image.
@@ -615,7 +620,7 @@ async function buildScreens() {
           width: info.width,
           height: info.height,
           name: base,
-          alt: base.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+          alt: imageAlts.get(`docs/images/${platform}/${f}`) ?? base.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
         });
       }
       if (list.length) out[platform] = list;

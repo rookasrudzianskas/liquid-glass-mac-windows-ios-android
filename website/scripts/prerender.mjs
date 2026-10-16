@@ -39,7 +39,9 @@ const pages = paths();
 const sitemap = [];
 for (const { path: p, updated } of pages) {
   const r = await render(p);
-  let html = template.replace("<!--app-head-->", `${r.head}\n    ${preloads(r.modules)}`).replace("<!--app-html-->", r.html);
+  let html = template
+    .replace("<!--app-head-->", `${r.head}\n    ${preloads(r.modules)}`)
+    .replace('<div id="root"><!--app-html-->', `<div id="root" data-route="${r.stamp}">${r.html}`);
   if (html.includes("<!--app-html-->") || html.includes("<!--app-head-->")) throw new Error(`placeholders left in ${p}`);
   const file = path.join(dist, outFile(p));
   await mkdir(path.dirname(file), { recursive: true });

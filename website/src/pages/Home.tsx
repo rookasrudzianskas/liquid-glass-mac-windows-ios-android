@@ -86,10 +86,10 @@ function Screens() {
         {groups.map(([platform, list]) => (
           <div key={platform} className="screens__group">
             <h3 className="screens__title">{SCREEN_LABELS[platform] ?? platform}</h3>
-            <ul className="screens__list" role="list">
-              {list.slice(0, 6).map((s) => (
-                <li key={s.src} className="screens__item">
-                  <img src={s.src} width={s.width} height={s.height} alt={`${SCREEN_LABELS[platform] ?? platform}: ${s.alt}`} loading="lazy" decoding="async" />
+            <ul className="screens__list" role="list" aria-label={`${SCREEN_LABELS[platform] ?? platform} screenshots`}>
+              {list.map((s) => (
+                <li key={s.src} className="screens__item" style={{ aspectRatio: `${s.width} / ${s.height}` }}>
+                  <img src={s.src} width={s.width} height={s.height} alt={s.alt} loading="lazy" decoding="async" />
                 </li>
               ))}
             </ul>

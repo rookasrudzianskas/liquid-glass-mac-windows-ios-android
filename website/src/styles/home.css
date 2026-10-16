@@ -808,14 +808,26 @@
 }
 
 .screens__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display: flex;
   gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px 4px 18px;
+  margin: 0 -4px;
+  scrollbar-width: thin;
+}
+
+.screens__item {
+  flex: none;
+  height: clamp(320px, 46vw, 560px);
+  scroll-snap-align: start;
 }
 
 .screens__item img {
   width: 100%;
-  border-radius: 18px;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 22px;
   box-shadow:
     0 0 0 1px var(--line),
     var(--shadow-1);
