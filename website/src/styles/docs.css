@@ -543,9 +543,11 @@ a.doc-card:hover {
   margin-bottom: 1.2em;
 }
 
-/* Markdown tables with an empty header row (`| | |`) render without one. */
-.prose thead:not(:has(th:not(:empty))) {
-  display: none;
+/* Key/value tables: the first column is the row header. */
+.prose .table--keys th[scope="row"] {
+  width: 1%;
+  background: transparent;
+  color: var(--fg-2);
 }
 
 .prose p[align="center"] {

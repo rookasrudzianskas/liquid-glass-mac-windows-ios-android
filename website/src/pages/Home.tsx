@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import screens from "../generated/screens.json";
 import { Link, REPO_URL } from "../router";
 import { Glass, GlassStage } from "../glass/react";
@@ -149,6 +150,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <Suspense fallback={null}>
 
       <section className="section intro" aria-labelledby="intro-title">
         <div className="section__inner intro__inner">
@@ -173,9 +175,14 @@ export default function Home() {
         </div>
       </section>
 
-      <Controls />
-
-      <Platforms />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Controls />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Platforms />
+      </Suspense>
+      <Suspense fallback={null}>
 
       <section className="section optics" aria-labelledby="optics-title">
         <div className="section__inner">
@@ -231,6 +238,8 @@ export default function Home() {
         </div>
       </section>
 
+      </Suspense>
+      <Suspense fallback={null}>
       <section className="section features" aria-labelledby="features-title">
         <div className="section__inner">
           <header className="section-head">
@@ -250,7 +259,11 @@ export default function Home() {
         </div>
       </section>
 
-      <Screens />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Screens />
+      </Suspense>
+      <Suspense fallback={null}>
 
       <section className="section quality" aria-labelledby="quality-title">
         <div className="section__inner">
@@ -293,7 +306,10 @@ export default function Home() {
         </div>
       </section>
 
-      <CallToAction />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CallToAction />
+      </Suspense>
     </>
   );
 }

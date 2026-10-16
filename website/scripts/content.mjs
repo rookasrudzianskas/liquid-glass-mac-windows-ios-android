@@ -309,8 +309,14 @@ async function renderDoc(entry, slugByFile) {
     html = html.split(tag).join(next);
   }
 
+  // Key/value tables written with an empty header row (`| | |`): drop the
+  // empty header and make the first column row headers, so every cell has one.
+  html = html.replace(/<table>\s*<thead>\s*<tr>((?:\s*<th[^>]*>\s*<\/th>)+)\s*<\/tr>\s*<\/thead>([\s\S]*?)<\/table>/g, (_m, _empty, rest) =>
+    `<table class="table--keys">${rest.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>')}</table>`,
+  );
+
   html = html
-    .replace(/<table>/g, '<div class="table-wrap"><table>')
+    .replace(/<table( class="[^"]*")?>/g, '<div class="table-wrap"><table$1>')
     .replace(/<\/table>/g, "</table></div>")
     // GitHub alerts: > [!NOTE] ...
     .replace(/<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/g, (_m, kind) => `<blockquote class="callout callout--${kind.toLowerCase()}"><p><strong class="callout__label">${kind[0] + kind.slice(1).toLowerCase()}</strong> `);
