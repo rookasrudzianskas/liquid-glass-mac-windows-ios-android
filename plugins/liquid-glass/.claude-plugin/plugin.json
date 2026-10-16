@@ -1,0 +1,13 @@
+{
+  "name": "liquid-glass",
+  "version": "1.0.0",
+  "description": "Design and build Liquid Glass UI with Liquid Glass Engineering: SwiftUI (iOS, macOS), Jetpack Compose (Android), WPF (Windows), and porting the shared optical model.",
+  "author": {
+    "name": "Rokas Rudzianskas",
+    "url": "https://github.com/rookasrudzianskas"
+  },
+  "homepage": "https://liquid-glass-engineering.vercel.app",
+  "repository": "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android",
+  "license": "MIT",
+  "keywords": ["liquid-glass", "glassmorphism", "swiftui", "metal", "jetpack-compose", "agsl", "wpf", "hlsl", "design-system"]
+}

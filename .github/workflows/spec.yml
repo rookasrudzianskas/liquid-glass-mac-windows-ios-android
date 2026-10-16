@@ -3,9 +3,9 @@ name: Spec
 on:
   push:
     branches: [main]
-    paths: ["spec/**", ".github/workflows/spec.yml"]
+    paths: ["spec/**", "plugins/**", "scripts/sync-skill-references.mjs", ".github/workflows/spec.yml"]
   pull_request:
-    paths: ["spec/**", ".github/workflows/spec.yml"]
+    paths: ["spec/**", "plugins/**", "scripts/sync-skill-references.mjs", ".github/workflows/spec.yml"]
 
 permissions:
   contents: read
@@ -23,3 +23,5 @@ jobs:
         run: node spec/generate-vectors.mjs
       - name: Fail if the committed vectors are stale
         run: git diff --exit-code -- spec/vectors.json
+      - name: Fail if the skills' copies of the spec are stale
+        run: node scripts/sync-skill-references.mjs --check

@@ -1,0 +1,15 @@
+{
+  "name": "liquid-glass-engineering",
+  "owner": {
+    "name": "Rokas Rudzianskas",
+    "url": "https://github.com/rookasrudzianskas"
+  },
+  "description": "Agent skills for building native Liquid Glass interfaces with Liquid Glass Engineering on iOS, macOS, Android and Windows.",
+  "plugins": [
+    {
+      "name": "liquid-glass",
+      "source": "./plugins/liquid-glass",
+      "description": "Design and build Liquid Glass UI with SwiftUI, Jetpack Compose and WPF, and port the optical model to new platforms."
+    }
+  ]
+}
