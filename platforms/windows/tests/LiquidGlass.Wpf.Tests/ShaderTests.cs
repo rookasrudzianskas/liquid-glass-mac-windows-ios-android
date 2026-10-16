@@ -93,7 +93,7 @@ public class ShaderTests
         using (device)
         using (context)
         using (var shader = device.CreateComputeShader(bytecode))
-        using (var cases = device.CreateBuffer(input, BindFlags.ShaderResource, ResourceUsage.Default, CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, 64))
+        using (var cases = device.CreateBuffer(input, BindFlags.ShaderResource, ResourceUsage.Default, CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, structureByteStride: 64))
         using (var counts = device.CreateBuffer(new[] { (uint)count, 0u, 0u, 0u }, BindFlags.ConstantBuffer))
         using (var output = device.CreateBuffer(new BufferDescription((uint)(count * 32), BindFlags.UnorderedAccess, ResourceUsage.Default, CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, 16)))
         using (var staging = device.CreateBuffer(new BufferDescription((uint)(count * 32), BindFlags.None, ResourceUsage.Staging, CpuAccessFlags.Read, ResourceOptionFlags.None, 0)))

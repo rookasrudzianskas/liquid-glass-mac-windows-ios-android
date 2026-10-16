@@ -139,6 +139,9 @@ public sealed class GlassLens : FrameworkElement
 
     internal Point GlowCenter => _glowCenter;
 
+    /// <summary>The surface sits inside other glass.</summary>
+    internal bool IsNested => _nested;
+
     internal double GlowAmount => _glowAmount;
 
     /// <summary>Visual children: the copy, the shader glass and the overlay.</summary>
@@ -387,18 +390,20 @@ public sealed class GlassLens : FrameworkElement
         _sourcesDirty = false;
         ClearSources();
         var scene = _scene;
-        var ancestors = scene is null ? new List<GlassLens>() : EnclosingLenses(scene);
+        var ancestors = EnclosingLenses(scene);
         var nested = ancestors.Count > 0;
         if (nested != _nested)
         {
             _nested = nested;
             UpdateShaderConstants(ShapeBounds);
+            _overlay.InvalidateVisual();
         }
         if (scene is null || Mode is not (GlassLensMode.Shader or GlassLensMode.Fallback)) return;
         AddLayer(scene.BackdropHost);
         foreach (var layer in scene.BackdropLayers)
             if (IsPaintedBefore(layer, this, scene)) AddLayer(layer.BrushTarget);
-        foreach (var lens in ancestors) AddLayer(lens);
+        foreach (var lens in ancestors)
+            if (lens.Mode is GlassLensMode.Shader or GlassLensMode.Fallback) AddLayer(lens);
         if (_localBackdrop is not null) AddLayer(_localBackdrop);
     }
 
@@ -416,15 +421,15 @@ public sealed class GlassLens : FrameworkElement
         _sources.Children.Clear();
     }
 
-    /// <summary>Lenses of the glass surfaces that enclose this one, outermost first.</summary>
-    private List<GlassLens> EnclosingLenses(GlassScene scene)
+    /// <summary>Lenses of the glass surfaces that enclose this one (within the scene, if any), outermost first.</summary>
+    private List<GlassLens> EnclosingLenses(GlassScene? scene)
     {
         var result = new List<GlassLens>();
         for (var node = VisualTreeHelper.GetParent(this); node is not null && !ReferenceEquals(node, scene); node = VisualTreeHelper.GetParent(node))
         {
             if (node is not Visual visual) continue;
             for (var i = 0; i < VisualTreeHelper.GetChildrenCount(visual); i++)
-                if (VisualTreeHelper.GetChild(visual, i) is GlassLens lens && !ReferenceEquals(lens, this) && lens.Mode is GlassLensMode.Shader or GlassLensMode.Fallback)
+                if (VisualTreeHelper.GetChild(visual, i) is GlassLens lens && !ReferenceEquals(lens, this))
                     result.Insert(0, lens);
         }
         return result;

@@ -14,11 +14,16 @@ public partial class App : Application
 
     private bool _automated;
 
+    /// <summary>Creates the app; errors from here on, including while its resources load, reach the crash log.</summary>
+    public App()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => Report(args.ExceptionObject as Exception);
+    }
+
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += (_, args) => Report(args.ExceptionObject as Exception);
         base.OnStartup(e);
         var options = StudioOptions.Parse(e.Args);
         // Scripted runs (--exit-after) have no one to dismiss a message box.

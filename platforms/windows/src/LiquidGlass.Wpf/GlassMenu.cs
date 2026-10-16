@@ -371,7 +371,7 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         if (_panel is null || _trigger is null || _layer is null) return;
         _panel.Measure(new Size(Math.Max(0, scene.ActualWidth - 2 * Gap), Math.Max(0, scene.ActualHeight - 2 * Gap)));
         var size = new Size(Math.Max(_panel.DesiredSize.Width, Math.Max(MinPanelWidth, _trigger.ActualWidth)), _panel.DesiredSize.Height);
-        var trigger = _trigger.TransformToAncestor(_layer).TransformBounds(new Rect(_trigger.RenderSize));
+        var trigger = _trigger.TransformToVisual(_layer).TransformBounds(new Rect(_trigger.RenderSize));
         var below = trigger.Bottom + Gap;
         var above = trigger.Top - Gap - size.Height;
         var fitsBelow = below + size.Height <= scene.ActualHeight - Gap;

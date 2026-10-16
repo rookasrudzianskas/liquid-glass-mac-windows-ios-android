@@ -63,11 +63,26 @@ internal static class StudioCapture
 
     private static (int, int) Capture(string exe, string args, string path, Action<IntPtr, AutomationElement>? interact)
     {
-        using var process = Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false })
+        using var process = Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, RedirectStandardError = true })
             ?? throw new InvalidOperationException("could not start Studio");
+        var errors = new StringBuilder();
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null) lock (errors) errors.AppendLine(e.Data);
+        };
+        process.BeginErrorReadLine();
         try
         {
-            var hwnd = WaitForWindow(process, TimeSpan.FromSeconds(30));
+            IntPtr hwnd;
+            try
+            {
+                hwnd = WaitForWindow(process, TimeSpan.FromSeconds(30));
+            }
+            catch (InvalidOperationException e)
+            {
+                process.WaitForExit(2000);
+                lock (errors) throw new InvalidOperationException($"{e.Message}\n{errors}");
+            }
             SetForegroundWindow(hwnd);
             // Fonts, wallpapers and the first shader frames settle.
             Thread.Sleep(3500);

@@ -106,9 +106,17 @@ public class ControlTests
             var surface = new GlassSurface { Width = 200, Height = 64, Radius = GlassRadius.Capsule, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             var window = Sta.Show(Scene(surface), 300, 200);
             Assert.Same(surface, Hit(surface, new Point(100, 32)));
-            Assert.Null(Hit(surface, new Point(2, 2)));
+            var corner = Hit(surface, new Point(2, 2));
+            Assert.True(corner is null, $"the corner outside the outline hit {Describe(corner)}");
             window.Close();
         });
+    }
+
+    private static string Describe(DependencyObject? node)
+    {
+        var chain = new System.Collections.Generic.List<string>();
+        for (; node is not null; node = VisualTreeHelper.GetParent(node)) chain.Add(node.GetType().Name + (node is FrameworkElement { Name.Length: > 0 } f ? "#" + f.Name : ""));
+        return string.Join(" < ", chain);
     }
 
     private static DependencyObject? Hit(UIElement element, Point point)
@@ -119,8 +127,6 @@ public class ControlTests
             result = r.VisualHit;
             return HitTestResultBehavior.Stop;
         }, new PointHitTestParameters(point));
-        for (var node = result; node is not null; node = VisualTreeHelper.GetParent(node))
-            if (node is GlassSurface surface) return surface;
         return result;
     }
 
@@ -210,7 +216,8 @@ public class ControlTests
             Assert.Equal(AutomationControlType.ToolBar, UIElementAutomationPeer.CreatePeerForElement(toolbar).GetAutomationControlType());
             toolbar.Items.Insert(1, new Button { Content = "A2" });
             Sta.Pump();
-            Assert.Equal(3, host.Children.OfType<GlassSurface>().Sum(c => ((Panel)c.Content).Children.Count));
+            Assert.Equal(2, host.Children.OfType<GlassSurface>().Count());
+            Assert.Equal(4, host.Children.OfType<GlassSurface>().Sum(c => ((Panel)c.Content).Children.Count));
             window.Close();
         });
     }

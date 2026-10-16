@@ -122,7 +122,12 @@ internal sealed class LensOverlay : FrameworkElement
     }
 
     private Brush OpaqueFill(bool dark)
-        => _lens.EffectiveTint is { } tint ? TintFill(tint) : new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.ReducedTransparency(dark)));
+    {
+        if (_lens.EffectiveTint is { } tint) return TintFill(tint);
+        // Glass inside opaque glass (a tab bar's selection, a button on a card) is a step lighter so it stays visible.
+        if (_lens.IsNested) return new SolidColorBrush(dark ? Color.FromArgb(0xF0, 0x3A, 0x3A, 0x3C) : Color.FromArgb(0xF0, 0xFF, 0xFF, 0xFF));
+        return new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.ReducedTransparency(dark)));
+    }
 
     /// <summary>
     /// Tinted glass is nearly opaque pigment that transmits the backdrop's luminance (OPTICS §3); without the shader,

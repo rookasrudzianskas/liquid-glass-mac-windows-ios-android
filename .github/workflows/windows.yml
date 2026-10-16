@@ -109,6 +109,8 @@ jobs:
         run: |
           dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- studio --exe "$PWD\src\LiquidGlass.Studio\bin\Release\net10.0-windows\LiquidGlassStudio.exe" --out "$env:REPORT\studio" 2>&1 |
             Tee-Object -FilePath "$env:REPORT\studio.log"
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = '.NET Runtime', 'Application Error' } -MaxEvents 4 -ErrorAction SilentlyContinue |
+            Format-List TimeCreated, ProviderName, Message | Out-File "$env:REPORT\studio\runtime-events.txt"
 
       - name: Publish and smoke-test Studio
         if: always()
