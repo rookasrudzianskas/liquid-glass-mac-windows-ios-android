@@ -41,6 +41,11 @@ internal object ShaderPass {
  * taken back the same way. On an ordinary sRGB window this round trip is exact.
  *
  * Geometry is in px (layer space); the optics run in dp, as in the spec.
+ *
+ * One addition to the canonical shader: the refracted sample is filtered
+ * (bilinear, and box-filtered along the normal where the bevel compresses the
+ * backdrop), because the content image is point-sampled and the rim would
+ * otherwise alias. On smooth backdrops the result equals the point sample.
  */
 internal const val GLASS_SHADER: String = """
 uniform shader content;
@@ -49,12 +54,12 @@ uniform float2 uSize;
 uniform float uDensity;
 uniform float uPass;
 uniform int uCount;
-uniform float4 uRect[16];
-uniform float4 uClip[16];
-uniform float4 uShape[16];
-uniform float4 uLook[16];
-uniform float4 uTint[16];
-uniform float4 uGlow[16];
+uniform float4 uRect[$MAX_SURFACES];
+uniform float4 uClip[$MAX_SURFACES];
+uniform float4 uShape[$MAX_SURFACES];
+uniform float4 uLook[$MAX_SURFACES];
+uniform float4 uTint[$MAX_SURFACES];
+uniform float4 uGlow[$MAX_SURFACES];
 
 const float3 LG_LUMA = float3(0.213, 0.715, 0.072);
 
@@ -120,8 +125,8 @@ half4 lgRefracted(float2 at, float2 normal, float compression) {
   if (compression < 1.5) return lgBilinear(at);
   float span = min(compression, 12.0);
   if (span < 3.0) {
-    float2 step = normal * (0.25 * span);
-    return (lgBilinear(at - step) + lgBilinear(at + step)) * 0.5;
+    float2 delta = normal * (0.25 * span);
+    return (lgBilinear(at - delta) + lgBilinear(at + delta)) * 0.5;
   }
   float2 near = normal * (0.125 * span);
   float2 far = normal * (0.375 * span);
@@ -246,6 +251,7 @@ float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 l
     rgb = lgClearTone(src.rgb, dark, look.y);
   }
   if (tint.a > 0.5) {
+    // Solid glass (Reduce Transparency) takes the Regular body.
     float body = regular ? 0.78 : 0.68;
     rgb = clamp(tint.rgb * (body + (1.0 - body) * dot(rgb, LG_LUMA)), 0.0, 1.0);
     a = body + (1.0 - body) * a;
@@ -269,7 +275,7 @@ half4 main(float2 fragCoord) {
   bool frostPass = uPass > 0.5;
   float4 acc = float4(0.0);
   bool touched = false;
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < $MAX_SURFACES; i++) {
     if (i >= uCount) break;
     float4 rect = uRect[i];
     float2 rel = fragCoord - rect.xy;
@@ -282,10 +288,6 @@ half4 main(float2 fragCoord) {
     float2 p = rel / uDensity;
     float3 field = lgShapeField(p, rect.zw * (2.0 / uDensity), shape.xy);
     if (field.x > 1.0 + pixel) continue;
-    if (!touched) {
-      acc = frostPass ? float4(0.0) : lgToSrgbPremul(raw);
-      touched = true;
-    }
     float material = shape.w;
     bool regular = material > 0.5 && material < 1.5;
     bool own = frostPass ? (regular && abs(look.x - (uPass - 1.0)) < 0.5) : !regular;
@@ -293,6 +295,10 @@ half4 main(float2 fragCoord) {
       // A surface drawn by another pass covers what this pass drew beneath it.
       if (frostPass) acc *= 1.0 - lgCoverage(field.x, pixel) * look.z;
       continue;
+    }
+    if (!touched) {
+      if (!frostPass) acc = lgToSrgbPremul(raw);
+      touched = true;
     }
     bool refracts = material < 1.5;
     float2 offset = refracts ? -field.yz * lgEdgeProfile(field.x) * shape.z : float2(0.0);

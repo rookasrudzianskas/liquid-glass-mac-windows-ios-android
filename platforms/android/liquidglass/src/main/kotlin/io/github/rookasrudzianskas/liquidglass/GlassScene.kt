@@ -9,6 +9,7 @@ import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -132,13 +133,14 @@ private fun BoxScope.GlassOverlayHost(scene: GlassSceneState) {
 
 /**
  * A scene private to one control (slider and switch thumbs): its own content
- * layer, with the style of the enclosing scene.
+ * layer, with the style of the enclosing scene. Children are placed from the
+ * absolute top-left, since controls mirror their own geometry in RTL.
  */
 @Composable
 internal fun GlassLocalScene(modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
     val parent = LocalGlassScene.current
     val scene = remember(parent) { GlassSceneState(parent) }
     CompositionLocalProvider(LocalGlassScene provides scene) {
-        Box(modifier, content = content)
+        Box(modifier, contentAlignment = AbsoluteAlignment.TopLeft, content = content)
     }
 }

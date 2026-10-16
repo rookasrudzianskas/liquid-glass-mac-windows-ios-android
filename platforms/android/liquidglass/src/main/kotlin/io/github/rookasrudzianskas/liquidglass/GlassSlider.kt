@@ -105,8 +105,9 @@ public fun GlassSlider(
     val span = valueRange.endInclusive - valueRange.start
     val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
     val currentFraction by rememberUpdatedState(fraction)
+    val resolvedMotion = style.motion(motion)
     SideEffect {
-        thumb.motion = style.motion(motion)
+        thumb.motion = resolvedMotion
         thumb.animator = animator
         geometry.rtl = rtl
         thumb.moveTo(geometry.thumbLeft(fraction))
@@ -175,9 +176,12 @@ public fun GlassSlider(
                     val origin = if (onThumb) start else geometry.fractionAt(downX)
                     // Only horizontal drags belong to the slider, so vertical scrolling still works over it.
                     val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+                    var changed = true
                     if (drag == null) {
+                        // A tap on the track jumps there; a scroll that took the finger changes nothing.
                         val tapped = currentEvent.changes.any { it.id == down.id && it.changedToUpIgnoreConsumed() && !it.isConsumed }
-                        if (tapped && !onThumb) update(valueRange.start + origin * span)
+                        changed = tapped && !onThumb
+                        if (changed) update(valueRange.start + origin * span)
                     } else {
                         GlassHaptics.press(view)
                         if (!onThumb) update(valueRange.start + origin * span)
@@ -188,7 +192,7 @@ public fun GlassSlider(
                         }
                     }
                     thumb.press(false)
-                    onFinished?.invoke()
+                    if (changed) onFinished?.invoke()
                 }
             },
     ) {
@@ -218,6 +222,7 @@ public fun GlassSlider(
             }
             ControlThumb(
                 state = thumb,
+                motion = resolvedMotion,
                 width = ThumbWidth,
                 height = ThumbHeight,
                 growX = 2.5.dp,

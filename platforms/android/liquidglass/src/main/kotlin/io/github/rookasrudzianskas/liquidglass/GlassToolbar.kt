@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassPointerHandle
@@ -46,6 +47,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass of every cluster.
  * @param interactive press grow, drag stretch and glow of the clusters.
+ * @param motion overrides the scene's motion.
  * @param content toolbar items and spacers.
  */
 @Composable
@@ -55,6 +57,7 @@ public fun GlassToolbar(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     interactive: Boolean = true,
+    motion: GlassMotion? = null,
     content: @Composable () -> Unit,
 ) {
     val state = remember { ToolbarState() }
@@ -65,7 +68,7 @@ public fun GlassToolbar(
         tint = tint,
         refraction = Dp.Unspecified,
         interactive = interactive,
-        motion = null,
+        motion = motion,
         opacity = 1f,
         interactionSource = null,
     )
@@ -116,7 +119,12 @@ public fun GlassToolbar(
                     is ToolbarSegment.Gap -> x += segment.minWidth + if (segment.flexible) free / flexible else 0
                 }
             }
-            state.clusters = rects
+            // Items are placed relative to the layout direction; hit-testing uses absolute positions.
+            state.clusters = if (layoutDirection == LayoutDirection.Rtl) {
+                rects.map { Rect(width - it.right, it.top, width - it.left, it.bottom) }
+            } else {
+                rects
+            }
             while (state.handles.size < clusters.size) {
                 val handle = GlassPointerHandle()
                 state.handles += handle
@@ -127,11 +135,11 @@ public fun GlassToolbar(
             }.mapIndexed { i, measurable -> measurable.measure(Constraints.fixed(rects[i].width.toInt(), height)) }
 
             layout(width, height) {
-                glass.forEachIndexed { i, placeable -> placeable.place(rects[i].left.toInt(), 0) }
+                glass.forEachIndexed { i, placeable -> placeable.placeRelative(rects[i].left.toInt(), 0) }
                 clusters.forEachIndexed { i, cluster ->
                     var itemX = rects[i].left.toInt() + inset
                     for (item in cluster.items) {
-                        item.place(itemX, (height - item.height) / 2)
+                        item.placeRelative(itemX, (height - item.height) / 2)
                         itemX += item.width
                     }
                 }

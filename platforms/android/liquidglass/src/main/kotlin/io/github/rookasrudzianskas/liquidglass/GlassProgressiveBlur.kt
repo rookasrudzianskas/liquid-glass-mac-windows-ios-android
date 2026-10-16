@@ -106,7 +106,6 @@ private class ProgressiveBlurElement(private val edge: GlassEdge, private val bl
 private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur: Dp) :
     Node(), SceneBlur, GlobalPositionAwareModifierNode, DrawModifierNode, CompositionLocalConsumerModifierNode, ObserverModifierNode {
 
-    override val depth: Int get() = 0
     override val shouldAutoInvalidate: Boolean get() = false
 
     private var scene: GlassSceneState? = null
@@ -147,6 +146,8 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
         style = currentValueOf(LocalGlassStyle)
         layoutDirection = currentValueOf(LocalLayoutDirection)
     }
+
+    override fun onSceneRenderingChanged() = invalidateDraw()
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         this.coordinates = coordinates

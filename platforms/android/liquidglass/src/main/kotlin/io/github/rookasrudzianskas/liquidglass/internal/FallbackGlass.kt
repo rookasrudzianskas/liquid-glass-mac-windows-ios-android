@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import io.github.rookasrudzianskas.liquidglass.glassPath
+import io.github.rookasrudzianskas.liquidglass.optics.GlowParams
+import io.github.rookasrudzianskas.liquidglass.optics.luma
 import io.github.rookasrudzianskas.liquidglass.optics.shapeParams
 import io.github.rookasrudzianskas.liquidglass.optics.tintBody
 
@@ -33,7 +35,7 @@ internal fun DrawScope.drawFallbackGlass(
     opacity: Float,
     contrast: Boolean,
     glowCenter: Offset,
-    glowRadiusPx: Float,
+    glow: GlowParams,
     glowAmount: Float,
     blurredBackdrop: GraphicsLayer?,
     backdropOffset: Offset,
@@ -50,8 +52,9 @@ internal fun DrawScope.drawFallbackGlass(
             drawContext.transform.translate(-backdropOffset.x, -backdropOffset.y)
         }
         drawRect(fallbackFill(material, dark, tint, blurred = blurredBackdrop != null), alpha = opacity)
+        val glowRadiusPx = glow.radius * density
         if (glowAmount > 0f && glowRadiusPx > 0f) {
-            val alpha = (if (dark) 0.16f else 0.3f) * glowAmount * opacity
+            val alpha = glow.alpha * glowAmount * opacity
             drawCircle(
                 brush = Brush.radialGradient(listOf(Color.White.copy(alpha = alpha), Color.Transparent), glowCenter, glowRadiusPx),
                 radius = glowRadiusPx,
@@ -114,7 +117,7 @@ private fun fallbackFill(material: Float, dark: Boolean, tint: Color, blurred: B
 /** Tint transmits the luminance of what lies beneath, as in spec/OPTICS.md §3. */
 private fun tinted(under: Color, tint: Color, regular: Boolean): Color {
     val body = tintBody(regular)
-    val l = 0.213f * under.red + 0.715f * under.green + 0.072f * under.blue
+    val l = luma(under.red, under.green, under.blue)
     val f = body + (1f - body) * l
     return Color((tint.red * f).coerceIn(0f, 1f), (tint.green * f).coerceIn(0f, 1f), (tint.blue * f).coerceIn(0f, 1f))
 }

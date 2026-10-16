@@ -194,7 +194,8 @@ class GoldenVectorsTest {
             "release" to SpringSpec.Release,
             "glow" to SpringSpec.Glow,
             "morph" to SpringSpec.Morph,
-            "layout" to SpringSpec.Layout,
+            // The layout spring (a surface flowing to a new size) has no component using it yet.
+            "layout" to SpringSpec(0.4f, 0.16f),
             "track" to SpringSpec.Track,
         )
         assertEquals(named.keys, springs.keys)

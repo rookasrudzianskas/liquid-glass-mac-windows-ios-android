@@ -26,9 +26,6 @@ internal data class SpringSpec(val duration: Float, val bounce: Float) {
         /** Glass growing out of another shape (menus). */
         val Morph: SpringSpec = SpringSpec(0.42f, 0.18f)
 
-        /** A surface flowing to a new size. */
-        val Layout: SpringSpec = SpringSpec(0.4f, 0.16f)
-
         /** Selection lenses and drag follow. */
         val Track: SpringSpec = SpringSpec(0.18f, 0f)
 

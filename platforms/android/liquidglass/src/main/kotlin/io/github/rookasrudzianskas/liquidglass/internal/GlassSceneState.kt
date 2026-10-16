@@ -53,19 +53,19 @@ internal class BlurFrame(
     val dark: Boolean,
 )
 
-/** Anything registered with a scene that the content layer renders. */
+/** Anything registered with a scene that its content layer renders. */
 internal interface SceneParticipant {
-    /** Nesting depth among glass surfaces; deeper participants draw on top. */
-    val depth: Int
+    /** Told when the scene gains or loses its content layer (participants draw their own fallback without one). */
+    fun onSceneRenderingChanged()
 }
 
 /** A surface that the content layer renders. */
 internal interface SceneSurface : SceneParticipant {
+    /** Nesting depth among glass surfaces; deeper surfaces draw on top. */
+    val depth: Int
+
     /** Geometry and optics this frame, or null when not visible. */
     fun frame(content: LayoutCoordinates, density: Float): SurfaceFrame?
-
-    /** Told whether the scene draws this surface (otherwise it draws its own fallback). */
-    fun onSceneRenderingChanged()
 }
 
 /** A progressive blur region that the content layer renders. */
@@ -92,7 +92,7 @@ internal class GlassSceneState(
     private val surfaceList = mutableListOf<SceneSurface>()
     private val blurList = mutableListOf<SceneBlur>()
     private var order = 0L
-    private val orderOf = HashMap<SceneParticipant, Long>()
+    private val orderOf = HashMap<SceneSurface, Long>()
 
     /** The attached content node, if any. */
     var content: GlassContentNode? = null
@@ -115,13 +115,18 @@ internal class GlassSceneState(
 
     fun attachContent(node: GlassContentNode) {
         content = node
-        surfaceList.forEach { it.onSceneRenderingChanged() }
+        notifyRendering()
     }
 
     fun detachContent(node: GlassContentNode) {
         if (content !== node) return
         content = null
+        notifyRendering()
+    }
+
+    private fun notifyRendering() {
         surfaceList.forEach { it.onSceneRenderingChanged() }
+        blurList.forEach { it.onSceneRenderingChanged() }
     }
 
     fun register(surface: SceneSurface) {
@@ -137,13 +142,11 @@ internal class GlassSceneState(
     }
 
     fun register(blur: SceneBlur) {
-        orderOf[blur] = order++
         blurList += blur
         invalidate()
     }
 
     fun unregister(blur: SceneBlur) {
-        orderOf.remove(blur)
         blurList -= blur
         invalidate()
     }

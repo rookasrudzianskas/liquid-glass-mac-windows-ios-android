@@ -23,6 +23,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -96,6 +98,7 @@ public class GlassTab(public val label: String, public val icon: ImageVector? = 
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the bar's glass.
  * @param selectedContentColor icon and label color of the selected tab; unspecified uses the glass foreground.
+ * @param interactive whether the bar's glass grows and lights up under the finger.
  * @param motion overrides the scene's motion.
  */
 @Composable
@@ -108,6 +111,7 @@ public fun GlassTabBar(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     selectedContentColor: Color = Color.Unspecified,
+    interactive: Boolean = true,
     motion: GlassMotion? = null,
 ) {
     require(tabs.isNotEmpty()) { "GlassTabBar needs at least one tab" }
@@ -119,6 +123,8 @@ public fun GlassTabBar(
     val lens = remember { TabLens() }
     val animator = remember(scope) { FrameAnimator(scope, lens::step) }
     val onSelect by rememberUpdatedState(onSelectedIndexChange)
+    val selected by rememberUpdatedState(selectedIndex)
+    val focus = remember(tabs.size) { List(tabs.size) { FocusRequester() } }
     SideEffect {
         lens.motion = style.motion(motion)
         lens.count = tabs.size
@@ -144,7 +150,7 @@ public fun GlassTabBar(
         Box(
             modifier
                 .heightIn(min = TabBarHeight)
-                .liquidGlass(GlassShape.Capsule, material, appearance, tint)
+                .liquidGlass(GlassShape.Capsule, material, appearance, tint, interactive = interactive, motion = motion)
                 .onSizeChanged { lens.layout(it.width / density, it.height / density, TabBarInset.value, rtl, density) }
                 .pointerInput(lens) {
                     awaitEachGesture {
@@ -159,7 +165,7 @@ public fun GlassTabBar(
                         }
                         if (dragging) {
                             val index = lens.endDrag()
-                            if (index != selectedIndex) onSelect(index)
+                            if (index != selected) onSelect(index)
                         }
                         lens.press(false)
                     }
@@ -186,7 +192,10 @@ public fun GlassTabBar(
                             else -> return@onKeyEvent false
                         }
                         val next = (selectedIndex + step).coerceIn(0, tabs.lastIndex)
-                        if (next != selectedIndex) onSelect(next)
+                        if (next != selectedIndex) {
+                            onSelect(next)
+                            focus[next].requestFocus()
+                        }
                         true
                     },
                 verticalAlignment = Alignment.CenterVertically,
@@ -198,6 +207,7 @@ public fun GlassTabBar(
                         Modifier
                             .weight(1f)
                             .heightIn(min = TabBarHeight - TabBarInset * 2)
+                            .focusRequester(focus[index])
                             .selectable(
                                 selected = index == selectedIndex,
                                 interactionSource = remember { MutableInteractionSource() },
@@ -305,12 +315,16 @@ private class TabLens {
         return true
     }
 
-    /** Ends a drag and returns the tab the lens settles on. */
+    /**
+     * Ends a drag and returns the tab under the lens. The lens heads back to the
+     * current selection; it moves on once the new index arrives through [select],
+     * so a rejected change snaps back.
+     */
     fun endDrag(): Int {
         dragging = false
         val index = slot.target.roundToInt().coerceIn(0, count - 1)
-        slot.target = index.toFloat()
-        shownState.intValue = index
+        slot.target = selected.toFloat()
+        shownState.intValue = selected
         animator?.wake()
         return index
     }

@@ -3,7 +3,7 @@ package io.github.rookasrudzianskas.liquidglass.internal
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
@@ -103,11 +103,13 @@ internal class ThumbState(private val springPosition: Boolean) {
  * The thumb itself, in the control's local scene: Clear glass grown by
  * [growX] × [growY] per side while lifted, and an opaque white capsule with a
  * soft shadow that fades out as the glass fades in. [left], [top] place the
- * resting thumb (dp, local scene coordinates).
+ * resting thumb (dp from the scene's absolute top-left; the control mirrors it
+ * in RTL). Under reduced [motion] the thumb crossfades without growing.
  */
 @Composable
 internal fun ControlThumb(
     state: ThumbState,
+    motion: GlassMotion,
     width: Dp,
     height: Dp,
     growX: Dp,
@@ -130,7 +132,7 @@ internal fun ControlThumb(
             interactionSource = null,
         )
     }
-    val grows = state.motion == GlassMotion.Full
+    val grows = motion == GlassMotion.Full
     val density = LocalDensity.current.density
     val dynamics = remember(state, grows, growX, growY, density) {
         GlassDynamics(
@@ -147,7 +149,7 @@ internal fun ControlThumb(
             },
         )
     }
-    val place = Modifier.offset { IntOffset((left() * density).roundToInt(), (top * density).roundToInt()) }.size(width, height)
+    val place = Modifier.absoluteOffset { IntOffset((left() * density).roundToInt(), (top * density).roundToInt()) }.size(width, height)
     Box(place.glassSurface(params, dynamics))
     Box(
         place

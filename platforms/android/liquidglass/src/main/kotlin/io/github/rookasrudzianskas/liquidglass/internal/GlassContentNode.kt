@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.TraversableNode
 import androidx.compose.ui.node.invalidateDraw
@@ -58,7 +59,7 @@ internal class GlassContentElement(private val scene: GlassSceneState) : Modifie
  * - Android 12: the fallback material over the platform blur.
  * - Older: the fallback material over the sharp content.
  */
-internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawModifierNode, TraversableNode {
+internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawModifierNode, TraversableNode, GlobalPositionAwareModifierNode {
 
     /** The scene whose backdrop this is. */
     var scene: GlassSceneState = scene
@@ -92,6 +93,16 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         invalidateDraw()
     }
 
+    private var lastRootBounds = Rect.Zero
+
+    /** Surface geometry is relative to the content, so the glass moves when the content itself moves. */
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        val bounds = coordinates.findRootCoordinates().localBoundingBoxOf(coordinates, clipBounds = false)
+        if (bounds == lastRootBounds) return
+        lastRootBounds = bounds
+        invalidateDraw()
+    }
+
     /** The root of this node's window, to tell which surfaces it can render. */
     fun rootCoordinates(): LayoutCoordinates = requireLayoutCoordinates().findRootCoordinates()
 
@@ -113,6 +124,7 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         fallbackLayer = null
         bandLayers.clear()
         effects = null
+        lastRootBounds = Rect.Zero
     }
 
     override fun ContentDrawScope.draw() {
@@ -226,7 +238,6 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
 
     private fun DrawScope.drawFallback(frame: SurfaceFrame, frosted: GraphicsLayer?) {
         val b = frame.bounds
-        val glowRadius = glow(b.width / density, b.height / density, frame.dark).radius * density
         clipRect(frame.clip.left, frame.clip.top, frame.clip.right, frame.clip.bottom) {
             translate(b.left, b.top) {
                 drawFallbackGlass(
@@ -238,7 +249,7 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
                     opacity = frame.opacity,
                     contrast = frame.contrast,
                     glowCenter = Offset(b.width / 2f + frame.glowX * density, b.height / 2f + frame.glowY * density),
-                    glowRadiusPx = glowRadius,
+                    glow = glow(b.width / density, b.height / density, frame.dark),
                     glowAmount = frame.glowAmount,
                     blurredBackdrop = frosted.takeIf { frame.regular },
                     backdropOffset = Offset(-b.left, -b.top),

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Announced when a GlassMenu opens. -->
+    <string name="liquidglass_menu">Menu</string>
+    <!-- Action that closes an open GlassMenu (the area outside it). -->
+    <string name="liquidglass_dismiss_menu">Close menu</string>
+</resources>

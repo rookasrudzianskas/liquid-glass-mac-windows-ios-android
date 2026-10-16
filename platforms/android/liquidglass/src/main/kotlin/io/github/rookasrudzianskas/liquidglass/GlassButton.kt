@@ -45,6 +45,7 @@ public class GlassButtonSize private constructor(
     /** Icon size. */
     public val iconSize: Dp,
 ) {
+    /** The three touch sizes. */
     public companion object {
         /** 34 dp tall. */
         public val Small: GlassButtonSize = GlassButtonSize(34.dp, 14.dp, TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold), 18.dp)
@@ -82,6 +83,8 @@ public class GlassButtonSize private constructor(
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass (a prominent button); the label turns white or dark to stay legible.
  * @param refraction optical travel at the rim; [Dp.Unspecified] inherits the scene's.
+ * @param interactive whether the glass grows, stretches and lights up under the finger.
+ * @param motion overrides the scene's motion.
  * @param interactionSource source of the button's interactions; the press drives the glass.
  * @param content the label, laid out in a row; use [GlassText] and [GlassIcon].
  */
@@ -96,6 +99,8 @@ public fun GlassButton(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     refraction: Dp = Dp.Unspecified,
+    interactive: Boolean = true,
+    motion: GlassMotion? = null,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -109,6 +114,8 @@ public fun GlassButton(
         appearance = appearance,
         tint = tint,
         refraction = refraction,
+        interactive = interactive,
+        motion = motion,
         interactionSource = interactionSource,
         iconOnly = false,
         content = content,
@@ -161,7 +168,7 @@ public fun GlassButton(
  * An icon-only [GlassButton]: a glass circle (44 dp by default).
  *
  * @param icon the icon.
- * @param contentDescription what the button does, for accessibility services.
+ * @param contentDescription what the button does, read by accessibility services (an icon-only button needs one).
  * @param onClick called when the button is clicked.
  * @param modifier modifier for the button.
  * @param enabled whether the button responds.
@@ -174,7 +181,7 @@ public fun GlassButton(
 @Composable
 public fun GlassButton(
     icon: ImageVector,
-    contentDescription: String?,
+    contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -194,6 +201,8 @@ public fun GlassButton(
         appearance = appearance,
         tint = tint,
         refraction = Dp.Unspecified,
+        interactive = true,
+        motion = null,
         interactionSource = interactionSource,
         iconOnly = true,
     ) {
@@ -218,6 +227,8 @@ private fun GlassButtonLayout(
     appearance: GlassAppearance?,
     tint: Color,
     refraction: Dp,
+    interactive: Boolean,
+    motion: GlassMotion?,
     interactionSource: MutableInteractionSource?,
     iconOnly: Boolean,
     content: @Composable RowScope.() -> Unit,
@@ -239,7 +250,8 @@ private fun GlassButtonLayout(
             appearance = appearance,
             tint = tint,
             refraction = refraction,
-            interactive = enabled,
+            interactive = enabled && interactive,
+            motion = motion,
             interactionSource = source,
         )
     }

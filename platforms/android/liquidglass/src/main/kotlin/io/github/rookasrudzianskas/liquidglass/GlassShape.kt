@@ -43,6 +43,7 @@ public class GlassShape private constructor(
 
     override fun toString(): String = if (isCapsule) "GlassShape.Capsule" else "GlassShape(radius=$radius)"
 
+    /** The capsule and circle shapes, and the factory for continuous corners. */
     public companion object {
         /** Fully rounded ends: the default for buttons, toolbars, tab bars and switches. */
         public val Capsule: GlassShape = GlassShape(Dp.Unspecified)

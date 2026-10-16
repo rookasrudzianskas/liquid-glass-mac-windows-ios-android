@@ -106,8 +106,9 @@ public fun GlassSwitch(
         onChange(to)
     }
 
+    val resolvedMotion = style.motion(motion)
     SideEffect {
-        thumb.motion = style.motion(motion)
+        thumb.motion = resolvedMotion
         thumb.animator = animator
         if (!track.dragging) {
             track.position = if (checked) 1f else 0f
@@ -171,8 +172,10 @@ public fun GlassSwitch(
                         moved -> track.position >= 0.5f
                         else -> !isChecked
                     }
+                    // The thumb heads back to the current state; it moves on once the new
+                    // state arrives, so a change the caller rejects snaps back.
                     track.dragging = false
-                    track.position = if (target) 1f else 0f
+                    track.position = if (isChecked) 1f else 0f
                     thumb.moveTo(track.thumbLeft(rtl))
                     animator.wake()
                     toggle(target)
@@ -200,6 +203,7 @@ public fun GlassSwitch(
             }
             ControlThumb(
                 state = thumb,
+                motion = resolvedMotion,
                 width = ThumbWidth,
                 height = ThumbHeight,
                 growX = 9.dp,

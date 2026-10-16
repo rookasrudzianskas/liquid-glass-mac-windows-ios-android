@@ -63,9 +63,6 @@ public object GlassDefaults {
     /** Text and icons on dark glass. */
     public val DarkContentColor: Color = Color(0xFFFFFFFF)
 
-    /** Fill and track accent of value controls when no tint is given. */
-    public val ControlAccent: Color = Color(0xFF8E8E93)
-
     /** Maximum number of surfaces one scene refracts on the GPU at once; more fall back to the fallback material. */
     public const val MaxSurfacesPerScene: Int = 16
 

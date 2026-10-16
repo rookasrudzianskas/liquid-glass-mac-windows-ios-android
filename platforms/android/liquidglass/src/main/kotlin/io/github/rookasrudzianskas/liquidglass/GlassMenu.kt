@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -39,8 +38,13 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -69,7 +73,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -132,6 +140,7 @@ import kotlin.math.roundToInt
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the panel's glass.
  * @param shape the panel's outline; 28 dp continuous corners by default.
+ * @param motion overrides the scene's motion.
  * @param content the menu items: [GlassMenuItem], [GlassMenuDivider] or any composable.
  */
 @Composable
@@ -144,6 +153,7 @@ public fun GlassMenu(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     shape: GlassShape = GlassShape(GlassDefaults.MenuRadius),
+    motion: GlassMotion? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scene = LocalGlassScene.current
@@ -158,7 +168,7 @@ public fun GlassMenu(
     }
     val locals = currentCompositionLocalContext
     SideEffect {
-        menu.motion = style.motion(null)
+        menu.motion = style.motion(motion)
         menu.animator = animator
         menu.density = density
         menu.panel = panel
@@ -167,8 +177,28 @@ public fun GlassMenu(
     }
     val visible by remember(menu) { derivedStateOf { menu.visible } }
     val present = expanded || visible
+    // Keyboard users get focus back on the trigger when the menu closes.
+    val inputMode = LocalInputModeManager.current
+    val triggerFocus = remember { FocusRequester() }
+    var wasExpanded by remember { mutableStateOf(expanded) }
+    LaunchedEffect(expanded) {
+        if (wasExpanded && !expanded && inputMode.inputMode == InputMode.Keyboard) triggerFocus.requestFocus()
+        wasExpanded = expanded
+    }
 
-    Box(Modifier.onGloballyPositioned { menu.trigger = it }) {
+    Box(
+        Modifier
+            .onGloballyPositioned { menu.trigger = it }
+            .focusRequester(triggerFocus)
+            .semantics {
+                if (expanded) {
+                    collapse {
+                        dismiss()
+                        true
+                    }
+                }
+            },
+    ) {
         CompositionLocalProvider(LocalGlassFade provides menu.triggerFade) {
             Box(Modifier.graphicsLayer { alpha = menu.triggerFade() }) { trigger() }
         }
@@ -209,7 +239,8 @@ public fun GlassMenu(
  * @param icon optional leading icon.
  * @param enabled whether the item can be chosen.
  * @param destructive draws the item in red, for actions like Delete.
- * @param checked shows a check mark at the end, for the current choice of a group.
+ * @param checked null for an action; true or false for a choice, which shows a check mark when
+ *   true and is announced as checked or not checked.
  */
 @Composable
 public fun GlassMenuItem(
@@ -219,7 +250,7 @@ public fun GlassMenuItem(
     icon: ImageVector? = null,
     enabled: Boolean = true,
     destructive: Boolean = false,
-    checked: Boolean = false,
+    checked: Boolean? = null,
 ) {
     val dismiss = LocalMenuDismiss.current
     val source = remember { MutableInteractionSource() }
@@ -231,19 +262,19 @@ public fun GlassMenuItem(
             .fillMaxWidth()
             .heightIn(min = 44.dp)
             .background(if (pressed) foreground.copy(alpha = 0.08f) else Color.Transparent, ItemShape)
-            .semantics { if (checked) selected = true }
-            .clickable(source, indication = null, enabled = enabled, role = Role.Button) {
+            .semantics { if (checked != null) toggleableState = ToggleableState(checked) }
+            .clickable(source, indication = null, enabled = enabled, role = if (checked != null) Role.Checkbox else Role.Button) {
                 onClick()
                 dismiss()
             }
             .padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         val shown = color.copy(alpha = if (enabled) 1f else 0.4f)
         if (icon != null) GlassIcon(icon, contentDescription = null, tint = shown, size = 20.dp)
         GlassText(text, Modifier.weight(1f), style = ItemTextStyle, color = shown, maxLines = 1)
-        if (checked) GlassIcon(CheckMark, contentDescription = null, tint = shown, size = 18.dp)
+        if (checked == true) GlassIcon(CheckMark, contentDescription = null, tint = shown, size = 18.dp)
     }
 }
 
@@ -268,12 +299,19 @@ private val LocalMenuDismiss = staticCompositionLocalOf<() -> Unit> { {} }
 private fun MenuOverlay(menu: MenuState, expanded: Boolean, onDismiss: () -> Unit, panel: @Composable () -> Unit) {
     val insets = WindowInsets.safeDrawing
     val density = LocalDensity.current
+    val dismissLabel = stringResource(R.string.liquidglass_dismiss_menu)
     Box(Modifier.fillMaxSize()) {
         if (expanded) {
             Spacer(
                 Modifier
                     .fillMaxSize()
-                    .clearAndSetSemantics {}
+                    .clearAndSetSemantics {
+                        contentDescription = dismissLabel
+                        onClick(dismissLabel) {
+                            onDismiss()
+                            true
+                        }
+                    }
                     .pointerInput(Unit) {
                         awaitEachGesture {
                             awaitFirstDown().consume()
@@ -344,6 +382,7 @@ private fun MenuPanel(
         )
     }
     val focus = remember { FocusRequester() }
+    val menuTitle = stringResource(R.string.liquidglass_menu)
     if (expanded && LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
     ProvideGlassContentColor(appearance, tint) {
@@ -359,7 +398,7 @@ private fun MenuPanel(
                         clip = true
                         this.shape = MorphShape(menu, shape)
                     }
-                    .semantics { paneTitle = "Menu" }
+                    .semantics { paneTitle = menuTitle }
                     .focusRequester(focus)
                     .focusable()
                     .onPreviewKeyEvent { event ->

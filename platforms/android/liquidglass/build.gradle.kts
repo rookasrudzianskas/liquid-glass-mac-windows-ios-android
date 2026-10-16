@@ -33,6 +33,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+    // The CPU reference of the shader, used by both test suites.
+    sourceSets {
+        getByName("test").kotlin.srcDir("src/sharedTest/kotlin")
+        getByName("androidTest").kotlin.srcDir("src/sharedTest/kotlin")
+    }
+
     testOptions {
         unitTests.all {
             it.systemProperty("liquidglass.vectors", repositoryRoot.resolve("spec/vectors.json").path)

@@ -12,6 +12,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -244,9 +246,17 @@ internal class GlassSurfaceNode(
         animator = null
         scene?.unregister(this)
         coordinates = null
+        lastRootBounds = Rect.Zero
         trackedPointer = null
         pressed = false
         hovered = false
+        // Nodes are reused (lazy lists): come back at rest.
+        for (spring in listOf(press, glowSpring, dragX, dragY)) spring.snap(0f)
+        scaleX.floatValue = 1f
+        scaleY.floatValue = 1f
+        offsetX.floatValue = 0f
+        offsetY.floatValue = 0f
+        glowAmount.floatValue = 0f
     }
 
     override fun onObservedReadsChanged() {
@@ -351,7 +361,7 @@ internal class GlassSurfaceNode(
             nested = nested,
             opacity = opacity(),
             contrast = style.increaseContrast,
-            tint = params.tint,
+            tint = params.tint.inSrgb(),
             refraction = if (params.refraction == Dp.Unspecified) style.refraction else params.refraction.value,
             glowX = (glowAt.x - center.x) / density,
             glowY = (glowAt.y - center.y) / density,
@@ -396,11 +406,11 @@ internal class GlassSurfaceNode(
                         radiusDp = radiusDp(),
                         material = materialCode(),
                         dark = dark,
-                        tint = params.tint,
+                        tint = params.tint.inSrgb(),
                         opacity = opacity,
                         contrast = style.increaseContrast,
                         glowCenter = Offset(glowX.floatValue - local.left, glowY.floatValue - local.top),
-                        glowRadiusPx = glow(local.width / density, local.height / density, dark).radius * density,
+                        glow = glow(local.width / density, local.height / density, dark),
                         glowAmount = glowAmount.floatValue,
                         blurredBackdrop = null,
                         backdropOffset = Offset.Zero,
@@ -441,13 +451,14 @@ internal class GlassSurfaceNode(
                 return
             }
             val mouse = event.changes.firstOrNull { it.type == PointerType.Mouse && !it.pressed }
-            if (mouse != null && params.interactionSource == null) {
-                when (event.type) {
-                    PointerEventType.Enter, PointerEventType.Move -> {
-                        moveGlow(mouse.position)
-                        setHovered(true)
+            if (mouse != null) {
+                // The glow follows the mouse; hover itself comes from the interaction source when there is one.
+                if (event.type == PointerEventType.Enter || event.type == PointerEventType.Move) moveGlow(mouse.position)
+                if (params.interactionSource == null) {
+                    when (event.type) {
+                        PointerEventType.Enter, PointerEventType.Move -> setHovered(true)
+                        PointerEventType.Exit -> setHovered(false)
                     }
-                    PointerEventType.Exit -> setHovered(false)
                 }
             }
             return
@@ -556,3 +567,6 @@ internal class GlassSurfaceNode(
 /** The surface modifier: a layer for press scale and drag, plus the glass node. */
 internal fun Modifier.glassSurface(params: GlassSurfaceParams, dynamics: GlassDynamics? = null): Modifier =
     this then GlassSurfaceElement(params, dynamics)
+
+/** The optics run on sRGB values; tints given in another color space are converted first. */
+private fun Color.inSrgb(): Color = if (isSpecified) convert(ColorSpaces.Srgb) else this
