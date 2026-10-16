@@ -81,12 +81,6 @@ struct GlassSurfaceCore<Content: View>: View {
     /// Buttons attach them outside SwiftUI's `Button` instead, so the
     /// button's own gesture keeps working.
     var handlesInput = true
-    /// Whether the content scales and moves with the press.
-    var transformsContent = true
-    /// Whether the content is clipped to the outline.
-    var clipsContent = true
-    /// Reports press changes, for haptics and pressed styling.
-    var onPressChange: ((Bool) -> Void)?
     var content: Content
 
     @State private var ownInteraction = GlassInteraction()
@@ -116,7 +110,7 @@ struct GlassSurfaceCore<Content: View>: View {
             }
             .foregroundStyle(GlassForeground.color(dark: style.dark))
             .clipShape(GlassOutlineShape(rect: outline, radius: style.radius))
-            .modifier(GlassPressTransform(model: interactive && transformsContent ? model : nil))
+            .modifier(GlassPressTransform(model: interactive ? model : nil))
             .background {
                 GeometryReader { proxy in
                     GlassLayerHost(
@@ -132,7 +126,6 @@ struct GlassSurfaceCore<Content: View>: View {
             }
             .contentShape(GlassOutlineShape(rect: outline, radius: style.radius))
             .modifier(GlassPressGestures(model: interactive && handlesInput ? model : nil, tracking: $tracking))
-            .onChange(of: model.isPressed) { _, pressed in onPressChange?(pressed) }
     }
 }
 

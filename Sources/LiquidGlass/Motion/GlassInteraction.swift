@@ -55,8 +55,6 @@ final class GlassInteraction: GlassAnimating {
     private(set) var glow: Double = 0
     /// Where the light sits, in the surface's local points.
     private(set) var glowPoint = CGPoint.zero
-    /// Whether a finger, pointer or key holds the surface.
-    private(set) var isPressed = false
 
     /// The surface's layout size, kept current by its glass layer.
     @ObservationIgnored var size = CGSize(width: 1, height: 1)
@@ -214,7 +212,5 @@ final class GlassInteraction: GlassAnimating {
         if newTranslation != translation { translation = newTranslation }
         let newGlow = max(0, light.value)
         if newGlow != glow { glow = newGlow }
-        let pressed = pointer != nil || keyboard
-        if pressed != isPressed { isPressed = pressed }
     }
 }

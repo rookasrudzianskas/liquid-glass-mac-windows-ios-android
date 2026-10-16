@@ -11,7 +11,7 @@ struct ControlsPage: View {
     @State private var airdrop = true
     @State private var range = Range.week
     @State private var sort = "Newest"
-    @State private var likes = 0
+    @State private var liked = false
 
     enum Range: Hashable { case day, week, month }
 
@@ -62,7 +62,7 @@ struct ControlsPage: View {
             SectionHeader(title: "Icon buttons")
             FlowLayout(spacing: 12) {
                 GlassButton(icon: "play.fill", label: "Play") {}.controlSize(.small)
-                GlassButton(icon: "heart.fill", label: "Like") { likes += 1 }
+                GlassButton(icon: liked ? "heart.fill" : "heart", label: liked ? "Unlike" : "Like") { liked.toggle() }
                 GlassButton(icon: "bookmark", label: "Save") {}
                 GlassButton(icon: "plus", label: "Add", prominent: true) {}
                 GlassButton(icon: "paperplane.fill", label: "Send", tint: Color(red: 0.204, green: 0.78, blue: 0.349)) {}
