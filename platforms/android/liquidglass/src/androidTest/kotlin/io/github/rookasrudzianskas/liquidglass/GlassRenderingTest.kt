@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.Choreographer
 import android.view.PixelCopy
@@ -34,6 +35,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,8 +58,14 @@ class GlassRenderingTest {
     private val backdrop = floatArrayOf(0.5f, 0.5f, 0.6f, 1f)
     private val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
 
-    /** Composes [content] in a SceneWidth × SceneHeight box at density 1, lets it settle, and copies its pixels from the window. */
-    private fun capture(content: @Composable () -> Unit): Bitmap {
+    /**
+     * Composes [content] in a SceneWidth × SceneHeight box at density 1 and copies
+     * its pixels from the window until [check] passes (returns null). A slow GPU
+     * (a software-rendered CI emulator compiling the shader) may show a few frames
+     * without the effect, so the copy is retried for up to [Patience] ms before the
+     * test fails with the last message.
+     */
+    private fun assertRendered(content: @Composable () -> Unit, check: (Bitmap) -> String?) {
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             var bounds = Rect.Zero
             scenario.onActivity { activity ->
@@ -68,17 +76,28 @@ class GlassRenderingTest {
                 }
             }
             awaitFrames(scenario, SettleFrames)
-            val bitmap = Bitmap.createBitmap(SceneWidth, SceneHeight, Bitmap.Config.ARGB_8888)
-            val done = CountDownLatch(1)
-            var result = -1
-            scenario.onActivity { activity ->
-                val area = android.graphics.Rect(bounds.left.toInt(), bounds.top.toInt(), bounds.left.toInt() + SceneWidth, bounds.top.toInt() + SceneHeight)
-                PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
-            }
-            assertTrue("PixelCopy timed out", done.await(5, TimeUnit.SECONDS))
-            assertEquals("PixelCopy failed", PixelCopy.SUCCESS, result)
-            return bitmap
+            val deadline = SystemClock.uptimeMillis() + Patience
+            var failure: String?
+            do {
+                failure = check(copy(scenario, bounds))
+                if (failure == null) return
+                awaitFrames(scenario, RetryFrames)
+            } while (SystemClock.uptimeMillis() < deadline)
+            fail(failure)
         }
+    }
+
+    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Bitmap {
+        val bitmap = Bitmap.createBitmap(SceneWidth, SceneHeight, Bitmap.Config.ARGB_8888)
+        val done = CountDownLatch(1)
+        var result = -1
+        scenario.onActivity { activity ->
+            val area = android.graphics.Rect(bounds.left.toInt(), bounds.top.toInt(), bounds.left.toInt() + SceneWidth, bounds.top.toInt() + SceneHeight)
+            PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
+        }
+        assertTrue("PixelCopy timed out", done.await(5, TimeUnit.SECONDS))
+        assertEquals("PixelCopy failed", PixelCopy.SUCCESS, result)
+        return bitmap
     }
 
     /** Waits for [count] frames to be drawn, so composition, layout and the glass effect have settled. */
@@ -112,7 +131,8 @@ class GlassRenderingTest {
         }
     }
 
-    private fun assertMatchesReference(pixels: Bitmap, regular: Boolean, dark: Boolean, tint: FloatArray?) {
+    /** Null when every sampled pixel is within [Tolerance] of the reference, else where it is worst. */
+    private fun differenceFromReference(pixels: Bitmap, regular: Boolean, dark: Boolean, tint: FloatArray?): String? {
         var worst = 0f
         var where = ""
         // Every pixel of three rows (the top rim, the middle, near the bottom rim) and two columns (left rim, middle).
@@ -146,49 +166,46 @@ class GlassRenderingTest {
             }
         }
         Log.i("GlassRenderingTest", "regular=$regular dark=$dark tint=${tint != null}: max error ${worst * 255}/255 over ${samples.size} pixels")
-        assertTrue("max error ${worst * 255}/255 at $where", worst <= Tolerance)
+        return if (worst <= Tolerance) null else "max error ${worst * 255}/255 at $where"
     }
 
     @Test
     fun clearLightMatchesReference() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        val image = capture { SingleSurface(GlassMaterial.Clear, GlassAppearance.Light) }
-        assertMatchesReference(image, regular = false, dark = false, tint = null)
+        assertRendered({ SingleSurface(GlassMaterial.Clear, GlassAppearance.Light) }) { differenceFromReference(it, regular = false, dark = false, tint = null) }
     }
 
     @Test
     fun clearDarkMatchesReference() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        val image = capture { SingleSurface(GlassMaterial.Clear, GlassAppearance.Dark) }
-        assertMatchesReference(image, regular = false, dark = true, tint = null)
+        assertRendered({ SingleSurface(GlassMaterial.Clear, GlassAppearance.Dark) }) { differenceFromReference(it, regular = false, dark = true, tint = null) }
     }
 
     @Test
     fun regularLightMatchesReference() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        val image = capture { SingleSurface(GlassMaterial.Regular, GlassAppearance.Light) }
-        assertMatchesReference(image, regular = true, dark = false, tint = null)
+        assertRendered({ SingleSurface(GlassMaterial.Regular, GlassAppearance.Light) }) { differenceFromReference(it, regular = true, dark = false, tint = null) }
     }
 
     @Test
     fun regularDarkMatchesReference() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        val image = capture { SingleSurface(GlassMaterial.Regular, GlassAppearance.Dark) }
-        assertMatchesReference(image, regular = true, dark = true, tint = null)
+        assertRendered({ SingleSurface(GlassMaterial.Regular, GlassAppearance.Dark) }) { differenceFromReference(it, regular = true, dark = true, tint = null) }
     }
 
     @Test
     fun tintedRegularMatchesReference() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
         val tint = floatArrayOf(0f, 0.478f, 1f)
-        val image = capture { SingleSurface(GlassMaterial.Regular, GlassAppearance.Light, Color(tint[0], tint[1], tint[2])) }
-        assertMatchesReference(image, regular = true, dark = false, tint = tint)
+        assertRendered({ SingleSurface(GlassMaterial.Regular, GlassAppearance.Light, Color(tint[0], tint[1], tint[2])) }) {
+            differenceFromReference(it, regular = true, dark = false, tint = tint)
+        }
     }
 
     @Test
     fun moreSurfacesThanTheGpuLimitAllDraw() {
         val count = GlassDefaults.MaxSurfacesPerScene + 4
-        val image = capture {
+        val scene = @Composable {
             GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
                 GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
                 for (i in 0 until count) {
@@ -201,31 +218,37 @@ class GlassRenderingTest {
                 }
             }
         }
-        for (i in 0 until count) {
-            val center = image.color(10 + (i % 5) * 60 + 24, 10 + (i / 5) * 50 + 20)
-            val changed = abs(center.red - backdropColor.red) + abs(center.green - backdropColor.green) + abs(center.blue - backdropColor.blue)
-            assertTrue("surface $i draws no glass", changed > 0.05f)
+        assertRendered(scene) { image ->
+            (0 until count).firstOrNull { i ->
+                val center = image.color(10 + (i % 5) * 60 + 24, 10 + (i / 5) * 50 + 20)
+                abs(center.red - backdropColor.red) + abs(center.green - backdropColor.green) + abs(center.blue - backdropColor.blue) <= 0.05f
+            }?.let { "surface $it draws no glass" }
         }
     }
 
     @Test
     fun surfaceOutsideASceneDrawsTheFallback() {
-        val image = capture {
+        val scene = @Composable {
             Box(Modifier.fillMaxSize().background(backdropColor)) {
                 Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).liquidGlass(GlassShape(Radius.dp), material = GlassMaterial.Regular))
             }
         }
-        val center = image.color(Left + Width / 2, Top + Height / 2)
-        val rim = image.color(Left + Width / 2, Top)
-        assertTrue("fallback fill missing", abs(center.red - backdropColor.red) > 0.05f)
-        assertTrue("fallback rim missing", rim.red > center.red + 0.05f)
+        assertRendered(scene) { image ->
+            val center = image.color(Left + Width / 2, Top + Height / 2)
+            val rim = image.color(Left + Width / 2, Top)
+            when {
+                abs(center.red - backdropColor.red) <= 0.05f -> "fallback fill missing"
+                rim.red <= center.red + 0.05f -> "fallback rim missing"
+                else -> null
+            }
+        }
     }
 
     @Test
     fun glassInADialogInsideASceneDrawsItsOwnFallback() {
         // The dialog is another window: its glass must not join the scene's layer (bounds across windows throw).
         var drawn = false
-        capture {
+        val scene = @Composable {
             GlassScene {
                 GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
                 Dialog(onDismissRequest = {}) {
@@ -233,13 +256,13 @@ class GlassRenderingTest {
                 }
             }
         }
-        assertTrue("dialog glass never drew", drawn)
+        assertRendered(scene) { if (drawn) null else "dialog glass never drew" }
     }
 
     @Test
     fun progressiveBlurSoftensTowardTheEdge() {
         assumeTrue(Build.VERSION.SDK_INT >= 31)
-        val image = capture {
+        val scene = @Composable {
             GlassScene {
                 GlassContent(Modifier.fillMaxSize()) {
                     // Vertical stripes, 4 px wide.
@@ -250,16 +273,21 @@ class GlassRenderingTest {
                 GlassProgressiveBlur(GlassEdge.Top, Modifier.align(Alignment.TopCenter).fillMaxWidth(), size = 100.dp, blur = 20.dp)
             }
         }
-        fun contrast(y: Int): Float {
-            val row = (40 until SceneWidth - 40).map { image.color(it, y).red }
-            val mean = row.average().toFloat()
-            return sqrt(row.map { (it - mean) * (it - mean) }.average().toFloat())
+        assertRendered(scene) { image ->
+            fun contrast(y: Int): Float {
+                val row = (40 until SceneWidth - 40).map { image.color(it, y).red }
+                val mean = row.average().toFloat()
+                return sqrt(row.map { (it - mean) * (it - mean) }.average().toFloat())
+            }
+            val edge = contrast(2)
+            val sharp = contrast(98)
+            val below = contrast(150)
+            when {
+                edge >= below * 0.2f -> "edge not blurred: $edge vs $below"
+                sharp <= below * 0.8f -> "sharp side blurred: $sharp vs $below"
+                else -> null
+            }
         }
-        val edge = contrast(2)
-        val sharp = contrast(98)
-        val below = contrast(150)
-        assertTrue("edge not blurred: $edge vs $below", edge < below * 0.2f)
-        assertTrue("sharp side blurred: $sharp vs $below", sharp > below * 0.8f)
     }
 
     private companion object {
@@ -272,5 +300,7 @@ class GlassRenderingTest {
         const val Radius = 24
         const val Tolerance = 2f / 255f
         const val SettleFrames = 12
+        const val RetryFrames = 6
+        const val Patience = 8_000L
     }
 }

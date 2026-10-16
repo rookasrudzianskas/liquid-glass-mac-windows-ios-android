@@ -356,7 +356,7 @@ A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed str
 | Where | What draws |
 | --- | --- |
 | Android 13+ inside a scene | The AGSL glass. |
-| Android 12 inside a scene | The fallback material over the platform blur of the content, plus the rim light. Progressive blur works. |
+| Android 12 inside a scene | The fallback material (Regular glass over the platform blur of the content), plus the rim light. Progressive blur works. |
 | Android 7–11 inside a scene | The fallback material (a translucent fill) plus the rim light. Progressive blur becomes a fade toward the edge. |
 | Outside any `GlassScene` | The fallback material (no backdrop to blur), plus the rim light. |
 | Inside the scene's own `GlassContent` | The fallback material: glass cannot refract the layer it is part of. Use a nested scene. |

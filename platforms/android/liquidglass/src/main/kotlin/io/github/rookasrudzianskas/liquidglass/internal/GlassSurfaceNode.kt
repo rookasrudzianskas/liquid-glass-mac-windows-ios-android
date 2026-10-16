@@ -347,6 +347,8 @@ internal class GlassSurfaceNode(
         val halfW = local.width * kx * sx / 2f
         val halfH = local.height * ky * sy / 2f
         val bounds = Rect(center.x - halfW, center.y - halfH, center.x + halfW, center.y + halfH)
+        // Off the content layer entirely: nothing to draw, and no GPU slot used.
+        if (!bounds.overlaps(Rect(Offset.Zero, content.size.toSize()))) return null
         val clip = if (clipped == box) INFINITE else clipped
         val dark = style.isDark(params.appearance)
         val widthDp = local.width / density
