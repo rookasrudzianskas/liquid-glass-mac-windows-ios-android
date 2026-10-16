@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -187,6 +188,13 @@ public class GlassSurface : ContentControl
     internal void SetIsPressed(bool pressed) => SetValue(IsPressedPropertyKey, pressed);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// A standalone surface is a group in the automation tree; a surface inside a control's template is part of that
+    /// control and stays out of the tree.
+    /// </remarks>
+    protected override AutomationPeer? OnCreateAutomationPeer() => TemplatedParent is null ? new GlassSurfaceAutomationPeer(this) : null;
+
+    /// <inheritdoc />
     protected override HitTestResult? HitTestCore(PointHitTestParameters hitTestParameters)
     {
         // The glass takes input across its rounded outline (it draws nothing hit-testable itself); the corners outside
@@ -327,4 +335,22 @@ public class GlassSurface : ContentControl
 
         private static bool Near(Point a, Point b) => Math.Abs(a.X - b.X) < 0.01 && Math.Abs(a.Y - b.Y) < 0.01;
     }
+}
+
+/// <summary>Exposes a standalone <see cref="GlassSurface"/> to UI Automation as a group of its content.</summary>
+public sealed class GlassSurfaceAutomationPeer : FrameworkElementAutomationPeer
+{
+    /// <summary>Creates the peer.</summary>
+    public GlassSurfaceAutomationPeer(GlassSurface owner) : base(owner)
+    {
+    }
+
+    /// <inheritdoc />
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Group;
+
+    /// <inheritdoc />
+    protected override string GetClassNameCore() => nameof(GlassSurface);
+
+    /// <inheritdoc />
+    protected override bool IsControlElementCore() => !string.IsNullOrEmpty(GetName());
 }

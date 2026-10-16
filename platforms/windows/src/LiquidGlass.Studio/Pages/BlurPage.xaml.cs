@@ -27,6 +27,8 @@ public partial class BlurPage : StudioPageBase
         InitializeComponent();
         Paper.Background = _paper;
         foreach (var story in Stories) Articles.Children.Add(Article(story.Title, story.Text, story.Wallpaper, story.Crop));
+        // Open mid-read, so a story is already passing under the toolbar and its blurred edge.
+        Scroller.Loaded += (_, _) => Scroller.ScrollToVerticalOffset(150);
     }
 
     /// <inheritdoc />

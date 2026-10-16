@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows;net10.0-windows;net48</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <RootNamespace>LiquidGlass.Wpf</RootNamespace>
     <AssemblyName>LiquidGlass.Wpf</AssemblyName>
@@ -21,6 +21,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LiquidGlass.Core\LiquidGlass.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <!-- Builds the .NET Framework target anywhere; Windows supplies the framework at run time. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

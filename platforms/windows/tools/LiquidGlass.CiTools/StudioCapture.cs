@@ -125,7 +125,10 @@ internal static class StudioCapture
     private static void Expand(AutomationElement root, string name)
     {
         var element = Find(root, name);
-        ((ExpandCollapsePattern)element.GetCurrentPattern(ExpandCollapsePattern.Pattern)).Expand();
+        var pattern = (ExpandCollapsePattern)element.GetCurrentPattern(ExpandCollapsePattern.Pattern);
+        pattern.Expand();
+        Thread.Sleep(500);
+        Console.WriteLine($"{name}: {pattern.Current.ExpandCollapseState} after Expand");
     }
 
     /// <summary>Holds the left button down over the center of an element (released after the capture).</summary>

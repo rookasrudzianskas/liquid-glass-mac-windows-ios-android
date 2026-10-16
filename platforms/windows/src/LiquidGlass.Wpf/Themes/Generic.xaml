@@ -317,6 +317,8 @@
   </Style>
 
   <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}" TargetType="{x:Type ButtonBase}">
+    <!-- The button's own theme style would set the system text color; take the glass cluster's instead. -->
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type lg:GlassSurface}}}" />
     <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -378,6 +380,7 @@
   <!-- Menu -->
   <Style TargetType="{x:Type lg:GlassMenuItem}">
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="MinHeight" Value="32" />
     <Setter Property="Padding" Value="10,6,12,6" />
     <Setter Property="Background" Value="Transparent" />
@@ -436,11 +439,13 @@
     <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
     <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
     <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type lg:GlassMenu}">
           <lg:GlassButton x:Name="PART_Trigger" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
                           Size="{TemplateBinding Size}" IsIconOnly="{TemplateBinding IsIconOnly}" Tint="{TemplateBinding Tint}"
+                          FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}"
                           AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}" />
         </ControlTemplate>
       </Setter.Value>

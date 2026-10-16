@@ -2,7 +2,7 @@
 
   <!-- Windows-only tests: WPF controls, the shader bytecode, and the HLSL library on the GPU (WARP). -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFrameworks>net10.0-windows;net48</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <RootNamespace>LiquidGlass.Wpf.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
@@ -16,7 +16,17 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <!-- Vortice targets .NET 8 and later; the GPU check runs on .NET 10. -->
+    <Compile Remove="GpuTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
