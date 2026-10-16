@@ -46,7 +46,8 @@ public class InteractionTests
 
                 scales.Clear();
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
-                Wait(1.2);
+                // The release spring decays as exp(−7.3 t); it is within its settle threshold and snaps to rest by 1.4 s.
+                Wait(2.0);
                 Assert.False(surface.IsPressed);
                 // Without overshoot the area never drops below 1 (grow and stretch are never negative); the release
                 // spring (bounce 0.42) carries the press about 11% past rest, shrinking the area by about 1.4%.
