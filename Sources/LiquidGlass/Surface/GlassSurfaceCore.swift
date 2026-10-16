@@ -77,6 +77,10 @@ struct GlassSurfaceCore<Content: View>: View {
     var localBackdrop: AnyView?
     /// An interaction owned by a parent (toolbar clusters, tab lenses).
     var interaction: GlassInteraction?
+    /// Whether the surface attaches its own touch and pointer gestures.
+    /// Buttons attach them outside SwiftUI's `Button` instead, so the
+    /// button's own gesture keeps working.
+    var handlesInput = true
     /// Whether the content scales and moves with the press.
     var transformsContent = true
     /// Whether the content is clipped to the outline.
@@ -125,10 +129,7 @@ struct GlassSurfaceCore<Content: View>: View {
                 }
             }
             .contentShape(GlassOutlineShape(rect: outline, radius: style.radius))
-            .modifier(GlassPressGestures(model: interactive ? model : nil, tracking: $tracking))
-            .onChange(of: tracking) { _, isTracking in
-                if !isTracking { model.pointerEnded() }
-            }
+            .modifier(GlassPressGestures(model: interactive && handlesInput ? model : nil, tracking: $tracking))
             .onChange(of: model.isPressed) { _, pressed in onPressChange?(pressed) }
     }
 }
@@ -174,14 +175,19 @@ private struct GlassPressTransform: ViewModifier {
     }
 }
 
-/// Touch, pointer and hover input for an interactive surface.
-private struct GlassPressGestures: ViewModifier {
+/// Touch, pointer and hover input for an interactive surface. A cancelled
+/// gesture (for example when a scroll view takes over) resets `tracking`,
+/// which ends the press.
+struct GlassPressGestures: ViewModifier {
     let model: GlassInteraction?
     let tracking: GestureState<Bool>
 
     func body(content: Content) -> some View {
         if let model {
             content
+                .onChange(of: tracking.wrappedValue) { _, isTracking in
+                    if !isTracking { model.pointerEnded() }
+                }
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .updating(tracking) { _, state, _ in state = true }
