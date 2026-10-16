@@ -36,7 +36,7 @@ const PLATFORMS: {
     installTitle: "Swift Package Manager",
     fallback: "fallbackApple",
     file: "ContentView.swift",
-    summary: "Views and modifiers that feel like SwiftUI. The backdrop is captured once per scene and every surface refracts it in a Metal shader.",
+    summary: "Views and modifiers that feel like SwiftUI, rendered with Metal. It does not depend on iOS 26's glassEffect and coexists with it.",
     icon: (
       <span className="platform-icons" aria-hidden="true">
         <PhoneIcon size={18} />

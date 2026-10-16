@@ -262,8 +262,9 @@ export default function Home() {
               <GaugeIcon size={26} />
               <h3>Performance</h3>
               <ul role="list">
-                <li>The scene renders its content once as the backdrop; every surface refracts it on the GPU.</li>
-                <li>Regular frost is two Gaussian blurs of that backdrop: σ 7.33 and a wide fill.</li>
+                <li>Refraction, frost and rim light run per pixel in a GPU shader: Metal, AGSL or HLSL.</li>
+                <li>Idle glass costs nothing per frame: springs animate only while something moves.</li>
+                <li>Clear is the lightest material; Regular adds GPU blurs of the backdrop.</li>
                 <li>On this page, the glass draws only when something moves, and pauses offscreen.</li>
               </ul>
             </article>

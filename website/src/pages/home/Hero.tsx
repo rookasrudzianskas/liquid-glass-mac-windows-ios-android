@@ -75,7 +75,7 @@ export function Hero() {
             <span className="hero__title-2">Native on every platform.</span>
           </h1>
           <p className="hero__lead">
-            Refraction, Clear and Regular materials, rim light and elastic motion for SwiftUI, Jetpack Compose and WPF. One optical model, ported pixel for pixel.
+            Refraction, Clear and Regular materials, rim light and elastic motion for SwiftUI, Jetpack Compose and WPF. One optical model, tested against the same golden vectors.
           </p>
           <div className="hero__cta">
             <Link href="/downloads" className="button button--primary">
