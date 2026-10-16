@@ -305,6 +305,7 @@ async function renderDoc(entry, slugByFile) {
     }
     let next = tag.replace(/\bsrc="[^"]+"/, `src="${escapeHtml(copied.src)}"`);
     if (copied.width && copied.height && !/\b(width|height)=/.test(next)) next = next.replace("<img", `<img width="${copied.width}" height="${copied.height}"`);
+    else if (copied.width && copied.height && !/\bstyle=/.test(next)) next = next.replace("<img", `<img style="aspect-ratio: ${copied.width} / ${copied.height}"`);
     if (!/\bloading=/.test(next)) next = next.replace("<img", '<img loading="lazy" decoding="async"');
     html = html.split(tag).join(next);
   }
@@ -314,6 +315,19 @@ async function renderDoc(entry, slugByFile) {
   html = html.replace(/<table>\s*<thead>\s*<tr>((?:\s*<th[^>]*>\s*<\/th>)+)\s*<\/tr>\s*<\/thead>([\s\S]*?)<\/table>/g, (_m, _empty, rest) =>
     `<table class="table--keys">${rest.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>')}</table>`,
   );
+
+  // Tables with some empty header cells: an empty corner makes the first column
+  // row headers; any other empty header gets a screen-reader label.
+  html = html.replace(/<table>\s*<thead>\s*<tr>([\s\S]*?)<\/tr>\s*<\/thead>([\s\S]*?)<\/table>/g, (whole, head, rest) => {
+    const cells = [...head.matchAll(/<th([^>]*)>([\s\S]*?)<\/th>/g)];
+    if (!cells.some((c) => !stripTags(c[2] ?? "").trim())) return whole;
+    const cornerEmpty = !stripTags(cells[0]?.[2] ?? "").trim();
+    const headHtml = cells
+      .map((c, i) => (stripTags(c[2] ?? "").trim() || (i === 0 && cornerEmpty) ? `<th${c[1]}>${c[2]}</th>` : `<th${c[1]}><span class="sr-only">Details</span></th>`))
+      .join("");
+    const rows = cornerEmpty ? rest.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>') : rest;
+    return `<table><thead><tr>${headHtml}</tr></thead>${rows}</table>`;
+  });
 
   html = html
     .replace(/<table( class="[^"]*")?>/g, '<div class="table-wrap"><table$1>')
