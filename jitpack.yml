@@ -1,0 +1,8 @@
+# JitPack builds the Jetpack Compose library from platforms/android; the rest of
+# the repository holds the Apple, Windows and web ports. The library's
+# publication takes JitPack's GROUP / ARTIFACT / VERSION, so it is served as
+# com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:<tag>.
+jdk:
+  - openjdk17
+install:
+  - cd platforms/android && ./gradlew :liquidglass:publishReleasePublicationToMavenLocal --no-daemon --stacktrace

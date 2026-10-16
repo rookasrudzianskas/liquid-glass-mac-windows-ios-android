@@ -166,7 +166,7 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
 
     override fun frame(content: LayoutCoordinates, density: Float): BlurFrame? {
         val coordinates = coordinates?.takeIf { it.isAttached } ?: return null
-        if (scene?.hasContent != true || !content.isAttached) return null
+        if (scene?.renders(coordinates) != true || !content.isAttached) return null
         val band = content.localBoundingBoxOf(coordinates, clipBounds = false)
         if (band.isEmpty) return null
         val toward = toward()
@@ -175,7 +175,7 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
 
     override fun ContentDrawScope.draw() {
         drawContent()
-        if (scene?.hasContent == true) return
+        if (coordinates?.let { scene?.renders(it) } == true) return
         // No content layer to blur: fade toward the edge so the band still reads.
         val toward = toward()
         val half = Offset(size.width / 2f * toward.x, size.height / 2f * toward.y)

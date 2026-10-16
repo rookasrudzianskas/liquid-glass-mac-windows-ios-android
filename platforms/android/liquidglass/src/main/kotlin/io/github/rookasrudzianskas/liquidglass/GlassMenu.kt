@@ -63,6 +63,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -462,6 +464,10 @@ private class MenuState {
     /** The trigger's bounds in [host], for placing the panel. */
     fun triggerIn(host: LayoutCoordinates): Rect {
         val trigger = trigger?.takeIf { it.isAttached && host.isAttached } ?: return Rect.Zero
+        if (trigger.findRootCoordinates() !== host.findRootCoordinates()) {
+            // The trigger is in another window (a dialog): place by screen position instead.
+            return Rect(trigger.localToScreen(Offset.Zero) - host.localToScreen(Offset.Zero), trigger.size.toSize())
+        }
         return host.localBoundingBoxOf(trigger, clipBounds = false)
     }
 

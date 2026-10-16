@@ -7,6 +7,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 
 /**
  * One glass surface as the scene draws it this frame. Rectangles are in pixels
@@ -102,6 +103,15 @@ internal class GlassSceneState(
 
     /** Whether a content layer exists to render glass. */
     val hasContent: Boolean get() = content != null
+
+    /**
+     * Whether the content layer is in the same window as [coordinates]. Glass in
+     * another window (a dialog or popup inside the scene) cannot refract it.
+     */
+    fun renders(coordinates: LayoutCoordinates): Boolean {
+        val content = content?.takeIf { it.isAttached } ?: return false
+        return content.rootCoordinates() === coordinates.findRootCoordinates()
+    }
 
     fun attachContent(node: GlassContentNode) {
         content = node

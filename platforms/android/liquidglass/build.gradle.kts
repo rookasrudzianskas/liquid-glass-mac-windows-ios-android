@@ -72,6 +72,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // Declares the empty ComponentActivity the rendering tests compose into.
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // JitPack builds this module from the repository root (see /jitpack.yml) and

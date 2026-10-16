@@ -291,7 +291,10 @@ internal class GlassSurfaceNode(
     override fun onSceneRenderingChanged() = invalidateDraw()
 
     /** The scene's content layer draws this glass; otherwise the node draws its own fallback. */
-    private val renderedByScene: Boolean get() = scene?.hasContent == true && !insideContent
+    private val renderedByScene: Boolean get() = scene?.hasContent == true && !insideContent && sameWindow
+
+    /** Whether the last layout put this surface in the scene content's window. */
+    private var sameWindow = true
 
     // --- Layout and geometry --------------------------------------------------------
 
@@ -302,6 +305,11 @@ internal class GlassSurfaceNode(
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         this.coordinates = coordinates
+        val inWindow = scene?.renders(coordinates) ?: true
+        if (inWindow != sameWindow) {
+            sameWindow = inWindow
+            invalidateDraw()
+        }
         val rootBounds = coordinates.findRootCoordinates().localBoundingBoxOf(coordinates, clipBounds = false)
         if (rootBounds != lastRootBounds) {
             lastRootBounds = rootBounds

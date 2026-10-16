@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.TraversableNode
@@ -89,6 +91,9 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         scene.attachContent(this)
         invalidateDraw()
     }
+
+    /** The root of this node's window, to tell which surfaces it can render. */
+    fun rootCoordinates(): LayoutCoordinates = requireLayoutCoordinates().findRootCoordinates()
 
     /** Called by the scene when surface geometry changes outside snapshot state. */
     fun invalidateGlass() {
