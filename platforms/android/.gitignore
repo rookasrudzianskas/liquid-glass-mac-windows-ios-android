@@ -1,0 +1,6 @@
+/local-signing.properties
+*.jks
+*.keystore
+/build
+/.gradle
+/.kotlin
