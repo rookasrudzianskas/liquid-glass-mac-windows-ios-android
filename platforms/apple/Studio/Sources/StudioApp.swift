@@ -7,38 +7,98 @@ struct LiquidGlassStudioApp: App {
         WindowGroup {
             StudioRoot()
         }
+        #if os(macOS)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1180, height: 820)
+        #endif
     }
 }
 
+/// One glass scene for the whole app: each page supplies its backdrop and
+/// its foreground, and the tab bar floats over all of them, so its lens
+/// keeps moving smoothly between pages.
 struct StudioRoot: View {
-    @State private var offset = CGSize.zero
-    @State private var dragStart = CGSize.zero
+    // Stored in UserDefaults, so `-page lab -appearance dark` launch
+    // arguments open a page directly.
+    @AppStorage("page") private var page = StudioPage.hero
+    @AppStorage("appearance") private var appearance = GlassAppearance.automatic
+    @State private var lab = LabSettings()
+    @State private var stories = GlassScrollPosition()
+
     var body: some View {
-        GlassScene {
+        GlassScene(appearance: appearance) {
             GlassContent {
-                Image("aurora").resizable().scaledToFill()
+                backdrop
+                    .id(page)
+                    .transition(.opacity)
             }
             .ignoresSafeArea()
-            VStack(spacing: 24) {
-                GlassSurface(material: .regular, radius: 32, interactive: true) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Liquid Glass").font(.largeTitle.bold())
-                        Text("Refraction, frost and light, natively.").font(.headline)
-                    }
-                    .padding(28)
-                    .frame(width: 320, alignment: .leading)
-                }
-                .offset(offset)
-                .gesture(DragGesture().onChanged { offset = CGSize(width: dragStart.width + $0.translation.width, height: dragStart.height + $0.translation.height) }.onEnded { _ in dragStart = offset })
-                HStack(spacing: 16) {
-                    GlassSurface(radius: .capsule, interactive: true) { Text("Clear").font(.headline).padding(.horizontal, 24).frame(height: 52) }
-                    GlassSurface(material: .regular, radius: .capsule, interactive: true) { Text("Regular").font(.headline).padding(.horizontal, 24).frame(height: 52) }
-                    GlassSurface(radius: .circle, interactive: true) { Image(systemName: "plus").font(.title2.weight(.semibold)).frame(width: 52, height: 52) }
-                }
-                GlassSurface(appearance: .dark, radius: 24) { Text("Dark clear glass").font(.headline).padding(24) }
-                GlassSurface(radius: 24, tint: .blue) { Text("Tinted").font(.headline).foregroundStyle(.white).padding(24) }
+
+            ZStack(alignment: .bottom) {
+                foreground
+                    .id(page)
+                    .transition(.opacity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                tabBar
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .animation(.easeInOut(duration: 0.3), value: page)
+        .preferredColorScheme(appearance.colorScheme)
+        #if os(macOS)
+        .frame(minWidth: 760, minHeight: 620)
+        #endif
+    }
+
+    @ViewBuilder
+    private var backdrop: some View {
+        switch page {
+        case .hero: Wallpaper.aurora.view
+        case .controls: Wallpaper.midnight.view
+        case .lab: lab.wallpaper.view
+        case .blur: StoriesBackdrop(position: stories)
+        }
+    }
+
+    @ViewBuilder
+    private var foreground: some View {
+        switch page {
+        case .hero: HeroPage(appearance: $appearance, page: $page)
+        case .controls: ControlsPage()
+        case .lab: LabPage(settings: lab)
+        case .blur: StoriesPage(position: stories)
+        }
+    }
+
+    private var tabBar: some View {
+        // Over the scrolling stories the bars frost, so text never shows through.
+        GlassTabBar(selection: $page, material: page == .blur ? .regular : nil) {
+            GlassTab("Hero", systemImage: "sparkles", value: StudioPage.hero)
+            GlassTab("Controls", systemImage: "slider.horizontal.3", value: StudioPage.controls)
+            GlassTab("Lab", systemImage: "drop", value: StudioPage.lab)
+            GlassTab("Blur", systemImage: "text.below.photo", value: StudioPage.blur)
+        }
+        #if os(macOS)
+        .fixedSize()
+        .padding(.bottom, 20)
+        #else
+        .frame(maxWidth: 440)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 4)
+        #endif
+    }
+}
+
+enum StudioPage: String, CaseIterable, Hashable {
+    case hero, controls, lab, blur
+}
+
+extension GlassAppearance {
+    /// The color scheme the app shows for this appearance.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .automatic: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }

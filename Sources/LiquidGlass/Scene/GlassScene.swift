@@ -118,8 +118,11 @@ public struct GlassScene<Backdrop: View, Foreground: View>: View {
         GeometryReader { proxy in
             let backdrop = makeBackdrop(size: proxy.size, insets: proxy.safeAreaInsets)
             ZStack(alignment: .topLeading) {
+                // The backdrop lays out without safe-area insets, here and in
+                // every copy, so all of them lay out identically.
                 layers.content.content
                     .environment(\.glassBackdropRole, .primary)
+                    .ignoresSafeArea(.container, edges: layers.content.ignoredSafeAreaEdges)
                     .frame(width: backdrop.rect.width, height: backdrop.rect.height)
                     .offset(x: backdrop.rect.minX, y: backdrop.rect.minY)
                 layers.foreground
@@ -176,6 +179,7 @@ struct GlassBackdropCopy: View {
         backdrop.content
             .environment(\.self, backdrop.environment)
             .environment(\.glassBackdropRole, .copy)
+            .ignoresSafeArea(.container)
             .frame(width: rect.width, height: rect.height)
             .allowsHitTesting(false)
             .accessibilityHidden(true)

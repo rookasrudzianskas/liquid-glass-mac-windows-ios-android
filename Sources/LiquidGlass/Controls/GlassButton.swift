@@ -130,7 +130,9 @@ enum GlassControlMetrics {
     static let labelSpacing: CGFloat = 4
     static let toolbarHeight: CGFloat = 34
     static let toolbarInset: CGFloat = 3
-    static let tabBarHeight: CGFloat = 28
+    static func tabBarHeight(_ size: ControlSize) -> CGFloat {
+        size == .small || size == .mini ? 24 : 28
+    }
     #else
     static func buttonHeight(_ size: ControlSize) -> CGFloat {
         switch size {
@@ -155,7 +157,9 @@ enum GlassControlMetrics {
     static let labelSpacing: CGFloat = 6
     static let toolbarHeight: CGFloat = 52
     static let toolbarInset: CGFloat = 4
-    static let tabBarHeight: CGFloat = 62
+    static func tabBarHeight(_ size: ControlSize) -> CGFloat {
+        size == .small || size == .mini ? 40 : 62
+    }
     #endif
 
     /// The highlight of a pressed, hovered or focused item on glass: the

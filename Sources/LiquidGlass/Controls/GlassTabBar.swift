@@ -27,6 +27,7 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
     @Namespace private var space
     @Environment(\.glassMotion) private var inheritedMotion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.controlSize) private var controlSize
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
     /// Creates a tab bar.
@@ -64,7 +65,7 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
         ))
         .modifier(OnTintForeground(tinted: options.tint != nil))
         .padding(inset)
-        .frame(minHeight: (GlassControlMetrics.tabBarHeight * typeScale).rounded())
+        .frame(height: (GlassControlMetrics.tabBarHeight(controlSize) * typeScale).rounded())
         .backgroundPreferenceValue(GlassTabKey.self) { tabs in
             GeometryReader { proxy in
                 let frames = tabs.map { TabFrame(value: $0.value, rect: proxy[$0.anchor]) }
@@ -181,17 +182,27 @@ public struct GlassTab<Value: Hashable>: View {
         .opacity(selected ? 1 : 0.85)
         .animation(.easeOut(duration: 0.16), value: selected)
         #else
-        VStack(spacing: 2) {
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .medium))
-                    .imageScale(.medium)
-                    .frame(height: 24)
+        Group {
+            if controlSize == .small || controlSize == .mini {
+                HStack(spacing: 6) {
+                    if let systemImage { Image(systemName: systemImage) }
+                    title
+                }
+                .font(.subheadline.weight(.semibold))
+            } else {
+                VStack(spacing: 2) {
+                    if let systemImage {
+                        Image(systemName: systemImage)
+                            .font(.system(size: 20, weight: .medium))
+                            .imageScale(.medium)
+                            .frame(height: 24)
+                    }
+                    title
+                        .font(.caption2.weight(.semibold))
+                }
             }
-            title
-                .font(.caption2.weight(.semibold))
-                .lineLimit(1)
         }
+        .lineLimit(1)
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(selected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.foreground.opacity(0.62)))

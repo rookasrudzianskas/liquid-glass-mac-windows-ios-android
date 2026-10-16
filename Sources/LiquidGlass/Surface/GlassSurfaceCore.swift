@@ -127,6 +127,8 @@ struct GlassSurfaceCore<Content: View>: View {
                         localBackdrop: localBackdrop, model: interactive || interaction != nil ? model : nil
                     )
                 }
+                // Measure the whole surface, also where it extends under the safe area.
+                .ignoresSafeArea()
             }
             .contentShape(GlassOutlineShape(rect: outline, radius: style.radius))
             .modifier(GlassPressGestures(model: interactive && handlesInput ? model : nil, tracking: $tracking))

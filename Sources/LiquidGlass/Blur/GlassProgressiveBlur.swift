@@ -73,6 +73,8 @@ public struct GlassProgressiveBlur: View {
                 .clipped()
                 .mask(LinearGradient(stops: Self.stops(level: level), startPoint: sharpSide, endPoint: edgePoint))
         }
+        // Fill the strip even where it extends under the safe area.
+        .ignoresSafeArea()
     }
 
     /// Alpha of level `i` when drawn over the levels below it, so the stack
