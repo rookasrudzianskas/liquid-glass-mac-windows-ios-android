@@ -36,7 +36,7 @@ rendering, Remote Desktop without acceleration) glass draws a fallback material:
 the material's tone curve and the exact rim light. Contrast themes, reduced transparency and animation effects are
 honored; every control has a UI Automation peer and a keyboard focus ring.
 
-**Requirements:** .NET 8 or .NET 10 on Windows 10 (1809) or Windows 11.
+**Requirements:** .NET Framework 4.8, .NET 8 or .NET 10 on Windows 10 (1809) or Windows 11.
 
 Documentation: [docs/windows.md](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/docs/windows.md).
 MIT licensed; the optical model is ported from the MIT-licensed Glass HQ liquid-glass web library.

@@ -26,7 +26,7 @@ verified against the same golden vectors.
 
 | Package | Contents | Targets |
 | --- | --- | --- |
-| `LiquidGlassEngineering.Wpf` | The WPF controls and the glass shader | `net8.0-windows`, `net10.0-windows` |
+| `LiquidGlassEngineering.Wpf` | The WPF controls and the glass shader | `net48`, `net8.0-windows`, `net10.0-windows` |
 | `LiquidGlassEngineering.Core` | The platform-independent optical model (pulled in by the WPF package) | `netstandard2.0` |
 
 ```
@@ -39,7 +39,8 @@ or in the project file:
 <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
 ```
 
-Requirements: Windows 10 version 1809 or later, or Windows 11; .NET 8 or .NET 10 with WPF (`<UseWPF>true</UseWPF>`).
+Requirements: Windows 10 version 1809 or later, or Windows 11; .NET Framework 4.8, .NET 8 or .NET 10 with WPF
+(`<UseWPF>true</UseWPF>`).
 The shader needs a GPU with pixel shader 3.0, which every DirectX 10-class GPU and the WARP software rasterizer
 provide; elsewhere glass draws its [fallback](#fallbacks).
 
@@ -320,6 +321,8 @@ menu.Opened += (_, _) => Log("opened");
 `StaysOpenOnClick`, `Command`, `Click`. UI Automation: the menu is a Button with ExpandCollapse; items are MenuItems
 with Invoke (and Toggle when checkable).
 
+![A menu grown out of its trigger on the Controls page](images/windows/controls-menu-light.png)
+
 ### GlassProgressiveBlur
 
 Progressive edge blur over the scene's backdrop: six blur levels whose strength rises toward `Edge` across a band
@@ -340,6 +343,8 @@ children, stretched over the area whose edge should blur; it takes no input.
 `Edge` (`Top`, `Bottom`, `Left`, `Right`), `Size` (80), `Blur` (σ at the edge, 20, at most 33), `Source` (an element to
 blur outside a scene; default: the scene's backdrop).
 
+![A journal scrolling under blurred edges, a toolbar and a tab bar](images/windows/blur-light.png)
+
 ### GlassGeometry
 
 Continuous-corner outlines as frozen WPF geometry, for clips, borders, focus rings and hit shapes that match glass
@@ -352,6 +357,8 @@ element.Clip = GlassGeometry.Create(new Rect(element.RenderSize), 28);
 ```
 
 ## Options and theming
+
+![The Materials lab: a Clear lens refracting the wallpaper's lines at its edges](images/windows/materials-dark.png)
 
 **Material.** `Clear` shows the refracted backdrop with a light tone curve and veil; `Regular` frosts it first.
 Menus default to Regular; everything else to Clear. Material is inherited, so setting it on a container applies to
@@ -418,9 +425,10 @@ Glass never draws nothing and never crashes.
 `GlassDiagnostics.Describe()` returns the render tier, pixel shader support and shader status, for logs and about
 boxes.
 
-![The fallback material: the same Hero page rendered without the shader](images/windows/hero-fallback-light.png)
 
 ## Liquid Glass Studio
+
+![Hero in dark appearance](images/windows/hero-dark.png)
 
 The Windows demo shows every control on the shared wallpapers, in light and dark, with Mica window chrome on
 Windows 11:
