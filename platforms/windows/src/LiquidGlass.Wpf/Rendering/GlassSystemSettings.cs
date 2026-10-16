@@ -51,7 +51,10 @@ internal static class GlassSystemSettings
     public static bool HighContrast => SystemParameters.HighContrast;
 
     /// <summary>Animation effects are on (Settings › Accessibility › Visual effects).</summary>
-    public static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation;
+    public static bool AnimationsEnabled => AnimationsOverride ?? SystemParameters.ClientAreaAnimation;
+
+    /// <summary>Replaces the animation setting, for tests on machines where animations are off.</summary>
+    internal static bool? AnimationsOverride { get; set; }
 
     /// <summary>Watches the window that hosts <paramref name="visual"/> for setting changes.</summary>
     public static void Watch(Visual visual)

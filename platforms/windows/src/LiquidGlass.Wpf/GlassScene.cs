@@ -299,7 +299,9 @@ public class GlassScene : FrameworkElement
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        LayoutUpdated -= OnLayoutUpdated;
         LayoutUpdated += OnLayoutUpdated;
+        GlassFrameLoop.RemoveAfterTick(OnAfterTick);
         GlassFrameLoop.AfterTick(OnAfterTick);
         GlassSystemSettings.Watch(this);
         Realign();

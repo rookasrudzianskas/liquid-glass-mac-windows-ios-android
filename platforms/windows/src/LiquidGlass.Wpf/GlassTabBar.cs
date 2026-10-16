@@ -80,8 +80,18 @@ public class GlassTabBar : ListBox, IGlassAnimation
     public GlassTabBar()
     {
         _appearance = new GlassAppearanceTracker(this, () => Tint);
-        LayoutUpdated += (_, _) => Follow();
-        Unloaded += (_, _) => GlassFrameLoop.Stop(this);
+        // The layout manager holds LayoutUpdated handlers strongly: subscribe only while loaded.
+        Loaded += (_, _) =>
+        {
+            LayoutUpdated -= OnLayoutUpdated;
+            LayoutUpdated += OnLayoutUpdated;
+        };
+        Unloaded += (_, _) =>
+        {
+            LayoutUpdated -= OnLayoutUpdated;
+            _drag = null;
+            GlassFrameLoop.Stop(this);
+        };
     }
 
     /// <summary>Material of the bar.</summary>
@@ -264,6 +274,8 @@ public class GlassTabBar : ListBox, IGlassAnimation
     }
 
     private static void OnTintChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((GlassTabBar)d)._appearance.Update();
+
+    private void OnLayoutUpdated(object? sender, EventArgs e) => Follow();
 
     /// <summary>Restarts the lens animation when layout moved the selected item.</summary>
     private void Follow()

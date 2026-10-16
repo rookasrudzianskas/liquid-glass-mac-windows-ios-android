@@ -69,6 +69,7 @@ internal sealed class GlassAppearanceTracker
         _changed = changed;
         owner.Loaded += (_, _) =>
         {
+            GlassSystemSettings.Changed -= OnSettingsChanged;
             GlassSystemSettings.Changed += OnSettingsChanged;
             GlassSystemSettings.Watch(owner);
             Update();

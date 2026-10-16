@@ -253,6 +253,7 @@ public sealed class GlassLens : FrameworkElement
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        GlassSystemSettings.Changed -= OnSettingsChanged;
         GlassSystemSettings.Changed += OnSettingsChanged;
         GlassSystemSettings.Watch(this);
         var scene = GlassScene.FindScene(this);

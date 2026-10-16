@@ -148,6 +148,7 @@ public class GlassProgressiveBlur : FrameworkElement
         _scene = GlassScene.FindScene(this);
         Rebuild();
         if (_scene is not null && !_scene.IsInBackdrop(this)) _scene.Register(this);
+        LayoutUpdated -= OnLayoutUpdated;
         LayoutUpdated += OnLayoutUpdated;
     }
 

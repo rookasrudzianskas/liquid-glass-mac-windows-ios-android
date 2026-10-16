@@ -86,6 +86,13 @@ public class GlassSurface : ContentControl
     public GlassSurface()
     {
         _appearance = new GlassAppearanceTracker(this, () => Tint);
+        Loaded += (_, _) => _fluid?.Attach();
+        Unloaded += (_, _) =>
+        {
+            // A surface removed while held (for example by the click it handles) lets go and stops animating.
+            _interaction?.Cancel();
+            _fluid?.Detach();
+        };
     }
 
     /// <summary>Material of this surface and the glass inside it.</summary>
@@ -262,8 +269,10 @@ public class GlassSurface : ContentControl
 
         public void Attach()
         {
-            if (_attached) return;
+            // The layout manager holds LayoutUpdated handlers strongly: subscribe only while loaded.
+            if (_attached || !_surface.IsLoaded) return;
             _attached = true;
+            _origin = null;
             _surface.LayoutUpdated += OnLayoutUpdated;
         }
 

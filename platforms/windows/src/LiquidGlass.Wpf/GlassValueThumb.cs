@@ -68,8 +68,17 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         _body.Children.Add(_lens);
         _body.RenderTransform = _stretch;
         AddVisualChild(_body);
-        LayoutUpdated += OnLayoutUpdated;
-        Unloaded += (_, _) => GlassFrameLoop.Stop(this);
+        // The layout manager holds LayoutUpdated handlers strongly: subscribe only while loaded.
+        Loaded += (_, _) =>
+        {
+            LayoutUpdated -= OnLayoutUpdated;
+            LayoutUpdated += OnLayoutUpdated;
+        };
+        Unloaded += (_, _) =>
+        {
+            LayoutUpdated -= OnLayoutUpdated;
+            GlassFrameLoop.Stop(this);
+        };
     }
 
     /// <summary>Whether the thumb is held and lifted into glass.</summary>

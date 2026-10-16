@@ -74,6 +74,22 @@ internal sealed class GlassInteraction : IGlassAnimation
         Reset();
     }
 
+    /// <summary>Lets go of any press and returns the surface to rest immediately.</summary>
+    public void Cancel()
+    {
+        _keyboard = false;
+        _hovering = false;
+        if (_pointer)
+        {
+            _pointer = false;
+            if (_capturedByUs && ReferenceEquals(Mouse.Captured, _input)) _input.ReleaseMouseCapture();
+            _capturedByUs = false;
+        }
+        GlassFrameLoop.Stop(this);
+        Reset();
+        _surface.SetIsPressed(false);
+    }
+
     /// <summary>Returns the surface to rest immediately.</summary>
     public void Reset()
     {
