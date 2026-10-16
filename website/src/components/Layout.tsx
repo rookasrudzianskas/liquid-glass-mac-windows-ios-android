@@ -4,6 +4,7 @@ import { Link, REPO_URL, useRouter } from "../router";
 import { useTheme } from "../theme";
 import type { Preference } from "../theme";
 import site from "../generated/site.json";
+import { docHref } from "../docs";
 import { CloseIcon, GitHubIcon, LogoMark, MenuIcon, MoonIcon, SearchIcon, SunIcon, SystemIcon } from "./Icons";
 
 const Search = lazy(() => import("./Search"));
@@ -204,10 +205,10 @@ function Footer() {
           <div>
             <h2 className="footer__title">Docs</h2>
             <ul role="list">
-              <li><Link href="/docs/apple">SwiftUI</Link></li>
-              <li><Link href="/docs/android">Jetpack Compose</Link></li>
-              <li><Link href="/docs/windows">WPF</Link></li>
-              <li><Link href="/docs/optics">Optics</Link></li>
+              <li><Link href={docHref("apple")}>SwiftUI</Link></li>
+              <li><Link href={docHref("android")}>Jetpack Compose</Link></li>
+              <li><Link href={docHref("windows")}>WPF</Link></li>
+              <li><Link href={docHref("optics")}>Optics</Link></li>
             </ul>
           </div>
           <div>

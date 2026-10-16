@@ -5,6 +5,7 @@ import code from "../../generated/code.json";
 import { CodeBlock } from "../../components/Code";
 import type { Highlighted } from "../../components/Code";
 import { Link } from "../../router";
+import { docHref } from "../../docs";
 import { AndroidIcon, ArrowRightIcon, LaptopIcon, PhoneIcon, WindowIcon } from "../../components/Icons";
 
 type PlatformId = "apple" | "android" | "windows";
@@ -148,7 +149,7 @@ export function Platforms() {
                 </ul>
                 {install ? <CodeBlock sample={install} title={p.installTitle} className="platform__install" /> : null}
                 <div className="platform__links">
-                  <Link href={`/docs/${p.id}`} className="button button--secondary button--small">
+                  <Link href={docHref(p.id)} className="button button--secondary button--small">
                     {p.tab} docs
                     <ArrowRightIcon size={16} />
                   </Link>

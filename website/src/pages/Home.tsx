@@ -5,6 +5,7 @@ import { wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
 import type { WallpaperName } from "../glass/backdrop";
 import { useTheme } from "../theme";
 import { Static } from "../components/Static";
+import { docHref } from "../docs";
 import type { Head } from "../router";
 import { Hero } from "./home/Hero";
 import { Platforms } from "./home/Platforms";
@@ -215,7 +216,7 @@ export default function Home() {
               </p>
             </div>
             <div className="vectors__links">
-              <Link href="/docs/optics" className="button button--secondary button--small">
+              <Link href={docHref("optics")} className="button button--secondary button--small">
                 Read the optics spec
                 <ArrowRightIcon size={16} />
               </Link>
