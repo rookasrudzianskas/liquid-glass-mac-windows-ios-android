@@ -464,3 +464,9 @@
 .dl {
   min-width: 0;
 }
+
+.dl__note {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--fg-3);
+}

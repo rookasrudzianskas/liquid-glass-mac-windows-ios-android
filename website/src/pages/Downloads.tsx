@@ -26,7 +26,7 @@ interface Item {
   packageId?: string;
 }
 
-const manifest = downloads as { version: string; generatedAt: string | null; items: Item[] };
+const manifest = downloads as { version: string; generatedAt: string | null; items: Item[]; notes?: Record<string, string> };
 const samples = code as unknown as Record<string, Highlighted>;
 
 export function formatBytes(bytes: number | null) {
@@ -56,6 +56,7 @@ function DownloadRow({ item }: { item: Item }) {
           <span>v{item.version}</span>
         </p>
         <p className="dl__req">{item.requirements}</p>
+        {manifest.notes?.[item.id] && item.available ? <p className="dl__note">{manifest.notes[item.id]}</p> : null}
         {item.available && item.sha256 ? (
           <p className="dl__sha">
             <span className="dl__sha-label">SHA-256</span>

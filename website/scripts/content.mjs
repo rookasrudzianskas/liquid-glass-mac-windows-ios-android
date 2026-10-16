@@ -661,7 +661,15 @@ async function buildIcons() {
 async function buildDownloads() {
   const file = path.join(pub, "downloads/manifest.json");
   const manifest = await readJson(file, null);
-  await writeIfChanged(path.join(gen, "downloads.json"), json(manifest ?? { schema: 1, version: "1.0.0", generatedAt: null, items: [] }));
+  // Install notes that ship next to an artifact (for example an ad-hoc signed app).
+  const notes = {};
+  try {
+    const readme = await readFile(path.join(repo, "artifacts/apple/README.txt"), "utf8");
+    if (/not notarized/i.test(readme)) notes["macos-studio"] = "Ad-hoc signed, not notarized: the first time, Control-click Liquid Glass Studio and choose Open.";
+  } catch {
+    /* no notes */
+  }
+  await writeIfChanged(path.join(gen, "downloads.json"), json({ ...(manifest ?? { schema: 1, version: "1.0.0", generatedAt: null, items: [] }), notes }));
   log(`downloads: ${manifest ? `${manifest.items.filter((i) => i.available).length}/${manifest.items.length} available` : "no manifest yet"}`);
 }
 
