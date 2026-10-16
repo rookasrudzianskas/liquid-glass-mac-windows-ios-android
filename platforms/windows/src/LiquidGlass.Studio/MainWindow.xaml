@@ -8,7 +8,7 @@
         UseLayoutRounding="True"
         Background="{DynamicResource Studio.WindowBackground}"
         Foreground="{DynamicResource Studio.Foreground}"
-        FontFamily="{StaticResource Studio.Text}"
+        FontFamily="{StaticResource Studio.TextFont}"
         TextOptions.TextFormattingMode="Ideal">
   <Grid>
     <Grid.RowDefinitions>
@@ -32,7 +32,7 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,14,0,18">
           <Image Source="/Assets/icon-256.png" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
           <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="Liquid Glass" FontFamily="{StaticResource Studio.Display}" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock Text="Liquid Glass" FontFamily="{StaticResource Studio.DisplayFont}" FontSize="16" FontWeight="SemiBold" />
             <TextBlock Text="Engineering for Windows" FontSize="11" Foreground="{DynamicResource Studio.Secondary}" />
           </StackPanel>
         </StackPanel>

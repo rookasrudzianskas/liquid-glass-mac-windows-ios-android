@@ -24,15 +24,15 @@
     </Canvas>
 
     <lg:GlassToolbar VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,24,0,0">
-      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" ToolTip="Back" />
-      <Button Content="&#xE72A;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Forward" ToolTip="Forward" />
+      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" ToolTip="Back" />
+      <Button Content="&#xE72A;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Forward" ToolTip="Forward" />
       <lg:GlassToolbarSpacer Sizing="Fixed" />
       <Button Content="Photos" />
       <Button Content="Albums" />
       <Button Content="Shared" />
       <lg:GlassToolbarSpacer Sizing="Fixed" />
-      <Button Content="&#xE72D;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Share" ToolTip="Share" />
-      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" ToolTip="More" />
+      <Button Content="&#xE72D;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Share" ToolTip="Share" />
+      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" ToolTip="More" />
     </lg:GlassToolbar>
 
     <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,28" SelectedIndex="0" AutomationProperties.Name="Sections">

@@ -48,7 +48,7 @@ public partial class BlurPage : StudioPageBase
         var heading = new TextBlock
         {
             Text = title,
-            FontFamily = (FontFamily)FindResource("Studio.Display"),
+            FontFamily = (FontFamily)FindResource("Studio.DisplayFont"),
             FontSize = 24,
             FontWeight = FontWeights.SemiBold,
             Foreground = _ink,

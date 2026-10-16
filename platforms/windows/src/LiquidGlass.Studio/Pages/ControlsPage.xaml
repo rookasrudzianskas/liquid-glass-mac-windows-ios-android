@@ -12,7 +12,7 @@
     </Style>
     <Style x:Key="Icon" TargetType="lg:GlassButton">
       <Setter Property="IsIconOnly" Value="True" />
-      <Setter Property="FontFamily" Value="{StaticResource Studio.Icons}" />
+      <Setter Property="FontFamily" Value="{StaticResource Studio.IconFont}" />
       <Setter Property="FontWeight" Value="Normal" />
       <Setter Property="Margin" Value="0,0,10,0" />
     </Style>
@@ -67,9 +67,9 @@
               <ColumnDefinition />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="&#xE993;" FontFamily="{StaticResource Studio.Icons}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
+            <TextBlock Text="&#xE993;" FontFamily="{StaticResource Studio.IconFont}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
             <lg:GlassSlider x:Name="Volume" Grid.Column="1" Margin="12,0" Minimum="0" Maximum="100" Value="64" AutomationProperties.Name="Volume" />
-            <TextBlock Grid.Column="2" Text="&#xE995;" FontFamily="{StaticResource Studio.Icons}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
+            <TextBlock Grid.Column="2" Text="&#xE995;" FontFamily="{StaticResource Studio.IconFont}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
           </Grid>
           <Grid Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
@@ -77,7 +77,7 @@
               <ColumnDefinition />
               <ColumnDefinition Width="44" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="&#xE706;" FontFamily="{StaticResource Studio.Icons}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
+            <TextBlock Text="&#xE706;" FontFamily="{StaticResource Studio.IconFont}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
             <lg:GlassSlider x:Name="Warmth" Grid.Column="1" Margin="12,0" Minimum="0" Maximum="1" Value="0.3" Tint="#FF9F0A" AutomationProperties.Name="Warmth" />
             <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=Warmth, StringFormat=P0}" FontSize="13" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.8" />
           </Grid>
@@ -119,10 +119,10 @@
               <Separator />
               <lg:GlassMenuItem Header="Show hidden files" IsCheckable="True" StaysOpenOnClick="True" />
             </lg:GlassMenu>
-            <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="{StaticResource Studio.Icons}" Margin="10,0,0,0" AutomationProperties.Name="More">
-              <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" FontFamily="{StaticResource Studio.Text}" />
-              <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" FontFamily="{StaticResource Studio.Text}" />
-              <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" FontFamily="{StaticResource Studio.Text}" />
+            <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" Margin="10,0,0,0" AutomationProperties.Name="More">
+              <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" FontFamily="{StaticResource Studio.TextFont}" />
+              <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" FontFamily="{StaticResource Studio.TextFont}" />
+              <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" FontFamily="{StaticResource Studio.TextFont}" />
             </lg:GlassMenu>
           </StackPanel>
         </StackPanel>

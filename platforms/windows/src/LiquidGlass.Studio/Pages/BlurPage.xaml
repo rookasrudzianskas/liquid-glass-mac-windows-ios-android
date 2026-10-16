@@ -17,12 +17,12 @@
     <lg:GlassProgressiveBlur Edge="Bottom" Size="104" Blur="20" />
 
     <lg:GlassToolbar VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="24,20,24,0">
-      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" />
-      <Button Content="Journal" FontFamily="{StaticResource Studio.Display}" FontSize="15" />
+      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" />
+      <Button Content="Journal" FontFamily="{StaticResource Studio.DisplayFont}" FontSize="15" />
       <lg:GlassToolbarSpacer />
-      <Button Content="&#xE721;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Search" />
-      <Button Content="&#xE734;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Favorites" />
-      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" />
+      <Button Content="&#xE721;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Search" />
+      <Button Content="&#xE734;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Favorites" />
+      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" />
     </lg:GlassToolbar>
 
     <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,26" SelectedIndex="0" AutomationProperties.Name="Lists">

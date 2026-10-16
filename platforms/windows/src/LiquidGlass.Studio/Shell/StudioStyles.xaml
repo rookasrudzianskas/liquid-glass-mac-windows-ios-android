@@ -1,31 +1,31 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <FontFamily x:Key="Studio.Text">Segoe UI Variable Text, Segoe UI</FontFamily>
-  <FontFamily x:Key="Studio.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
-  <FontFamily x:Key="Studio.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+  <FontFamily x:Key="Studio.TextFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="Studio.DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+  <FontFamily x:Key="Studio.IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
   <Style x:Key="Studio.Icon" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Studio.Icons}" />
+    <Setter Property="FontFamily" Value="{StaticResource Studio.IconFont}" />
     <Setter Property="FontSize" Value="16" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
 
   <Style x:Key="Studio.Display" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Studio.Display}" />
+    <Setter Property="FontFamily" Value="{StaticResource Studio.DisplayFont}" />
     <Setter Property="FontSize" Value="40" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style x:Key="Studio.Title" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Studio.Display}" />
+    <Setter Property="FontFamily" Value="{StaticResource Studio.DisplayFont}" />
     <Setter Property="FontSize" Value="22" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style x:Key="Studio.Section" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Studio.Text}" />
+    <Setter Property="FontFamily" Value="{StaticResource Studio.TextFont}" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Opacity" Value="0.72" />
@@ -33,7 +33,7 @@
   </Style>
 
   <Style x:Key="Studio.Body" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Studio.Text}" />
+    <Setter Property="FontFamily" Value="{StaticResource Studio.TextFont}" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="TextWrapping" Value="Wrap" />
     <Setter Property="LineHeight" Value="20" />

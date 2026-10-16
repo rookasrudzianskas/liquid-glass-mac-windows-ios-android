@@ -119,16 +119,8 @@ public class ControlTests
         return string.Join(" < ", chain);
     }
 
-    private static DependencyObject? Hit(UIElement element, Point point)
-    {
-        DependencyObject? result = null;
-        VisualTreeHelper.HitTest(element, null, r =>
-        {
-            result = r.VisualHit;
-            return HitTestResultBehavior.Stop;
-        }, new PointHitTestParameters(point));
-        return result;
-    }
+    /// <summary>What mouse input would hit, as WPF finds it (honoring IsHitTestVisible).</summary>
+    private static DependencyObject? Hit(UIElement element, Point point) => element.InputHitTest(point) as DependencyObject;
 
     [Fact]
     public void ButtonsHaveTheWindowsSizes()

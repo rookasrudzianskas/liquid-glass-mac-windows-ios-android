@@ -64,7 +64,7 @@
 
         <TextBlock Text="Tint" Style="{StaticResource Label}" />
         <StackPanel x:Name="Tints" Orientation="Horizontal">
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="" Content="&#xE711;" FontFamily="{StaticResource Studio.Icons}" FontSize="10" FontWeight="Normal" AutomationProperties.Name="No tint" Click="OnTint" />
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="" Content="&#xE711;" FontFamily="{StaticResource Studio.IconFont}" FontSize="10" FontWeight="Normal" AutomationProperties.Name="No tint" Click="OnTint" />
           <lg:GlassButton Style="{StaticResource Chip}" Tag="#0A84FF" Tint="#0A84FF" AutomationProperties.Name="Blue" Click="OnTint" />
           <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF375F" Tint="#FF375F" AutomationProperties.Name="Pink" Click="OnTint" />
           <lg:GlassButton Style="{StaticResource Chip}" Tag="#30D158" Tint="#30D158" AutomationProperties.Name="Green" Click="OnTint" />
