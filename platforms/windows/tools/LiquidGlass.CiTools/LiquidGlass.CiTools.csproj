@@ -10,4 +10,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -200,6 +200,12 @@ public sealed class Spring
         Target = target;
     }
 
+    /// <summary>
+    /// Moves the current value by <paramref name="delta"/> without changing the velocity, for when the coordinate
+    /// space the spring animates in shifts.
+    /// </summary>
+    public void Shift(double delta) => Value += delta;
+
     /// <summary>Moves to <paramref name="value"/> immediately and stops.</summary>
     public void Jump(double value)
     {

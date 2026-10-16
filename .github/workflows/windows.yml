@@ -73,6 +73,13 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed = $true; "FAILED: $name" | Add-Content "$out\fxc.log" }
           }
           if ($failed) { throw "fxc failed" }
+          # The library embeds this bytecode only while it matches the sources it was compiled from.
+          $sources = [IO.File]::ReadAllBytes("$PWD\src\LiquidGlass.Wpf\Shaders\GlassSurface.fx") + [IO.File]::ReadAllBytes("$PWD\src\LiquidGlass.Wpf\Shaders\LiquidGlass.hlsli")
+          $hash = -join ([Security.Cryptography.SHA256]::Create().ComputeHash([byte[]]$sources) | ForEach-Object { $_.ToString("x2") })
+          Set-Content -NoNewline -Path "$out\GlassSurface.sha256" -Value "$hash`n"
+          $committed = (Get-Content src\LiquidGlass.Wpf\Shaders\Compiled\GlassSurface.sha256 -ErrorAction SilentlyContinue | Select-Object -First 1)
+          $state = if ($committed -eq $hash) { "current" } else { "STALE (committed $committed, sources $hash)" }
+          "precompiled shader: $state" | Tee-Object -Append -FilePath "$out\fxc.log"
 
       - name: Build
         run: |
@@ -91,12 +98,19 @@ jobs:
           dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- probe --out "$env:REPORT\probe" 2>&1 |
             Tee-Object -FilePath "$env:REPORT\probe.log"
 
+      - name: Render the glass gallery
+        if: always()
+        run: |
+          dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- gallery --out "$env:REPORT\gallery" --wallpaper "$PWD\..\..\assets\wallpapers\aurora-2048.jpg" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\gallery.log"
+
       - name: Summarize
         if: always()
         run: |
           $summary = "$env:REPORT\summary.txt"
           "commit $env:GITHUB_SHA, run $env:GITHUB_RUN_ID, finished $(Get-Date -Format o)" | Set-Content $summary
           "job status: ${{ job.status }}" | Add-Content $summary
+          Get-Content "$env:REPORT\shaders\fxc.log" -ErrorAction SilentlyContinue | Select-String "precompiled shader" | ForEach-Object { $_.Line } | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
             [xml]$x = Get-Content $trx.FullName
             $c = $x.TestRun.ResultSummary.Counters

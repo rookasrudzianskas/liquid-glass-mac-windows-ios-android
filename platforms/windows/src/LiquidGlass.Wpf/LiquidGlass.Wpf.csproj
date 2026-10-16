@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>LiquidGlass.Wpf</RootNamespace>
+    <AssemblyName>LiquidGlass.Wpf</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <PackageId>LiquidGlassEngineering.Wpf</PackageId>
+    <Title>Liquid Glass Engineering for WPF</Title>
+    <Description>Native Liquid Glass for WPF: refraction, the Clear and Regular materials, rim light and elastic interaction rendered by an HLSL pixel shader, with the same optical model as the SwiftUI and Jetpack Compose ports. GlassScene, GlassSurface, GlassButton, GlassToolbar, GlassTabBar, GlassSlider, GlassSwitch, GlassMenu and GlassProgressiveBlur, with a polished fallback where pixel shader 3.0 is unavailable, UI Automation, keyboard focus, high contrast and reduced motion.</Description>
+    <PackageTags>wpf;liquid-glass;glass;glassmorphism;refraction;blur;shader;hlsl;xaml;ui;controls;windows</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LiquidGlass.Core\LiquidGlass.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HLSL sources: compiled at run time with D3DCompile when the precompiled bytecode is missing or stale. -->
+    <EmbeddedResource Include="Shaders\*.fx;Shaders\*.hlsli" LogicalName="LiquidGlass.Wpf.Shaders.%(Filename)%(Extension)" />
+    <!-- Bytecode compiled by fxc on the Windows CI runner, with the SHA-256 of the sources it was compiled from. -->
+    <EmbeddedResource Include="Shaders\Compiled\*.ps;Shaders\Compiled\*.sha256" LogicalName="LiquidGlass.Wpf.Shaders.Compiled.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\packaging\icon.png" Pack="true" PackagePath="\" Link="icon.png" />
+  </ItemGroup>
+
+</Project>

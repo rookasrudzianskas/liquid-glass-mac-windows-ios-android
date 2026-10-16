@@ -16,6 +16,7 @@ internal static class Program
             return args[0] switch
             {
                 "probe" => RenderProbe.Run(options.Require("out")),
+                "gallery" => Gallery.Run(options.Require("out"), options.Require("wallpaper")),
                 _ => Usage(),
             };
         }
@@ -28,7 +29,7 @@ internal static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: LiquidGlass.CiTools probe --out <dir>");
+        Console.Error.WriteLine("usage: LiquidGlass.CiTools probe --out <dir>\n       LiquidGlass.CiTools gallery --out <dir> --wallpaper <jpg>");
         return 2;
     }
 }
