@@ -26,6 +26,14 @@ final class StudioUITests: XCTestCase {
         return condition()
     }
 
+    /// Drags content upward by a finger-like path from 75% to 30% of the
+    /// screen height, starting away from any control.
+    private func dragUp(_ app: XCUIApplication, x: CGFloat = 0.5) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.75))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.3))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.05)
+    }
+
     /// Lets animations run for `seconds` without asserting anything.
     private func settle(_ seconds: TimeInterval = 1) {
         RunLoop.current.run(until: Date().addingTimeInterval(seconds))
@@ -80,8 +88,8 @@ final class StudioUITests: XCTestCase {
         // switch itself, at the trailing end of its row.
         let clear = app.frame.height * 0.6
         for _ in 0..<6 where toggle.frame.maxY > clear {
-            app.swipeUp(velocity: .slow)
-            settle(2)
+            dragUp(app, x: 0.03)
+            settle(1)
         }
         XCTAssertLessThan(toggle.frame.maxY, clear)
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
@@ -102,6 +110,17 @@ final class StudioUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Sort: Oldest"].waitForExistence(timeout: 5))
     }
 
+    /// Glass controls track presses without stealing the scroll view's pan.
+    func testScrollStartingOnGlassButtonScrolls() {
+        let app = launch("controls")
+        let button = app.buttons["Large"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        let top = button.frame.minY
+        let start = button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -300)), withVelocity: .default, thenHoldForDuration: 0.05)
+        XCTAssertTrue(waitUntil { button.frame.minY < top - 100 }, "the scroll view did not scroll from a glass button")
+    }
+
     func testSliderFollowsDrag() {
         let app = launch("controls")
         let slider = app.sliders["Brightness"]
@@ -117,7 +136,7 @@ final class StudioUITests: XCTestCase {
         let title = app.staticTexts["Stories"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let top = title.frame.minY
-        app.swipeUp(velocity: .slow)
+        dragUp(app)
         XCTAssertTrue(waitUntil { title.frame.minY < top - 100 }, "stories did not scroll")
         settle(2)
         snap("stories-scrolled")

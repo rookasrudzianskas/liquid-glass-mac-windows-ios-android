@@ -178,19 +178,12 @@ struct GlassPressGestures: ViewModifier {
     func body(content: Content) -> some View {
         if let model {
             content
-                .onChange(of: tracking.wrappedValue) { _, isTracking in
-                    if !isTracking { model.pointerEnded() }
-                }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                        .updating(tracking) { _, state, _ in state = true }
-                        .onChanged { model.pointerChanged(local: $0.location) }
-                        .onEnded { _ in model.pointerEnded() }
-                )
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                        .onChanged { model.pointerChanged(global: $0.location) }
-                )
+                .modifier(GlassTouchInput(
+                    space: LocalCoordinateSpace.local, tracking: tracking,
+                    changed: { model.pointerChanged(local: $0) },
+                    changedGlobally: { model.pointerChanged(global: $0) },
+                    ended: { model.pointerEnded() }
+                ))
                 .onContinuousHover(coordinateSpace: .local) { phase in
                     switch phase {
                     case .active(let location): model.hover(location)
@@ -200,5 +193,55 @@ struct GlassPressGestures: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// Reports a finger or pointer pressing the view, in `space` and in the
+/// global space, without taking the touch from buttons or scroll views.
+struct GlassTouchInput<Space: CoordinateSpaceProtocol>: ViewModifier {
+    let space: Space
+    let tracking: GestureState<Bool>
+    /// The press began or moved, in `space`.
+    let changed: (CGPoint) -> Void
+    /// The same location in the global space.
+    let changedGlobally: (CGPoint) -> Void
+    let ended: () -> Void
+
+    func body(content: Content) -> some View {
+        #if canImport(UIKit)
+        if #available(iOS 18.0, *) {
+            content.gesture(GlassTouchTracker(
+                space: space,
+                changed: { local, global in
+                    changed(local)
+                    changedGlobally(global)
+                },
+                ended: ended
+            ))
+        } else {
+            drags(content)
+        }
+        #else
+        drags(content)
+        #endif
+    }
+
+    /// Two simultaneous drags: one in `space` and one in global coordinates,
+    /// which don't move with the view.
+    private func drags(_ content: Content) -> some View {
+        content
+            .onChange(of: tracking.wrappedValue) { _, isTracking in
+                if !isTracking { ended() }
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: space)
+                    .updating(tracking) { _, state, _ in state = true }
+                    .onChanged { changed($0.location) }
+                    .onEnded { _ in ended() }
+            )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                    .onChanged { changedGlobally($0.location) }
+            )
     }
 }

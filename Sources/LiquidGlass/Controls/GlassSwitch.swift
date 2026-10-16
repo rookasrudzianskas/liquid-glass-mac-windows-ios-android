@@ -109,7 +109,8 @@ private struct GlassSwitchControl: View {
 
     @State private var thumb = GlassThumbMotion()
     @State private var drag: DragState?
-    @GestureState private var pressed = false
+    @State private var touching = false
+    @GestureState private var tracking = false
     @Environment(\.glassMotion) private var inheritedMotion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
@@ -153,10 +154,12 @@ private struct GlassSwitchControl: View {
         // cancel the drag gestures below.
         .onTapGesture { isOn.toggle() }
         // While held, the thumb lifts into glass.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .updating($pressed) { _, state, _ in state = true }
-        )
+        .modifier(GlassTouchInput(
+            space: LocalCoordinateSpace.local, tracking: $tracking,
+            changed: { _ in if !touching { touching = true } },
+            changedGlobally: { _ in },
+            ended: { touching = false }
+        ))
         // Dragging carries the thumb; releasing commits the side it is on.
         .simultaneousGesture(
             DragGesture(minimumDistance: 3)
@@ -167,7 +170,7 @@ private struct GlassSwitchControl: View {
                 }
                 .onEnded { _ in commitDrag(motion: resolvedMotion) }
         )
-        .onChange(of: pressed) { _, isPressed in
+        .onChange(of: touching) { _, isPressed in
             thumb.setPressed(isPressed && interactive, motion: resolvedMotion)
             // A drag the system cancelled (a scroll view took over) returns
             // the thumb; `onEnded` has already run for a completed drag.

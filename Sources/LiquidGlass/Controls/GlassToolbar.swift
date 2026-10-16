@@ -72,24 +72,17 @@ public struct GlassToolbar<Content: View>: View {
         }
         .coordinateSpace(.named(space))
         .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named(space))
-                .updating($tracking) { _, state, _ in state = true }
-                .onChanged { layout.pointerChanged(at: $0.location, enabled: options.interactive) }
-                .onEnded { _ in layout.pointerEnded() }
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                .onChanged { layout.pointerChanged(global: $0.location) }
-        )
+        .modifier(GlassTouchInput(
+            space: NamedCoordinateSpace.named(space), tracking: $tracking,
+            changed: { layout.pointerChanged(at: $0, enabled: options.interactive) },
+            changedGlobally: { layout.pointerChanged(global: $0) },
+            ended: { layout.pointerEnded() }
+        ))
         .onContinuousHover(coordinateSpace: .named(space)) { phase in
             switch phase {
             case .active(let location): layout.hover(at: location, enabled: options.interactive)
             case .ended: layout.hover(at: nil, enabled: options.interactive)
             }
-        }
-        .onChange(of: tracking) { _, isTracking in
-            if !isTracking { layout.pointerEnded() }
         }
         .accessibilityElement(children: .contain)
     }
