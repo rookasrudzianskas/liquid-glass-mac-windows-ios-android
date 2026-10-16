@@ -95,7 +95,8 @@ class GlassRenderingTest {
             val area = android.graphics.Rect(bounds.left.toInt(), bounds.top.toInt(), bounds.left.toInt() + SceneWidth, bounds.top.toInt() + SceneHeight)
             PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
         }
-        assertTrue("PixelCopy timed out", done.await(5, TimeUnit.SECONDS))
+        // The first copy on a cold software-rendered emulator waits for every shader to compile.
+        assertTrue("PixelCopy timed out", done.await(Slow, TimeUnit.SECONDS))
         assertEquals("PixelCopy failed", PixelCopy.SUCCESS, result)
         return bitmap
     }
@@ -112,7 +113,7 @@ class GlassRenderingTest {
             }
             Choreographer.getInstance().postFrameCallback(callback)
         }
-        assertTrue("frames never arrived", done.await(10, TimeUnit.SECONDS))
+        assertTrue("frames never arrived", done.await(Slow, TimeUnit.SECONDS))
     }
 
     private fun Bitmap.color(x: Int, y: Int): Color = Color(getPixel(x, y))
@@ -302,5 +303,8 @@ class GlassRenderingTest {
         const val SettleFrames = 12
         const val RetryFrames = 6
         const val Patience = 8_000L
+
+        /** Seconds to wait for a frame or a pixel copy before giving up. */
+        const val Slow = 30L
     }
 }
