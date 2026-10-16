@@ -46,8 +46,17 @@ public sealed class GlassLens : FrameworkElement
     /// <summary>The frost blur: WPF's Gaussian uses σ = radius / 3, so 22 gives σ = 7.33 (OPTICS §3).</summary>
     private const double FrostRadius = 22;
 
+    // Shader path: the effect runs over an empty rectangle and reads the frosted copy through a brush, so WPF
+    // realizes the copy (and its blur) as a brush input instead of nesting the blur inside the effect's layer.
     private readonly Border _clipHost = new() { IsHitTestVisible = false };
     private readonly Border _effectHost = new();
+    private readonly System.Windows.Shapes.Rectangle _effectBounds = new() { Fill = Brushes.Transparent, IsHitTestVisible = false };
+    private readonly VisualBrush _input = new() { ViewboxUnits = BrushMappingMode.Absolute, Stretch = Stretch.Fill };
+
+    // The copy of what lies beneath: invisible on screen in the shader path (a brush input), clipped to the
+    // outline in the fallback path.
+    private readonly Border _copyHost = new() { IsHitTestVisible = false };
+    private readonly Border _copyRoot = new();
     private readonly Border _frame = new() { ClipToBounds = true };
     private readonly Grid _sources = new();
     private readonly LensOverlay _overlay;
@@ -56,6 +65,7 @@ public sealed class GlassLens : FrameworkElement
     private GlassShaderEffect? _shader;
     private GlassScene? _scene;
     private Rect? _shapeOverride;
+    private Visual? _localBackdrop;
     private Point _glowCenter;
     private double _glowAmount;
     private bool _sourcesDirty = true;
@@ -73,8 +83,12 @@ public sealed class GlassLens : FrameworkElement
     {
         _overlay = new LensOverlay(this);
         _frame.Child = _sources;
-        _effectHost.Child = _frame;
+        _copyRoot.Child = _frame;
+        _copyHost.Child = _copyRoot;
+        _input.Visual = _copyRoot;
+        _effectHost.Child = _effectBounds;
         _clipHost.Child = _effectHost;
+        AddVisualChild(_copyHost);
         AddVisualChild(_clipHost);
         AddVisualChild(_overlay);
         Loaded += OnLoaded;
@@ -127,8 +141,23 @@ public sealed class GlassLens : FrameworkElement
 
     internal double GlowAmount => _glowAmount;
 
-    /// <summary>Visual children: the glass and its overlay.</summary>
-    protected override int VisualChildrenCount => 2;
+    /// <summary>Visual children: the copy, the shader glass and the overlay.</summary>
+    protected override int VisualChildrenCount => 3;
+
+    /// <summary>
+    /// Part of the control the surface belongs to that lies beneath the glass and should be refracted with the
+    /// backdrop: the track under a slider or switch thumb. Null for none.
+    /// </summary>
+    internal Visual? LocalBackdrop
+    {
+        get => _localBackdrop;
+        set
+        {
+            if (ReferenceEquals(_localBackdrop, value)) return;
+            _localBackdrop = value;
+            InvalidateSources();
+        }
+    }
 
     /// <summary>Draws the outline at <paramref name="bounds"/> (lens coordinates) instead of the lens's own bounds; null restores them.</summary>
     internal void SetShape(Rect? bounds)
@@ -170,14 +199,16 @@ public sealed class GlassLens : FrameworkElement
     /// <inheritdoc />
     protected override Visual GetVisualChild(int index) => index switch
     {
-        0 => _clipHost,
-        1 => _overlay,
+        0 => _copyHost,
+        1 => _clipHost,
+        2 => _overlay,
         _ => throw new ArgumentOutOfRangeException(nameof(index)),
     };
 
     /// <inheritdoc />
     protected override Size MeasureOverride(Size availableSize)
     {
+        _copyHost.Measure(_lensRect.Size);
         _clipHost.Measure(_lensRect.Size);
         _overlay.Measure(availableSize);
         return default;
@@ -186,7 +217,9 @@ public sealed class GlassLens : FrameworkElement
     /// <inheritdoc />
     protected override Size ArrangeOverride(Size finalSize)
     {
+        _copyHost.Arrange(_lensRect);
         _clipHost.Arrange(_lensRect);
+        _input.Viewbox = new Rect(_lensRect.Size);
         _overlay.Arrange(new Rect(finalSize));
         return finalSize;
     }
@@ -275,18 +308,26 @@ public sealed class GlassLens : FrameworkElement
                 _effectHost.Effect = EnsureShader();
                 _clipHost.Clip = GlassGeometry.Inflate(Offset(shape, _lensRect), Radius, RimReach);
                 _clipHost.Visibility = Visibility.Visible;
+                // Kept in the tree for layout and alignment, but never drawn on screen: an ancestor at zero opacity is
+                // skipped by the renderer, while the brush renders the copy from its own root.
+                _copyHost.Opacity = 0;
+                _copyHost.Clip = null;
+                _copyHost.Visibility = Visibility.Visible;
                 break;
             }
             case GlassLensMode.Fallback:
                 _lensRect = shape;
                 _effectHost.Effect = null;
-                _clipHost.Clip = GlassGeometry.Create(Offset(shape, _lensRect), Radius);
-                _clipHost.Visibility = Visibility.Visible;
+                _clipHost.Visibility = Visibility.Collapsed;
+                _copyHost.Opacity = 1;
+                _copyHost.Clip = GlassGeometry.Create(Offset(shape, _lensRect), Radius);
+                _copyHost.Visibility = Visibility.Visible;
                 break;
             default:
                 _lensRect = shape;
                 _effectHost.Effect = null;
                 _clipHost.Visibility = Visibility.Collapsed;
+                _copyHost.Visibility = Visibility.Collapsed;
                 break;
         }
         _sources.Margin = new Thickness(-frostPad);
@@ -314,7 +355,7 @@ public sealed class GlassLens : FrameworkElement
         if (_shader is not null) return _shader;
         var pixelShader = GlassShaderLibrary.SurfacePixelShader;
         if (pixelShader is null) return null;
-        _shader = new GlassShaderEffect(pixelShader);
+        _shader = new GlassShaderEffect(pixelShader) { Input = _input };
         return _shader;
     }
 
@@ -358,6 +399,7 @@ public sealed class GlassLens : FrameworkElement
         foreach (var layer in scene.BackdropLayers)
             if (IsPaintedBefore(layer, this, scene)) AddLayer(layer.BrushTarget);
         foreach (var lens in ancestors) AddLayer(lens);
+        if (_localBackdrop is not null) AddLayer(_localBackdrop);
     }
 
     private void AddLayer(Visual target)

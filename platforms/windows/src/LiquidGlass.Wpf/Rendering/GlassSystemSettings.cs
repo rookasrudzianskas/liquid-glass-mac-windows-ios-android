@@ -16,6 +16,10 @@ namespace LiquidGlass.Wpf.Rendering;
 internal static class GlassSystemSettings
 {
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+    private const string AccentKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
+
+    /// <summary>The Windows default accent (#0078D4), used when the setting cannot be read.</summary>
+    public static readonly Color DefaultAccent = Color.FromRgb(0x00, 0x78, 0xD4);
     private const int WmSettingChange = 0x001A;
     private const int WmThemeChanged = 0x031A;
     private const int WmSysColorChange = 0x0015;
@@ -36,6 +40,9 @@ internal static class GlassSystemSettings
 
     /// <summary>Windows apps are set to dark mode.</summary>
     public static bool AppsUseDarkTheme => _current.Dark;
+
+    /// <summary>The Windows accent color (Settings › Personalization › Colors).</summary>
+    public static Color AccentColor => _current.Accent;
 
     /// <summary>Transparency effects are on.</summary>
     public static bool TransparencyEnabled => _current.Transparency;
@@ -90,30 +97,38 @@ internal static class GlassSystemSettings
             using var key = Registry.CurrentUser.OpenSubKey(PersonalizeKey);
             var light = key?.GetValue("AppsUseLightTheme") is int appsLight ? appsLight != 0 : true;
             var transparency = key?.GetValue("EnableTransparency") is int enabled ? enabled != 0 : true;
-            return new Snapshot(!light, transparency);
+            using var accentKey = Registry.CurrentUser.OpenSubKey(AccentKey);
+            // AccentColorMenu is stored as 0xAABBGGRR.
+            var accent = accentKey?.GetValue("AccentColorMenu") is int abgr
+                ? Color.FromRgb((byte)(abgr & 0xFF), (byte)((abgr >> 8) & 0xFF), (byte)((abgr >> 16) & 0xFF))
+                : DefaultAccent;
+            return new Snapshot(!light, transparency, accent);
         }
         catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or System.IO.IOException)
         {
-            return new Snapshot(false, true);
+            return new Snapshot(false, true, DefaultAccent);
         }
     }
 
     private readonly struct Snapshot : IEquatable<Snapshot>
     {
-        public Snapshot(bool dark, bool transparency)
+        public Snapshot(bool dark, bool transparency, Color accent)
         {
             Dark = dark;
             Transparency = transparency;
+            Accent = accent;
         }
 
         public bool Dark { get; }
 
         public bool Transparency { get; }
 
-        public bool Equals(Snapshot other) => Dark == other.Dark && Transparency == other.Transparency;
+        public Color Accent { get; }
+
+        public bool Equals(Snapshot other) => Dark == other.Dark && Transparency == other.Transparency && Accent == other.Accent;
 
         public override bool Equals(object? obj) => obj is Snapshot other && Equals(other);
 
-        public override int GetHashCode() => (Dark ? 1 : 0) | (Transparency ? 2 : 0);
+        public override int GetHashCode() => (Dark ? 1 : 0) | (Transparency ? 2 : 0) | Accent.GetHashCode() << 2;
     }
 }

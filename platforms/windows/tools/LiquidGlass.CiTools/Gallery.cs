@@ -73,7 +73,13 @@ internal static class Gallery
                 {
                     report.AppendLine(GlassDiagnostics.Describe());
                     report.AppendLine($"can use shader here: {GlassDiagnostics.CanUseShader(window)}");
-                    foreach (var (name, surface) in surfaces) report.AppendLine($"{name}: {surface.RenderedMode}");
+                    foreach (var (name, surface) in surfaces)
+                    {
+                        var source = DependencyPropertyHelper.GetValueSource(surface, Control.ForegroundProperty);
+                        report.AppendLine($"{name}: {surface.RenderedMode}, dark {GlassScene.GetIsDark(surface)}, content foreground {GlassScene.GetContentForeground(surface)}, " +
+                            $"foreground {surface.Foreground} from {source.BaseValueSource}{(source.IsExpression ? " (expression)" : "")}, " +
+                            $"binding {System.Windows.Data.BindingOperations.GetBindingExpression(surface, Control.ForegroundProperty)?.Status}");
+                    }
                     var hwnd = new WindowInteropHelper(window).Handle;
                     WindowCapture.SavePng(hwnd, Path.Combine(outDirectory, "gallery.png"));
                 }

@@ -85,4 +85,131 @@
     </Style.Triggers>
   </Style>
 
+  <!-- Value controls -->
+  <Style x:Key="GlassSliderRepeatButton" TargetType="{x:Type RepeatButton}">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="IsTabStop" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type RepeatButton}">
+          <Rectangle Fill="Transparent" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="GlassSliderThumb" TargetType="{x:Type Thumb}">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type Thumb}">
+          <Grid Background="Transparent">
+            <lg:GlassValueThumb x:Name="PART_Visual" GrowX="2.5" GrowY="2" LensRefraction="5" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="{x:Type lg:GlassSlider}">
+    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="MinWidth" Value="80" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassSlider}">
+          <Grid x:Name="Root" Background="Transparent" Height="28">
+            <Grid x:Name="PART_TrackVisual" Height="6" VerticalAlignment="Center" Margin="0">
+              <Border CornerRadius="3" Background="#4D808080" />
+              <Border x:Name="PART_Fill" CornerRadius="3" HorizontalAlignment="Left" />
+            </Grid>
+            <Border x:Name="FocusRing" Margin="-4,4" CornerRadius="10" BorderThickness="2" Visibility="Collapsed"
+                    BorderBrush="{TemplateBinding Foreground}" IsHitTestVisible="False" />
+            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+              <Track.DecreaseRepeatButton>
+                <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Style="{StaticResource GlassSliderRepeatButton}" />
+              </Track.DecreaseRepeatButton>
+              <Track.IncreaseRepeatButton>
+                <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Style="{StaticResource GlassSliderRepeatButton}" />
+              </Track.IncreaseRepeatButton>
+              <Track.Thumb>
+                <Thumb Style="{StaticResource GlassSliderThumb}" />
+              </Track.Thumb>
+            </Track>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Orientation" Value="Vertical">
+              <Setter TargetName="Root" Property="Height" Value="NaN" />
+              <Setter TargetName="Root" Property="Width" Value="28" />
+              <Setter TargetName="PART_TrackVisual" Property="Height" Value="NaN" />
+              <Setter TargetName="PART_TrackVisual" Property="Width" Value="6" />
+              <Setter TargetName="PART_TrackVisual" Property="VerticalAlignment" Value="Stretch" />
+              <Setter TargetName="PART_TrackVisual" Property="HorizontalAlignment" Value="Center" />
+              <Setter TargetName="FocusRing" Property="Margin" Value="4,-4" />
+            </Trigger>
+            <Trigger Property="lg:GlassScene.IsFocusVisible" Value="True">
+              <Setter TargetName="FocusRing" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Orientation" Value="Vertical">
+        <Setter Property="MinWidth" Value="28" />
+        <Setter Property="MinHeight" Value="80" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style TargetType="{x:Type lg:GlassSwitch}">
+    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassSwitch}">
+          <Grid x:Name="Root" Background="Transparent">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ContentPresenter x:Name="Label" Margin="0,0,12,0" RecognizesAccessKey="True"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+            <Grid Grid.Column="1" Width="54" Height="24" VerticalAlignment="Center">
+              <Border x:Name="FocusRing" Margin="-3" CornerRadius="15" BorderThickness="2" Visibility="Collapsed"
+                      BorderBrush="{TemplateBinding Foreground}" IsHitTestVisible="False" />
+              <Border x:Name="PART_Track" CornerRadius="12" />
+              <lg:GlassValueThumb x:Name="PART_Thumb" Width="32" Height="20" Margin="2" HorizontalAlignment="Left"
+                                  GrowX="9" GrowY="5.5" LensRefraction="7.75" />
+            </Grid>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="Label" Property="Margin" Value="0" />
+            </Trigger>
+            <Trigger Property="lg:GlassScene.IsFocusVisible" Value="True">
+              <Setter TargetName="FocusRing" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
 </ResourceDictionary>
