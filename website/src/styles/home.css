@@ -932,3 +932,222 @@
 .button--onglass:hover {
   background: color-mix(in srgb, var(--glass-fg) 16%, transparent);
 }
+
+/* Controls stage */
+
+.controls__stage {
+  min-height: 460px;
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 5vw, 64px) var(--gutter);
+  border-radius: 40px;
+  box-shadow: var(--shadow-2);
+}
+
+@supports (corner-shape: superellipse(2)) {
+  .controls__stage {
+    border-radius: 61px;
+    corner-shape: superellipse(1.705);
+  }
+}
+
+.controls__panel {
+  display: grid;
+  gap: 40px;
+  width: min(760px, 100%);
+  color: #fff;
+}
+
+.controls__group {
+  display: grid;
+  gap: 14px;
+}
+
+.controls__label {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+
+.controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.controls__note {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+
+.controls__group--switches {
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 32px;
+}
+
+.controls__switch {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 17px;
+  font-weight: 620;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Glass button */
+
+.glass-button {
+  display: inline-flex;
+  flex: none;
+}
+
+.glass-button__hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 0 22px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--glass-fg);
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.glass-button--small .glass-button__hit {
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+.glass-button--large .glass-button__hit {
+  padding: 0 28px;
+}
+
+.glass-button--icon .glass-button__hit {
+  padding: 0;
+}
+
+.glass-button--tinted .glass-button__hit {
+  color: #fff;
+}
+
+.glass-button__hit:focus-visible {
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+/* Glass switch */
+
+.glass-switch {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass-switch:focus-visible {
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.glass-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.42);
+  transition: background-color 0.3s;
+}
+
+.glass-switch__track[data-on] {
+  background: var(--switch-on);
+}
+
+.glass-switch__thumb {
+  position: absolute;
+  left: 0;
+  display: block;
+  border-radius: 999px;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.glass-switch__knob,
+.glass-slider__knob {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.22),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+/* Glass slider */
+
+.glass-slider {
+  position: relative;
+  width: 100%;
+  touch-action: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass-slider:focus-visible {
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+
+.glass-slider__track,
+.glass-slider__fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 999px;
+}
+
+.glass-slider__track {
+  right: 0;
+  background: rgba(120, 120, 128, 0.34);
+}
+
+.glass-slider__thumb {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  margin-top: -12px;
+  border-radius: 999px;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+/* Painted into the WebGL scene: hide the DOM copy so glass can refract it. */
+.stage[data-renderer="webgl"] .glass-content {
+  opacity: 0;
+}
+
+@media (max-width: 560px) {
+  .controls__group--switches {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

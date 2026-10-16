@@ -169,3 +169,20 @@ void main() {
   color.rgb += (hash(gl_FragCoord.xy) - 0.5) / 255.0 * color.a;
   outColor = color * uOpacity;
 }`;
+
+/** Solid shapes drawn into the scene (tracks, fills), so glass refracts them. */
+export const CONTENT_FS = `${HEADER}
+${library}
+uniform vec2 uCenter;
+uniform vec2 uSize;
+uniform float uRadius;
+uniform float uPixel;
+uniform vec4 uColor;
+in vec2 vPos;
+out vec4 outColor;
+void main() {
+  vec3 field = lgShapeField(vPos - uCenter, uSize, lgShapeParams(uSize, uRadius));
+  float cover = lgCoverage(field.x, uPixel);
+  if (cover <= 0.0) discard;
+  outColor = vec4(uColor.rgb * uColor.a, uColor.a) * cover;
+}`;

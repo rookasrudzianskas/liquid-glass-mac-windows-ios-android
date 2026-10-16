@@ -13,7 +13,7 @@ const SITE_URL = (process.env.LG_SITE_URL || "https://liquid-glass-engineering.v
 
 let template = await readFile(path.join(dist, "index.html"), "utf8");
 // Inline the stylesheet: one render-blocking request fewer on every page.
-for (const m of [...template.matchAll(/<link rel="stylesheet"[^>]*href="\/(assets\/[^"]+\.css)"[^>]*>/g)]) {
+for (const m of template.matchAll(/<link rel="stylesheet"[^>]*href="\/(assets\/[^"]+\.css)"[^>]*>/g)) {
   const css = await readFile(path.join(dist, m[1]), "utf8");
   template = template.replace(m[0], () => `<style>${css}</style>`);
 }

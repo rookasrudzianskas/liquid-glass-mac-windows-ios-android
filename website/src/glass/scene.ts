@@ -6,7 +6,7 @@
 
 import { glow as glowParams } from "@lg/reference";
 import { GlassRenderer } from "./renderer";
-import type { BackdropImage, Material, SurfaceFrame } from "./renderer";
+import type { BackdropImage, ContentRect, Material, SurfaceFrame } from "./renderer";
 
 export type Radius = number | "capsule";
 export type Appearance = "light" | "dark";
@@ -34,6 +34,13 @@ export interface Surface {
   order: number;
 }
 
+/** A DOM element painted into the backdrop as a solid shape, so glass refracts it. */
+export interface Content {
+  el: HTMLElement;
+  radius: Radius;
+  color: readonly [number, number, number, number];
+}
+
 /** Called once per frame before rendering; return true to keep animating. */
 export type Ticker = (dt: number, now: number) => boolean;
 
@@ -56,6 +63,7 @@ export class GlassScene {
   kind: RendererKind = "pending";
 
   private surfaces = new Set<Surface>();
+  private contents = new Set<Content>();
   private tickers = new Set<Ticker>();
   private frame = 0;
   private last = 0;
@@ -261,6 +269,20 @@ export class GlassScene {
     this.invalidate();
   }
 
+  addContent(el: HTMLElement, radius: Radius, color: readonly [number, number, number, number]): Content {
+    const c: Content = { el, radius, color };
+    this.contents.add(c);
+    this.surfaceResize.observe(el);
+    this.invalidate();
+    return c;
+  }
+
+  removeContent(c: Content) {
+    this.contents.delete(c);
+    this.surfaceResize.unobserve(c.el);
+    this.invalidate();
+  }
+
   surfaceFor(el: HTMLElement): Surface | null {
     for (const s of this.surfaces) if (s.el === el) return s;
     return null;
@@ -316,6 +338,22 @@ export class GlassScene {
     const canvasRect = this.canvas.getBoundingClientRect();
     const sx = canvasRect.width ? this.cssSize.width / canvasRect.width : 1;
     const sy = canvasRect.height ? this.cssSize.height / canvasRect.height : 1;
+    if (this.renderer) {
+      const rects: ContentRect[] = [];
+      for (const c of this.contents) {
+        const rect = c.el.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        rects.push({
+          x: (rect.left - canvasRect.left + rect.width / 2) * sx,
+          y: (rect.top - canvasRect.top + rect.height / 2) * sy,
+          width: rect.width * sx,
+          height: rect.height * sy,
+          radius: c.radius === "capsule" ? -1 : c.radius,
+          color: c.color,
+        });
+      }
+      this.renderer.setContent(rects);
+    }
     const list = [...this.surfaces].sort((a, b) => Number(a.options.nested) - Number(b.options.nested) || a.order - b.order);
     const out: SurfaceFrame[] = [];
     for (const s of list) {
@@ -357,6 +395,7 @@ export class GlassScene {
     this.renderer?.destroy();
     this.renderer = null;
     this.surfaces.clear();
+    this.contents.clear();
     this.tickers.clear();
   }
 }

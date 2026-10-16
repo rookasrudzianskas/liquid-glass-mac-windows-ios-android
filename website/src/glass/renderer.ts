@@ -13,6 +13,7 @@ import { materials } from "@lg/reference";
 import {
   BACKDROP_FS,
   BLUR_FS,
+  CONTENT_FS,
   COPY_FS,
   DOWNSAMPLE_FS,
   FULLSCREEN_VS,
@@ -43,6 +44,18 @@ export interface SurfaceFrame {
   glow: number;
   glowRadius: number;
   contrast: boolean;
+}
+
+/** A solid shape painted into the backdrop (CSS pixels, center-based). */
+export interface ContentRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Corner radius in CSS pixels, or -1 for a capsule. */
+  radius: number;
+  /** sRGB color with alpha, unpremultiplied. */
+  color: readonly [number, number, number, number];
 }
 
 export interface BackdropImage {
@@ -93,6 +106,7 @@ export class GlassRenderer {
     blur: Program;
     copy: Program;
     glass: Program;
+    content: Program;
   };
   private triangle!: WebGLVertexArrayObject;
   private quad!: WebGLVertexArrayObject;
@@ -149,6 +163,7 @@ export class GlassRenderer {
       blur: this.program(FULLSCREEN_VS, BLUR_FS),
       copy: this.program(FULLSCREEN_VS, COPY_FS),
       glass: this.program(GLASS_VS, GLASS_FS),
+      content: this.program(GLASS_VS, CONTENT_FS),
     };
     this.triangle = this.vao(new Float32Array([-1, -1, 3, -1, -1, 3]));
     this.quad = this.vao(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
@@ -312,6 +327,53 @@ export class GlassRenderer {
     this.backdropDirty = true;
   }
 
+  private content: ContentRect[] = [];
+
+  /** Shapes painted over the backdrop image; changing them re-blurs the frost. */
+  setContent(rects: ContentRect[]) {
+    const a = this.content;
+    const same =
+      a.length === rects.length &&
+      a.every((r, i) => {
+        const b = rects[i];
+        return (
+          b &&
+          Math.abs(r.x - b.x) < 0.01 &&
+          Math.abs(r.y - b.y) < 0.01 &&
+          Math.abs(r.width - b.width) < 0.01 &&
+          Math.abs(r.height - b.height) < 0.01 &&
+          r.radius === b.radius &&
+          r.color.every((c, j) => Math.abs(c - (b.color[j] ?? 0)) < 0.002)
+        );
+      });
+    if (!same) {
+      this.content = rects;
+      this.backdropDirty = true;
+    }
+  }
+
+  private drawContent() {
+    if (!this.content.length) return;
+    const gl = this.gl;
+    const p = this.programs.content;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(p.program);
+    gl.uniform2f(this.uniform(p, "uViewport"), this.cssWidth, this.cssHeight);
+    gl.uniform1f(this.uniform(p, "uPixel"), this.pixel);
+    gl.bindVertexArray(this.quad);
+    for (const r of this.content) {
+      const pad = 2;
+      gl.uniform4f(this.uniform(p, "uRect"), r.x - r.width / 2 - pad, r.y - r.height / 2 - pad, r.width + 2 * pad, r.height + 2 * pad);
+      gl.uniform2f(this.uniform(p, "uCenter"), r.x, r.y);
+      gl.uniform2f(this.uniform(p, "uSize"), r.width, r.height);
+      gl.uniform1f(this.uniform(p, "uRadius"), r.radius);
+      gl.uniform4f(this.uniform(p, "uColor"), r.color[0], r.color[1], r.color[2], r.color[3]);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    gl.disable(gl.BLEND);
+  }
+
   private fit(info: BackdropImage | null) {
     if (!info) return [0, 0, this.cssWidth, this.cssHeight] as const;
     const scale = Math.max(this.cssWidth / info.width, this.cssHeight / info.height);
@@ -404,6 +466,7 @@ export class GlassRenderer {
     gl.uniform4f(this.uniform(p, "uFitB"), ...this.fit(this.imageInfo.b));
     gl.uniform1f(this.uniform(p, "uMix"), this.images.b ? this.crossfade : 0);
     this.fullscreen(p);
+    this.drawContent();
 
     // Regular frost: sigma 7.33 at half CSS resolution...
     this.downsample(this.scene, this.halfA);

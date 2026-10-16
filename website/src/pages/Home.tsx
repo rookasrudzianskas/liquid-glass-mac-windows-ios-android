@@ -8,6 +8,7 @@ import { Static } from "../components/Static";
 import type { Head } from "../router";
 import { Hero } from "./home/Hero";
 import { Platforms } from "./home/Platforms";
+import { Controls } from "./home/Controls";
 import { BevelDiagram, CornerDiagram, RefractionDiagram, RimDiagram, SpringDiagram, ToneDiagram } from "./home/Diagrams";
 import { ArrowRightIcon, DownloadIcon, GaugeIcon, GitHubIcon, LayersIcon, ShieldIcon } from "../components/Icons";
 
@@ -167,6 +168,8 @@ export default function Home() {
           </ul>
         </div>
       </section>
+
+      <Controls />
 
       <Platforms />
 
