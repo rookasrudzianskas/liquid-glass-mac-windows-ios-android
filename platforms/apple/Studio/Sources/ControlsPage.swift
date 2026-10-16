@@ -41,16 +41,16 @@ struct ControlsPage: View {
     private var buttons: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Buttons")
-            HStack(spacing: 10) {
+            FlowLayout {
                 GlassButton("Small") {}.controlSize(.small)
                 GlassButton("Regular") {}
                 GlassButton("Large") {}.controlSize(.large)
             }
-            HStack(spacing: 10) {
+            FlowLayout {
                 GlassButton("Prominent", systemImage: "star.fill", prominent: true) {}
                 GlassButton("Tinted", tint: Color(red: 1, green: 0.176, blue: 0.333)) {}
             }
-            HStack(spacing: 10) {
+            FlowLayout {
                 GlassButton("Regular glass", systemImage: "circle.hexagongrid", material: .regular) {}
                 GlassButton("Disabled") {}.disabled(true)
             }
@@ -60,7 +60,7 @@ struct ControlsPage: View {
     private var iconButtons: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Icon buttons")
-            HStack(spacing: 12) {
+            FlowLayout(spacing: 12) {
                 GlassButton(icon: "play.fill", label: "Play") {}.controlSize(.small)
                 GlassButton(icon: "heart.fill", label: "Like") { likes += 1 }
                 GlassButton(icon: "bookmark", label: "Save") {}
@@ -129,7 +129,7 @@ struct ControlsPage: View {
     private var menus: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Menu")
-            HStack(spacing: 12) {
+            FlowLayout(spacing: 12) {
                 GlassMenu("Sort: \(sort)", systemImage: "arrow.up.arrow.down") {
                     GlassMenuItem("Newest", systemImage: "clock") { sort = "Newest" }
                     GlassMenuItem("Oldest", systemImage: "clock.arrow.circlepath") { sort = "Oldest" }

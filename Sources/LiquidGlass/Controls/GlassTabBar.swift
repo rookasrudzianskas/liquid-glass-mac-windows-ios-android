@@ -160,6 +160,13 @@ public struct GlassTab<Value: Hashable>: View {
     public var body: some View {
         let selected = context?.selection == AnyHashable(value)
         label(selected: selected)
+            // Like the system's bars: labels stop growing at the largest
+            // text sizes and show in the Large Content Viewer instead.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .accessibilityShowsLargeContentViewer {
+                if let systemImage { Image(systemName: systemImage) }
+                title
+            }
             .contentShape(Capsule())
             .onTapGesture { context?.select(AnyHashable(value)) }
             .anchorPreference(key: GlassTabKey.self, value: .bounds) { [GlassTabAnchor(value: AnyHashable(value), anchor: $0)] }

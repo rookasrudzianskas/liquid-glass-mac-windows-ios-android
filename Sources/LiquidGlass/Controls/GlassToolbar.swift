@@ -50,6 +50,8 @@ public struct GlassToolbar<Content: View>: View {
             content
         }
         .environment(\.glassToolbarItem, true)
+        // Bars stop growing at the largest text sizes, like the system's.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .modifier(OnTintForeground(tinted: options.tint != nil))
         .padding(inset)
         .frame(minHeight: (GlassControlMetrics.toolbarHeight * typeScale).rounded())
