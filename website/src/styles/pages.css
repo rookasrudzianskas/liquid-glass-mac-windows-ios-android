@@ -450,3 +450,17 @@
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
 }
+
+.dl-platform__install,
+.dl-platform__files,
+.dl-verify > * {
+  min-width: 0;
+}
+
+.dl-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dl {
+  min-width: 0;
+}

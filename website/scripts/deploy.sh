@@ -17,3 +17,6 @@ cd "$repo/website"
 "${vercel[@]}" pull --yes --environment=production --scope boringai
 "${vercel[@]}" build --prod --scope boringai
 "${vercel[@]}" deploy --prebuilt --prod --scope boringai
+
+# The build output is a copy of public/ (downloads included): free the disk.
+rm -rf "$repo/website/dist" "$repo/website/.vercel/output"
