@@ -1,0 +1,85 @@
+<Window x:Class="LiquidGlass.Studio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lg="https://liquid-glass-engineering.vercel.app/wpf"
+        Title="Liquid Glass Studio"
+        Width="1280" Height="820" MinWidth="960" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        Background="{DynamicResource Studio.WindowBackground}"
+        Foreground="{DynamicResource Studio.Foreground}"
+        FontFamily="{StaticResource Studio.Text}"
+        TextOptions.TextFormattingMode="Ideal">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition x:Name="TitleRow" Height="0" />
+      <RowDefinition />
+    </Grid.RowDefinitions>
+
+    <!-- Drawn into the caption area when the window uses Mica; the system draws the caption buttons. -->
+    <StackPanel x:Name="TitleBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Visibility="Collapsed">
+      <Image Source="/Assets/icon-256.png" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" />
+      <TextBlock Text="Liquid Glass Studio" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" />
+    </StackPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="236" />
+        <ColumnDefinition />
+      </Grid.ColumnDefinitions>
+
+      <DockPanel Margin="0,0,0,14">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,14,0,18">
+          <Image Source="/Assets/icon-256.png" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
+          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="Liquid Glass" FontFamily="{StaticResource Studio.Display}" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock Text="Engineering for Windows" FontSize="11" Foreground="{DynamicResource Studio.Secondary}" />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,0">
+          <TextBlock Text="Appearance" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Studio.Secondary}" Margin="2,0,0,8" />
+          <lg:GlassTabBar x:Name="AppearancePicker" HorizontalAlignment="Left" AutomationProperties.Name="Appearance">
+            <lg:GlassTabBarItem Content="System" />
+            <lg:GlassTabBarItem Content="Light" />
+            <lg:GlassTabBarItem Content="Dark" />
+          </lg:GlassTabBar>
+          <TextBlock x:Name="RendererStatus" FontSize="11" Foreground="{DynamicResource Studio.Secondary}" Margin="2,12,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <ListBox x:Name="Navigation" Background="Transparent" BorderThickness="0" Padding="4,0"
+                 ItemContainerStyle="{StaticResource Studio.NavItem}" AutomationProperties.Name="Pages"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBoxItem AutomationProperties.Name="Hero">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Studio.Icon}" Text="&#xE80F;" />
+              <TextBlock Text="Hero" Margin="14,0,0,0" FontSize="14" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem AutomationProperties.Name="Controls">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Studio.Icon}" Text="&#xE9E9;" />
+              <TextBlock Text="Controls" Margin="14,0,0,0" FontSize="14" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem AutomationProperties.Name="Materials lab">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Studio.Icon}" Text="&#xE790;" />
+              <TextBlock Text="Materials lab" Margin="14,0,0,0" FontSize="14" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem AutomationProperties.Name="Progressive blur">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Studio.Icon}" Text="&#xE8B9;" />
+              <TextBlock Text="Progressive blur" Margin="14,0,0,0" FontSize="14" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+        </ListBox>
+      </DockPanel>
+
+      <Border x:Name="ContentFrame" Grid.Column="1" BorderBrush="{DynamicResource Studio.ContentStroke}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
+        <ContentControl x:Name="PageHost" Focusable="False" />
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

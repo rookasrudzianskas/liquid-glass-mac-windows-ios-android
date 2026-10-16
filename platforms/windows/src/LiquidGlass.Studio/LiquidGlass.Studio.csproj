@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>LiquidGlass.Studio</RootNamespace>
+    <AssemblyName>LiquidGlassStudio</AssemblyName>
+    <Product>Liquid Glass Studio</Product>
+    <Description>The Liquid Glass Engineering demo for Windows.</Description>
+    <ApplicationIcon>..\..\packaging\LiquidGlass.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The wallpapers shared by every demo (assets/wallpapers), embedded as WPF resources. -->
+    <Resource Include="$(LiquidGlassRepoRoot)assets\wallpapers\*-2048.jpg" Link="Wallpapers\%(Filename)%(Extension)" />
+    <Resource Include="..\..\packaging\icon-256.png" Link="Assets\icon-256.png" />
+  </ItemGroup>
+
+</Project>

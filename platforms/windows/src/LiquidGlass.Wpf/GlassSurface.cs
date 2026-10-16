@@ -77,6 +77,7 @@ public class GlassSurface : ContentControl
     static GlassSurface()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(GlassSurface), new FrameworkPropertyMetadata(typeof(GlassSurface)));
+        GlassScene.AddContentForegroundOwner(typeof(GlassSurface));
         FocusableProperty.OverrideMetadata(typeof(GlassSurface), new FrameworkPropertyMetadata(false));
         IsTabStopProperty.OverrideMetadata(typeof(GlassSurface), new FrameworkPropertyMetadata(false));
     }

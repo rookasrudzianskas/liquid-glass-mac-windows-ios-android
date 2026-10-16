@@ -1,0 +1,34 @@
+<local:StudioPageBase x:Class="LiquidGlass.Studio.Pages.BlurPage"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:lg="https://liquid-glass-engineering.vercel.app/wpf"
+                      xmlns:local="clr-namespace:LiquidGlass.Studio.Pages">
+  <lg:GlassScene x:Name="Scene">
+    <lg:GlassScene.Content>
+      <Grid x:Name="Paper">
+        <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
+                      PanningMode="VerticalOnly" Focusable="True" AutomationProperties.Name="Journal">
+          <StackPanel x:Name="Articles" MaxWidth="700" Margin="32,96,32,110" />
+        </ScrollViewer>
+      </Grid>
+    </lg:GlassScene.Content>
+
+    <lg:GlassProgressiveBlur Edge="Top" Size="120" Blur="20" />
+    <lg:GlassProgressiveBlur Edge="Bottom" Size="104" Blur="20" />
+
+    <lg:GlassToolbar VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="24,20,24,0">
+      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" />
+      <Button Content="Journal" FontFamily="{StaticResource Studio.Display}" FontSize="15" />
+      <lg:GlassToolbarSpacer />
+      <Button Content="&#xE721;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Search" />
+      <Button Content="&#xE734;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Favorites" />
+      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" />
+    </lg:GlassToolbar>
+
+    <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,26" SelectedIndex="0" AutomationProperties.Name="Lists">
+      <lg:GlassTabBarItem Content="Latest" />
+      <lg:GlassTabBarItem Content="Saved" />
+      <lg:GlassTabBarItem Content="Shared" />
+    </lg:GlassTabBar>
+  </lg:GlassScene>
+</local:StudioPageBase>

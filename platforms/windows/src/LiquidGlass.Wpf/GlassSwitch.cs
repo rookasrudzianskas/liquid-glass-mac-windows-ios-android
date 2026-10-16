@@ -49,6 +49,7 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
     static GlassSwitch()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(GlassSwitch), new FrameworkPropertyMetadata(typeof(GlassSwitch)));
+        GlassScene.AddContentForegroundOwner(typeof(GlassSwitch));
     }
 
     /// <summary>Creates a switch.</summary>

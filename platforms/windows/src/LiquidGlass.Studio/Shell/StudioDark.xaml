@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Windows 11 dark chrome. -->
+  <SolidColorBrush x:Key="Studio.WindowBackground" Color="#202020" />
+  <SolidColorBrush x:Key="Studio.Foreground" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Studio.Secondary" Color="#C5C5CB" />
+  <SolidColorBrush x:Key="Studio.NavHover" Color="#0FFFFFFF" />
+  <SolidColorBrush x:Key="Studio.NavSelected" Color="#15FFFFFF" />
+  <SolidColorBrush x:Key="Studio.ContentStroke" Color="#19000000" />
+</ResourceDictionary>

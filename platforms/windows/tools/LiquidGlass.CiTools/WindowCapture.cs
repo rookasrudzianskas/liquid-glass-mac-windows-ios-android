@@ -12,7 +12,12 @@ internal static class WindowCapture
 {
     private const uint PwRenderFullContent = 2;
 
-    /// <summary>Captures <paramref name="hwnd"/> with PrintWindow(PW_RENDERFULLCONTENT) and saves a PNG.</summary>
+    private const int ExtendedFrameBounds = 9;
+
+    /// <summary>
+    /// Captures <paramref name="hwnd"/> with PrintWindow(PW_RENDERFULLCONTENT) and saves a PNG of its visible frame
+    /// (without the invisible resize borders).
+    /// </summary>
     public static (int Width, int Height) SavePng(IntPtr hwnd, string path)
     {
         if (!GetWindowRect(hwnd, out var rect)) throw new InvalidOperationException("GetWindowRect failed.");
@@ -39,7 +44,17 @@ internal static class WindowCapture
             Marshal.Copy(bits, pixels, 0, pixels.Length);
             // The DIB is BGRX; make it opaque.
             for (var i = 3; i < pixels.Length; i += 4) pixels[i] = 255;
-            var image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+            BitmapSource image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+            if (DwmGetWindowAttribute(hwnd, ExtendedFrameBounds, out var frame, Marshal.SizeOf<Rect>()) == 0)
+            {
+                var crop = new Int32Rect(frame.Left - rect.Left, frame.Top - rect.Top, frame.Right - frame.Left, frame.Bottom - frame.Top);
+                if (crop.X >= 0 && crop.Y >= 0 && crop.Width > 0 && crop.Height > 0 && crop.X + crop.Width <= width && crop.Y + crop.Height <= height)
+                {
+                    image = new CroppedBitmap(image, crop);
+                    width = crop.Width;
+                    height = crop.Height;
+                }
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
             using var file = File.Create(path);
             var encoder = new PngBitmapEncoder();
@@ -82,6 +97,9 @@ internal static class WindowCapture
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect value, int size);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -1,0 +1,82 @@
+<local:StudioPageBase x:Class="LiquidGlass.Studio.Pages.MaterialsPage"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:lg="https://liquid-glass-engineering.vercel.app/wpf"
+                      xmlns:local="clr-namespace:LiquidGlass.Studio.Pages">
+  <local:StudioPageBase.Resources>
+    <Style x:Key="Label" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="Margin" Value="2,14,0,8" />
+    </Style>
+    <Style x:Key="Chip" TargetType="lg:GlassButton">
+      <Setter Property="IsIconOnly" Value="True" />
+      <Setter Property="Size" Value="Small" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+    </Style>
+  </local:StudioPageBase.Resources>
+
+  <lg:GlassScene x:Name="Scene">
+    <lg:GlassScene.Content>
+      <Image x:Name="Wallpaper" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+    </lg:GlassScene.Content>
+
+    <Canvas x:Name="Stage" Margin="0,0,340,0">
+      <lg:GlassSurface x:Name="Lens" Width="340" Height="220" Radius="40" IsInteractive="True" Cursor="SizeAll"
+                       Material="Clear" AutomationProperties.Name="Lens">
+        <TextBlock Text="Drag the lens" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85" />
+      </lg:GlassSurface>
+    </Canvas>
+
+    <lg:GlassSurface HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="316" Margin="0,18,18,18"
+                     Material="Regular" Radius="28" Padding="22,12,22,22">
+      <StackPanel lg:GlassScene.Material="Clear">
+        <TextBlock Text="Materials lab" Style="{StaticResource Studio.Title}" Margin="2,8,0,2" />
+        <TextBlock Text="Every option of the optical model, live." Style="{StaticResource Studio.Body}" Opacity="0.7" Margin="2,0,0,4" />
+
+        <TextBlock Text="Material" Style="{StaticResource Label}" />
+        <lg:GlassTabBar x:Name="MaterialPicker" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Material">
+          <lg:GlassTabBarItem Content="Clear" />
+          <lg:GlassTabBarItem Content="Regular" />
+        </lg:GlassTabBar>
+
+        <TextBlock Text="Appearance" Style="{StaticResource Label}" />
+        <lg:GlassTabBar x:Name="AppearancePicker" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Lens appearance">
+          <lg:GlassTabBarItem Content="Window" />
+          <lg:GlassTabBarItem Content="Light" />
+          <lg:GlassTabBarItem Content="Dark" />
+        </lg:GlassTabBar>
+
+        <Grid>
+          <TextBlock Text="Refraction" Style="{StaticResource Label}" />
+          <TextBlock Text="{Binding Value, ElementName=RefractionSlider, StringFormat=N0}" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" Opacity="0.75" />
+        </Grid>
+        <lg:GlassSlider x:Name="RefractionSlider" Minimum="0" Maximum="120" Value="60" SmallChange="1" LargeChange="10" AutomationProperties.Name="Refraction" />
+
+        <Grid>
+          <TextBlock Text="Corner radius" Style="{StaticResource Label}" />
+          <TextBlock x:Name="RadiusLabel" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" Opacity="0.75" />
+        </Grid>
+        <lg:GlassSlider x:Name="RadiusSlider" Minimum="0" Maximum="110" Value="40" SmallChange="1" LargeChange="10" AutomationProperties.Name="Corner radius" />
+
+        <TextBlock Text="Tint" Style="{StaticResource Label}" />
+        <StackPanel x:Name="Tints" Orientation="Horizontal">
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="" Content="&#xE711;" FontFamily="{StaticResource Studio.Icons}" FontSize="10" FontWeight="Normal" AutomationProperties.Name="No tint" Click="OnTint" />
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="#0A84FF" Tint="#0A84FF" AutomationProperties.Name="Blue" Click="OnTint" />
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF375F" Tint="#FF375F" AutomationProperties.Name="Pink" Click="OnTint" />
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="#30D158" Tint="#30D158" AutomationProperties.Name="Green" Click="OnTint" />
+          <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF9F0A" Tint="#FF9F0A" AutomationProperties.Name="Orange" Click="OnTint" />
+        </StackPanel>
+
+        <TextBlock Text="Wallpaper" Style="{StaticResource Label}" />
+        <StackPanel x:Name="WallpaperChips" Orientation="Horizontal" />
+
+        <lg:GlassSwitch x:Name="FallbackSwitch" Content="Fallback material" Margin="0,18,0,0" HorizontalContentAlignment="Left" />
+        <lg:GlassSwitch x:Name="ContrastSwitch" Content="Increase contrast" Margin="0,10,0,0" HorizontalContentAlignment="Left" />
+      </StackPanel>
+    </lg:GlassSurface>
+  </lg:GlassScene>
+</local:StudioPageBase>

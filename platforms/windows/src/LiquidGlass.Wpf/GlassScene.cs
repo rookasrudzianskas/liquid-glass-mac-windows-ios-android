@@ -195,6 +195,12 @@ public class GlassScene : FrameworkElement
 
     internal static void SetContentForeground(DependencyObject element, Brush value) => element.SetValue(ContentForegroundPropertyKey, value);
 
+    /// <summary>
+    /// Registers a glass control type as an owner of <see cref="ContentForegroundProperty"/>, so its theme style can
+    /// bind <c>Foreground</c> to it by name.
+    /// </summary>
+    internal static void AddContentForegroundOwner(Type type) => ContentForegroundProperty.AddOwner(type);
+
     /// <summary>The nearest scene that contains <paramref name="element"/>, or null.</summary>
     public static GlassScene? FindScene(DependencyObject? element)
     {

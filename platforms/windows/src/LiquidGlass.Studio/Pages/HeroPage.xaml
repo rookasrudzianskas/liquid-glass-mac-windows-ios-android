@@ -1,0 +1,45 @@
+<local:StudioPageBase x:Class="LiquidGlass.Studio.Pages.HeroPage"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:lg="https://liquid-glass-engineering.vercel.app/wpf"
+                      xmlns:local="clr-namespace:LiquidGlass.Studio.Pages">
+  <lg:GlassScene x:Name="Scene">
+    <lg:GlassScene.Content>
+      <Image x:Name="Wallpaper" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+    </lg:GlassScene.Content>
+
+    <Canvas x:Name="Stage">
+      <lg:GlassSurface x:Name="Card" Material="Regular" Radius="30" Width="440" Padding="30,28,30,30"
+                       IsInteractive="True" Cursor="SizeAll" AutomationProperties.Name="Liquid Glass card">
+        <StackPanel lg:GlassScene.Material="Clear">
+          <TextBlock Text="Liquid Glass" Style="{StaticResource Studio.Display}" />
+          <TextBlock Style="{StaticResource Studio.Body}" Opacity="0.78" Margin="0,8,0,22"
+                     Text="Refraction, frost and light from one optical model, drawn by a pixel shader in WPF. Drag the card around: the glass follows, stretches and settles." />
+          <StackPanel Orientation="Horizontal">
+            <lg:GlassButton Content="Get started" Size="Large" Tint="#0A84FF" Cursor="Hand" />
+            <lg:GlassButton Content="Learn more" Size="Large" Margin="10,0,0,0" Cursor="Hand" />
+          </StackPanel>
+        </StackPanel>
+      </lg:GlassSurface>
+    </Canvas>
+
+    <lg:GlassToolbar VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,24,0,0">
+      <Button Content="&#xE72B;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Back" ToolTip="Back" />
+      <Button Content="&#xE72A;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Forward" ToolTip="Forward" />
+      <lg:GlassToolbarSpacer Sizing="Fixed" />
+      <Button Content="Photos" />
+      <Button Content="Albums" />
+      <Button Content="Shared" />
+      <lg:GlassToolbarSpacer Sizing="Fixed" />
+      <Button Content="&#xE72D;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="Share" ToolTip="Share" />
+      <Button Content="&#xE712;" FontFamily="{StaticResource Studio.Icons}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" ToolTip="More" />
+    </lg:GlassToolbar>
+
+    <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,28" SelectedIndex="0" AutomationProperties.Name="Sections">
+      <lg:GlassTabBarItem Content="Home" />
+      <lg:GlassTabBarItem Content="Explore" />
+      <lg:GlassTabBarItem Content="Library" />
+      <lg:GlassTabBarItem Content="Settings" />
+    </lg:GlassTabBar>
+  </lg:GlassScene>
+</local:StudioPageBase>

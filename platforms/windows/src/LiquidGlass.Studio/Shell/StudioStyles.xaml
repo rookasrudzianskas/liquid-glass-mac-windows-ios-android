@@ -1,0 +1,82 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <FontFamily x:Key="Studio.Text">Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="Studio.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
+  <FontFamily x:Key="Studio.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+  <Style x:Key="Studio.Icon" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Studio.Icons}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="Studio.Display" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Studio.Display}" />
+    <Setter Property="FontSize" Value="40" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style x:Key="Studio.Title" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Studio.Display}" />
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style x:Key="Studio.Section" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Studio.Text}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Opacity" Value="0.72" />
+    <Setter Property="Margin" Value="2,0,0,10" />
+  </Style>
+
+  <Style x:Key="Studio.Body" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Studio.Text}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="LineHeight" Value="20" />
+  </Style>
+
+  <Style x:Key="Studio.FocusVisual" TargetType="Control">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border CornerRadius="7" BorderThickness="2" Margin="-2" BorderBrush="{DynamicResource Studio.Foreground}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Navigation rail items, Windows 11 style: icon, label and an accent pill on the selected item. -->
+  <Style x:Key="Studio.NavItem" TargetType="ListBoxItem">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Studio.FocusVisual}" />
+    <Setter Property="Foreground" Value="{DynamicResource Studio.Foreground}" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Margin" Value="6,2" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Grid>
+            <Border x:Name="Back" CornerRadius="5" Background="Transparent" />
+            <Border x:Name="Pill" Width="3" Height="16" CornerRadius="1.5" HorizontalAlignment="Left" Margin="0,0,0,0"
+                    Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" Visibility="Hidden" />
+            <ContentPresenter Margin="14,0,10,0" VerticalAlignment="Center" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Back" Property="Background" Value="{DynamicResource Studio.NavHover}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Back" Property="Background" Value="{DynamicResource Studio.NavSelected}" />
+              <Setter TargetName="Pill" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

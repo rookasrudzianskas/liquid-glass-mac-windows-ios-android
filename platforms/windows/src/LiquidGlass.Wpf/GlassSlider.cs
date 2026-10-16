@@ -38,6 +38,7 @@ public class GlassSlider : Slider
     static GlassSlider()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(GlassSlider), new FrameworkPropertyMetadata(typeof(GlassSlider)));
+        GlassScene.AddContentForegroundOwner(typeof(GlassSlider));
         IsMoveToPointEnabledProperty.OverrideMetadata(typeof(GlassSlider), new FrameworkPropertyMetadata(true));
     }
 

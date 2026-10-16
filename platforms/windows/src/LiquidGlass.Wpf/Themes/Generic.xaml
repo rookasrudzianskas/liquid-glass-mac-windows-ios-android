@@ -6,7 +6,7 @@
 
   <!-- Glass surface -->
   <Style TargetType="{x:Type lg:GlassSurface}">
-    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
     <Setter Property="Template">
@@ -30,7 +30,7 @@
 
   <!-- Glass button -->
   <Style TargetType="{x:Type lg:GlassButton}">
-    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
     <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="FontSize" Value="14" />
@@ -49,7 +49,6 @@
                            Refraction="{TemplateBinding Refraction}"
                            Tint="{TemplateBinding Tint}"
                            IsInteractive="{TemplateBinding IsInteractive}"
-                           IsFocusRingVisible="{Binding (lg:GlassScene.IsFocusVisible), RelativeSource={RelativeSource TemplatedParent}}"
                            Foreground="{TemplateBinding Foreground}"
                            Padding="{TemplateBinding Padding}"
                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -57,6 +56,9 @@
             <ContentPresenter RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
           </lg:GlassSurface>
           <ControlTemplate.Triggers>
+            <Trigger Property="lg:GlassScene.IsFocusVisible" Value="True">
+              <Setter TargetName="PART_Surface" Property="IsFocusRingVisible" Value="True" />
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="PART_Surface" Property="Opacity" Value="0.45" />
             </Trigger>
@@ -115,7 +117,7 @@
   </Style>
 
   <Style TargetType="{x:Type lg:GlassSlider}">
-    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     <Setter Property="MinWidth" Value="80" />
     <Setter Property="MinHeight" Value="28" />
@@ -170,7 +172,7 @@
   </Style>
 
   <Style TargetType="{x:Type lg:GlassSwitch}">
-    <Setter Property="Foreground" Value="{Binding (lg:GlassScene.ContentForeground), RelativeSource={RelativeSource Self}}" />
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
     <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -210,6 +212,252 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+
+  <FontFamily x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+  <!-- Tab bar -->
+  <Style TargetType="{x:Type lg:GlassTabBarItem}">
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="MinWidth" Value="44" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassTabBarItem}">
+          <Grid Background="Transparent">
+            <Border x:Name="FocusRing" CornerRadius="15" BorderThickness="2" Margin="-1" Visibility="Collapsed"
+                    BorderBrush="{TemplateBinding Foreground}" IsHitTestVisible="False" />
+            <ContentPresenter x:Name="Label" Margin="{TemplateBinding Padding}" Opacity="0.85"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+              <Trigger.EnterActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Label" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.16" />
+                  </Storyboard>
+                </BeginStoryboard>
+              </Trigger.EnterActions>
+              <Trigger.ExitActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Label" Storyboard.TargetProperty="Opacity" To="0.85" Duration="0:0:0.16" />
+                  </Storyboard>
+                </BeginStoryboard>
+              </Trigger.ExitActions>
+            </Trigger>
+            <Trigger Property="lg:GlassScene.IsFocusVisible" Value="True">
+              <Setter TargetName="FocusRing" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Label" Property="Opacity" Value="0.4" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="{x:Type lg:GlassTabBar}">
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
+    <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="ItemsPanel">
+      <Setter.Value>
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </Setter.Value>
+    </Setter>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassTabBar}">
+          <lg:GlassSurface x:Name="PART_Surface"
+                           Radius="{TemplateBinding Radius}"
+                           Refraction="{TemplateBinding Refraction}"
+                           Tint="{TemplateBinding Tint}"
+                           IsInteractive="{TemplateBinding IsInteractive}"
+                           Foreground="{TemplateBinding Foreground}"
+                           Padding="{TemplateBinding Padding}">
+            <Grid>
+              <Canvas x:Name="PART_LensHost">
+                <lg:GlassSurface x:Name="PART_Lens" Material="Clear" Radius="capsule"
+                                 Refraction="{TemplateBinding Refraction}" Tint="{TemplateBinding Tint}" IsHitTestVisible="False" />
+              </Canvas>
+              <ItemsPresenter />
+            </Grid>
+          </lg:GlassSurface>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Toolbar -->
+  <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=FocusVisual}" TargetType="{x:Type Control}">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border CornerRadius="18" BorderThickness="2" Margin="-2" BorderBrush="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}" TargetType="{x:Type ButtonBase}">
+    <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=FocusVisual}}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type ButtonBase}">
+          <Grid Background="Transparent">
+            <Border x:Name="Highlight" CornerRadius="16" Background="{TemplateBinding Foreground}" Opacity="0" />
+            <ContentPresenter Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.08" />
+            </Trigger>
+            <Trigger Property="ToggleButton.IsChecked" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.14" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.16" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="{x:Type lg:GlassToolbar}">
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
+    <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassToolbar}">
+          <Grid x:Name="PART_Host" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Resources>
+      <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}" />
+      <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}" />
+    </Style.Resources>
+  </Style>
+
+  <!-- Menu -->
+  <Style TargetType="{x:Type lg:GlassMenuItem}">
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="10,6,12,6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassMenuItem}">
+          <Grid x:Name="Root" Background="Transparent">
+            <Border x:Name="Highlight" CornerRadius="14" Background="{TemplateBinding Foreground}" Opacity="0" />
+            <Grid Margin="{TemplateBinding Padding}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock x:Name="Check" Width="20" Text="&#xE73E;" FontSize="12" VerticalAlignment="Center" Visibility="Hidden"
+                         FontFamily="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}}" />
+              <ContentPresenter x:Name="IconPresenter" Grid.Column="1" Content="{TemplateBinding Icon}" Margin="0,0,10,0" VerticalAlignment="Center"
+                                TextElement.FontFamily="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}}" />
+              <ContentPresenter Grid.Column="2" RecognizesAccessKey="True" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+              <TextBlock Grid.Column="3" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0" Opacity="0.55" VerticalAlignment="Center" />
+            </Grid>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="{x:Null}">
+              <Setter TargetName="IconPresenter" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsCheckable" Value="False">
+              <Setter TargetName="Check" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.08" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.08" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Highlight" Property="Opacity" Value="0.14" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="{x:Type lg:GlassMenu}">
+    <Setter Property="Foreground" Value="{Binding ContentForeground, RelativeSource={RelativeSource Self}}" />
+    <Setter Property="FontFamily" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type lg:GlassMenu}">
+          <lg:GlassButton x:Name="PART_Trigger" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                          Size="{TemplateBinding Size}" IsIconOnly="{TemplateBinding IsIconOnly}" Tint="{TemplateBinding Tint}"
+                          AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Resources>
+      <Style TargetType="{x:Type Separator}">
+        <Setter Property="Margin" Value="10,4" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Separator}">
+              <Border Height="1" Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type lg:GlassSurface}}}" Opacity="0.14" />
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+    </Style.Resources>
   </Style>
 
 </ResourceDictionary>

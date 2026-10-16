@@ -58,6 +58,7 @@ public class GlassButton : Button
     static GlassButton()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(GlassButton), new FrameworkPropertyMetadata(typeof(GlassButton)));
+        GlassScene.AddContentForegroundOwner(typeof(GlassButton));
     }
 
     /// <summary>Creates a button.</summary>

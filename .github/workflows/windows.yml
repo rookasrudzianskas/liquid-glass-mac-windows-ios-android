@@ -104,6 +104,35 @@ jobs:
           dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- gallery --out "$env:REPORT\gallery" --wallpaper "$PWD\..\..\assets\wallpapers\aurora-2048.jpg" 2>&1 |
             Tee-Object -FilePath "$env:REPORT\gallery.log"
 
+      - name: Capture Liquid Glass Studio
+        if: always()
+        run: |
+          dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- studio --exe "$PWD\src\LiquidGlass.Studio\bin\Release\net10.0-windows\LiquidGlassStudio.exe" --out "$env:REPORT\studio" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\studio.log"
+
+      - name: Publish and smoke-test Studio
+        if: always()
+        run: |
+          $log = "$env:REPORT\publish.txt"
+          $variants = @(
+            @{ Name = "framework-dependent"; Args = @("--self-contained", "false") },
+            @{ Name = "self-contained"; Args = @("--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:EnableCompressionInSingleFile=true") }
+          )
+          foreach ($v in $variants) {
+            $out = "$env:RUNNER_TEMP\studio-$($v.Name)"
+            dotnet publish src\LiquidGlass.Studio -c Release -r win-x64 @($v.Args) -o $out 2>&1 | Out-File -Append "$env:REPORT\publish.log"
+            if ($LASTEXITCODE -ne 0) { "$($v.Name): publish FAILED" | Add-Content $log; continue }
+            $zip = "$env:RUNNER_TEMP\studio-$($v.Name).zip"
+            Compress-Archive -Path "$out\*" -DestinationPath $zip -Force
+            $start = Get-Date
+            $p = Start-Process -FilePath "$out\LiquidGlassStudio.exe" -ArgumentList "--page", "controls", "--exit-after", "8" -PassThru
+            $finished = $p.WaitForExit(60000)
+            $code = if ($finished) { $p.ExitCode } else { $p.Kill(); "timeout" }
+            $mb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+            "$($v.Name): zip $mb MB, smoke test exit $code after $([math]::Round(((Get-Date) - $start).TotalSeconds, 1)) s" | Add-Content $log
+          }
+          Get-Content $log
+
       - name: Summarize
         if: always()
         run: |
@@ -111,6 +140,8 @@ jobs:
           "commit $env:GITHUB_SHA, run $env:GITHUB_RUN_ID, finished $(Get-Date -Format o)" | Set-Content $summary
           "job status: ${{ job.status }}" | Add-Content $summary
           Get-Content "$env:REPORT\shaders\fxc.log" -ErrorAction SilentlyContinue | Select-String "precompiled shader" | ForEach-Object { $_.Line } | Add-Content $summary
+          Get-Content "$env:REPORT\publish.txt" -ErrorAction SilentlyContinue | Add-Content $summary
+          Get-Content "$env:REPORT\studio\studio.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
             [xml]$x = Get-Content $trx.FullName
             $c = $x.TestRun.ResultSummary.Counters
