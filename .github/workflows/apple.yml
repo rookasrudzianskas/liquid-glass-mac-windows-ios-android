@@ -1,0 +1,76 @@
+name: Apple
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Package.swift"
+      - "Sources/**"
+      - "Tests/**"
+      - "platforms/apple/**"
+      - "spec/**"
+      - ".github/workflows/apple.yml"
+  pull_request:
+    paths:
+      - "Package.swift"
+      - "Sources/**"
+      - "Tests/**"
+      - "platforms/apple/**"
+      - "spec/**"
+      - ".github/workflows/apple.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package tests (${{ matrix.platform }})
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macOS, iOS Simulator]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: platforms/apple/scripts/ci-select-xcode.sh
+      - name: Unit, GPU and render tests against spec/vectors.json
+        run: |
+          destination="$(platforms/apple/scripts/ci-destination.sh "${{ matrix.platform }}")"
+          platforms/apple/scripts/ci-run.sh "Package tests on ${{ matrix.platform }}" \
+            xcodebuild test -scheme LiquidGlass -destination "$destination" -derivedDataPath DerivedData
+
+  studio:
+    name: Liquid Glass Studio
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: platforms/apple/scripts/ci-select-xcode.sh
+      - name: Build for macOS (Release)
+        run: |
+          platforms/apple/scripts/ci-run.sh "Studio macOS build" \
+            xcodebuild build -project platforms/apple/Studio/LiquidGlassStudio.xcodeproj -scheme LiquidGlassStudio \
+            -configuration Release -destination "generic/platform=macOS" -derivedDataPath DerivedData
+      - name: UI tests on the iOS Simulator
+        run: |
+          destination="$(platforms/apple/scripts/ci-destination.sh "iOS Simulator")"
+          platforms/apple/scripts/ci-run.sh "Studio UI tests" \
+            xcodebuild test -project platforms/apple/Studio/LiquidGlassStudio.xcodeproj -scheme LiquidGlassStudio \
+            -destination "$destination" -derivedDataPath DerivedData -retry-tests-on-failure -test-iterations 2
+      - name: Package the macOS app
+        run: platforms/apple/scripts/package-macos.sh DerivedData/Build/Products/Release
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple
+          path: artifacts/apple/
+          if-no-files-found: warn
