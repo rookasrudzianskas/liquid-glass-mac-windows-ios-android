@@ -28,22 +28,28 @@ public class InteractionTests
                 var window = Sta.Show(scene, 400, 200);
                 var surface = (GlassSurface)button.Template.FindName("PART_Surface", button);
                 var root = (FrameworkElement)surface.Template.FindName("PART_Root", surface);
+                // Area scale: the press grows both axes by (1 + grow); any stretch toward the (real) cursor only adds
+                // to it, because stretch preserves volume (sx · sy = (1 + grow)² · √((1 + ex)(1 + ey))).
                 var scales = new List<double>();
-                EventHandler sample = (_, _) => scales.Add(((TransformGroup)root.RenderTransform).Children.OfType<ScaleTransform>().Single().ScaleX);
+                EventHandler sample = (_, _) =>
+                {
+                    var scale = ((TransformGroup)root.RenderTransform).Children.OfType<ScaleTransform>().Single();
+                    scales.Add(scale.ScaleX * scale.ScaleY);
+                };
                 CompositionTarget.Rendering += sample;
 
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
                 Wait(0.45);
                 Assert.True(surface.IsPressed);
-                // grow = min(0.16, 8 / 120) = 0.0667 at full press (OPTICS §6).
-                Assert.InRange(scales.Last(), 1.05, 1.08);
+                // grow = min(0.16, 8 / 120) = 0.0667 at full press (OPTICS §6), so the area grows by at least 1.138.
+                Assert.True(scales.Last() > 1.13, $"area scale {scales.Last()}");
 
                 scales.Clear();
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
                 Wait(1.2);
                 Assert.False(surface.IsPressed);
                 // The release spring (bounce 0.42) overshoots below rest before settling at exactly 1.
-                Assert.True(scales.Min() < 0.995, $"no overshoot: min {scales.Min()}");
+                Assert.True(scales.Min() < 0.99, $"no overshoot: min {scales.Min()}");
                 Assert.Equal(1, scales.Last(), 6);
                 CompositionTarget.Rendering -= sample;
                 window.Close();

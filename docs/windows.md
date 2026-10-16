@@ -167,7 +167,7 @@ GlassScene.SetAppearance(window, GlassAppearance.Dark);
 A glass container (a `ContentControl`). Its content draws above glass that refracts the scene's backdrop.
 
 ```xml
-<lg:GlassSurface Material="Regular" Radius="28" Refraction="60" Tint="#330A84FF"
+<lg:GlassSurface Material="Regular" Radius="28" Refraction="60" Tint="#0A84FF"
                  IsInteractive="True" IsFluid="True" Padding="20">
   <TextBlock Text="Drag me" />
 </lg:GlassSurface>
@@ -378,8 +378,12 @@ curvature; large radii blend into a capsule, so animating the radius never jumps
 0.40/0.16, track 0.18/0). `Reduced` removes grow, stretch and overshoot; `None` removes transitions. When Windows'
 *Animation effects* are off, `Full` behaves as `Reduced`.
 
-**Styling.** All controls have default styles in `Themes/Generic.xaml` and can be restyled or retemplated. Templates
-keep a `GlassLens` (the glass) beneath their content; see the default templates for the named parts.
+**Styling.** All controls have default styles in `Themes/Generic.xaml` and can be restyled or retemplated. The named
+template parts are: `PART_Root` and `PART_Lens` (a `GlassLens`, the glass itself, beneath the content) in
+`GlassSurface`; `PART_Surface` in `GlassButton` and `GlassTabBar`; `PART_Lens` and `PART_LensHost` (the selection lens
+and the canvas it moves on) in `GlassTabBar`; `PART_Host` in `GlassToolbar`; `PART_Track`, `PART_TrackVisual` and
+`PART_Fill` in `GlassSlider`, whose thumb template holds a `GlassValueThumb` named `PART_Visual`; `PART_Track` and
+`PART_Thumb` (a `GlassValueThumb`) in `GlassSwitch`; `PART_Trigger` in `GlassMenu`.
 
 ## Accessibility
 
