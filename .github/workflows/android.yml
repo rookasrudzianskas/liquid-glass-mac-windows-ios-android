@@ -32,8 +32,8 @@ jobs:
       run:
         working-directory: platforms/android
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -62,8 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -82,7 +82,19 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           working-directory: platforms/android
-          script: ./gradlew :liquidglass:connectedDebugAndroidTest
+          # The measured GPU error of each case is logged; surface it (and crashes) as annotations.
+          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|AndroidRuntime" | head -40 | sed 's/^/::notice title=GPU test log::/'; exit $status
+      - name: Report failed tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob("platforms/android/liquidglass/build/outputs/androidTest-results/connected/**/*.xml", recursive=True):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  for failure in list(case.findall("failure")) + list(case.findall("error")):
+                      message = (failure.get("message") or failure.text or "").strip().splitlines()[0][:400]
+                      print(f"::error title={case.get('name')}::{message}")
+          PY
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
