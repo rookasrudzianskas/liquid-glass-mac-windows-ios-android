@@ -48,6 +48,12 @@ internal static class StudioCapture
             {
                 failures++;
                 log.AppendLine($"{name}: FAILED {e.Message}");
+                var crash = Path.Combine(Path.GetTempPath(), "LiquidGlassStudio-crash.txt");
+                if (File.Exists(crash))
+                {
+                    log.AppendLine(File.ReadAllText(crash));
+                    File.Delete(crash);
+                }
             }
         }
         File.WriteAllText(Path.Combine(outDirectory, "studio.txt"), log.ToString());

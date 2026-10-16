@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Windows-only tests: WPF controls, the shader bytecode, and the HLSL library on the GPU (WARP). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>LiquidGlass.Wpf.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="$(LiquidGlassRepoRoot)spec\vectors.json" Link="vectors.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\LiquidGlass.Wpf\Shaders\LiquidGlass.hlsli" Link="Shaders\LiquidGlass.hlsli" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Shaders\GpuCheck.hlsl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
