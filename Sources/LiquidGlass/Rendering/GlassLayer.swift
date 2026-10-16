@@ -89,7 +89,7 @@ struct GlassLayer: View {
     private func optics(layer: CGSize) -> some View {
         if let backdrop {
             if style.reduceTransparency {
-                Color.clear
+                Self.shaderCanvas
                     .frame(width: layer.width, height: layer.height)
                     .layerEffect(shader(layer: layer, mode: 1), maxSampleOffset: .zero)
             } else {
@@ -102,6 +102,11 @@ struct GlassLayer: View {
     }
 
     private var frosted: Bool { style.material == .regular && !style.reduceTransparency }
+
+    /// Content for a layer whose shader doesn't sample it. SwiftUI skips
+    /// layer effects on empty views such as `Color.clear`; the shader
+    /// replaces every pixel of this one.
+    private static let shaderCanvas = Color.black
 
     @ViewBuilder
     private func copy(of backdrop: GlassBackdrop, layer: CGSize) -> some View {
@@ -136,7 +141,7 @@ struct GlassLayer: View {
                 .scaleEffect(x: outline.scale.width, y: outline.scale.height)
                 .offset(x: rect.minX + padding + outline.translation.width, y: rect.minY + padding + outline.translation.height)
                 .opacity(outline.opacity)
-            Color.clear
+            Self.shaderCanvas
                 .frame(width: layer.width, height: layer.height)
                 .layerEffect(shader(layer: layer, mode: 2), maxSampleOffset: .zero)
         }
