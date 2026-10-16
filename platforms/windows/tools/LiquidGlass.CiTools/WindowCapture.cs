@@ -1,0 +1,112 @@
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace LiquidGlass.CiTools;
+
+/// <summary>Captures a window's composed pixels, including hardware-rendered WPF content.</summary>
+internal static class WindowCapture
+{
+    private const uint PwRenderFullContent = 2;
+
+    /// <summary>Captures <paramref name="hwnd"/> with PrintWindow(PW_RENDERFULLCONTENT) and saves a PNG.</summary>
+    public static (int Width, int Height) SavePng(IntPtr hwnd, string path)
+    {
+        if (!GetWindowRect(hwnd, out var rect)) throw new InvalidOperationException("GetWindowRect failed.");
+        var width = rect.Right - rect.Left;
+        var height = rect.Bottom - rect.Top;
+        var screen = GetDC(IntPtr.Zero);
+        var memory = CreateCompatibleDC(screen);
+        var info = new BitmapInfo
+        {
+            Size = 40, // sizeof(BITMAPINFOHEADER)
+            Width = width,
+            Height = -height,
+            Planes = 1,
+            BitCount = 32,
+        };
+        var bitmap = CreateDIBSection(memory, ref info, 0, out var bits, IntPtr.Zero, 0);
+        var previous = SelectObject(memory, bitmap);
+        try
+        {
+            if (!PrintWindow(hwnd, memory, PwRenderFullContent))
+                throw new InvalidOperationException("PrintWindow failed.");
+            var stride = width * 4;
+            var pixels = new byte[stride * height];
+            Marshal.Copy(bits, pixels, 0, pixels.Length);
+            // The DIB is BGRX; make it opaque.
+            for (var i = 3; i < pixels.Length; i += 4) pixels[i] = 255;
+            var image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            using var file = File.Create(path);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            encoder.Save(file);
+            return (width, height);
+        }
+        finally
+        {
+            SelectObject(memory, previous);
+            DeleteObject(bitmap);
+            DeleteDC(memory);
+            _ = ReleaseDC(IntPtr.Zero, screen);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BitmapInfo
+    {
+        public int Size;
+        public int Width;
+        public int Height;
+        public short Planes;
+        public short BitCount;
+        public int Compression;
+        public int SizeImage;
+        public int XPelsPerMeter;
+        public int YPelsPerMeter;
+        public int ClrUsed;
+        public int ClrImportant;
+        public int Colors;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateDIBSection(IntPtr hdc, ref BitmapInfo info, uint usage, out IntPtr bits, IntPtr section, uint offset);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr obj);
+}

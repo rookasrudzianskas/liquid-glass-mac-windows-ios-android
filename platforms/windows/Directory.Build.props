@@ -1,0 +1,36 @@
+<Project>
+  <!-- Shared settings for every project in the Windows port. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <!-- WPF projects build on macOS and Linux too; only running them needs Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <Version>1.0.0</Version>
+    <Authors>Liquid Glass Engineering</Authors>
+    <Company>Liquid Glass Engineering</Company>
+    <Product>Liquid Glass Engineering</Product>
+    <Copyright>Copyright (c) 2026 Liquid Glass Engineering</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <RepositoryUrl>https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://liquid-glass-engineering.vercel.app</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Repository paths used by tests, the demo and packaging. -->
+    <LiquidGlassRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))</LiquidGlassRepoRoot>
+    <LiquidGlassWindowsRoot>$(MSBuildThisFileDirectory)</LiquidGlassWindowsRoot>
+  </PropertyGroup>
+</Project>

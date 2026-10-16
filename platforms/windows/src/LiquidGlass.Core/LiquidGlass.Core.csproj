@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>LiquidGlass</RootNamespace>
+    <AssemblyName>LiquidGlass.Core</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <PackageId>LiquidGlassEngineering.Core</PackageId>
+    <Title>Liquid Glass Engineering: optical model</Title>
+    <Description>The platform-independent optical model of Liquid Glass Engineering: continuous-corner shapes and their signed distance field, refraction, the Clear and Regular materials, tint, rim light, springs, press and drag response, and progressive blur. A faithful port of the shared reference model, verified against its golden vectors. Used by LiquidGlassEngineering.Wpf.</Description>
+    <PackageTags>liquid-glass;glass;optics;refraction;material;spring;animation;ui</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\packaging\icon.png" Pack="true" PackagePath="\" Link="icon.png" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,118 @@
+name: Windows
+
+# Builds and verifies the WPF port on a real Windows machine, then reports back through git: every run force-pushes
+# one fresh commit with logs, test results, fxc shader bytecode and screenshots to the orphan branch `ci-windows`.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platforms/windows/**"
+      - "spec/vectors.json"
+      - "spec/shaders/**"
+      - "assets/wallpapers/**"
+      - ".github/workflows/windows.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  REPORT: ${{ github.workspace }}\report
+
+jobs:
+  windows:
+    name: Build, test, shaders, screenshots
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: platforms/windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Prepare report
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:REPORT | Out-Null
+          "commit: $env:GITHUB_SHA`nrun: $env:GITHUB_RUN_ID`nstarted: $(Get-Date -Format o)" | Set-Content "$env:REPORT\run.txt"
+          dotnet --info | Out-File "$env:REPORT\dotnet-info.txt"
+          Get-CimInstance Win32_VideoController | Select-Object Name, DriverVersion, AdapterRAM, VideoModeDescription | Format-List | Out-File "$env:REPORT\video.txt"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-File -Append "$env:REPORT\video.txt"
+
+      - name: Raise the display resolution
+        continue-on-error: true
+        run: |
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop; "Set-DisplayResolution: ok" }
+          catch { "Set-DisplayResolution failed: $_" }
+          Add-Type -AssemblyName System.Windows.Forms
+          "screen: $([System.Windows.Forms.Screen]::PrimaryScreen.Bounds)" | Tee-Object -Append -FilePath "$env:REPORT\video.txt"
+
+      - name: Compile shaders with fxc
+        run: |
+          $fxc = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter fxc.exe |
+            Where-Object { $_.FullName -like '*\x64\*' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $fxc) { throw "fxc.exe not found" }
+          $out = "$env:REPORT\shaders"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          "fxc: $($fxc.FullName)" | Set-Content "$out\fxc.log"
+          $failed = $false
+          foreach ($shader in Get-ChildItem src\LiquidGlass.Wpf\Shaders -Filter *.fx) {
+            $name = $shader.BaseName
+            & $fxc.FullName /nologo /T ps_3_0 /E main /O3 /I src\LiquidGlass.Wpf\Shaders /Fo "$out\$name.ps" /Fc "$out\$name.asm.txt" $shader.FullName *>&1 |
+              Tee-Object -Append -FilePath "$out\fxc.log"
+            if ($LASTEXITCODE -ne 0) { $failed = $true; "FAILED: $name" | Add-Content "$out\fxc.log" }
+          }
+          if ($failed) { throw "fxc failed" }
+
+      - name: Build
+        run: |
+          dotnet build LiquidGlass.sln -c Release 2>&1 | Tee-Object -FilePath "$env:REPORT\build.log"
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
+
+      - name: Test
+        run: |
+          dotnet test LiquidGlass.sln -c Release --no-build --logger "trx" --logger "console;verbosity=normal" --results-directory "$env:REPORT\tests" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\test.log"
+          if ($LASTEXITCODE -ne 0) { throw "tests failed" }
+
+      - name: Probe WPF rendering
+        if: always()
+        run: |
+          dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- probe --out "$env:REPORT\probe" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\probe.log"
+
+      - name: Summarize
+        if: always()
+        run: |
+          $summary = "$env:REPORT\summary.txt"
+          "commit $env:GITHUB_SHA, run $env:GITHUB_RUN_ID, finished $(Get-Date -Format o)" | Set-Content $summary
+          "job status: ${{ job.status }}" | Add-Content $summary
+          foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
+            [xml]$x = Get-Content $trx.FullName
+            $c = $x.TestRun.ResultSummary.Counters
+            "$($trx.Name): total $($c.total), passed $($c.passed), failed $($c.failed)" | Add-Content $summary
+          }
+
+      - name: Publish the report to ci-windows
+        if: always()
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Set-Location $env:REPORT
+          git init -q -b ci-windows
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Windows CI report for $($env:GITHUB_SHA.Substring(0,7)) (run $env:GITHUB_RUN_ID)"
+          git push -q -f "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git" ci-windows
