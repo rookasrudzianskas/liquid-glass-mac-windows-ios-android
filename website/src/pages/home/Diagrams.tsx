@@ -96,14 +96,14 @@ export function RefractionDiagram() {
   const { extent, exponent } = shapeParams(sw, sh, 44);
   const outline = shapeOutline(sw, sh, 44, 32).map(([x, y]) => [x + (w - sw) / 2, y + (h - sh) / 2] as [number, number]);
   const arrows: { x: number; y: number; dx: number; dy: number; e: number }[] = [];
-  const step = 14;
+  const step = 11;
   for (let y = -sh / 2 + 4; y <= sh / 2 - 4; y += step) {
     for (let x = -sw / 2 + 4; x <= sw / 2 - 4; x += step) {
       const fld = shapeField(x, y, sw, sh, extent, exponent);
       if (fld.distance > -1 || fld.distance < -20) continue;
       const e = edgeProfile(fld.distance);
       if (e < 0.04) continue;
-      arrows.push({ x: x + w / 2, y: y + h / 2, dx: -fld.nx * e * 60 * 0.18, dy: -fld.ny * e * 60 * 0.18, e });
+      arrows.push({ x: x + w / 2, y: y + h / 2, dx: -fld.nx * e * 60 * 0.42, dy: -fld.ny * e * 60 * 0.42, e });
     }
   }
   return (
@@ -214,7 +214,7 @@ export function ToneDiagram() {
         <path key={l.key} d={l.d} className={`diagram__line ${l.cls}`} />
       ))}
       {lines.map((l, i) => (
-        <g key={`k${l.key}`} transform={`translate(${pad.l + iw - 104}, ${pad.t + ih - 70 + i * 16})`}>
+        <g key={`k${l.key}`} transform={`translate(${pad.l + 14}, ${pad.t + 12 + i * 16})`}>
           <line x1="0" y1="-4" x2="14" y2="-4" className={`diagram__line ${l.cls}`} />
           <text x="20" y="0" className="diagram__tick">
             {l.label}
@@ -266,7 +266,7 @@ export function SpringDiagram() {
         <path key={s.key} d={s.d} className={`diagram__line ${s.cls}`} />
       ))}
       {series.map((s, i) => (
-        <g key={`k${s.key}`} transform={`translate(${pad.l + iw - 128}, ${pad.t + 26 + i * 16})`}>
+        <g key={`k${s.key}`} transform={`translate(${pad.l + iw - 132}, ${pad.t + ih * 0.42 + i * 16})`}>
           <line x1="0" y1="-4" x2="14" y2="-4" className={`diagram__line ${s.cls}`} />
           <text x="20" y="0" className="diagram__tick">
             {s.label}

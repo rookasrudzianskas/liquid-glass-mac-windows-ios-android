@@ -152,7 +152,7 @@ export default function Doc({ data }: PageProps<Data>) {
           <h1 id="doc-title" className="docs__title">
             {doc.title}
           </h1>
-          {doc.description ? <p className="docs__description">{doc.description}</p> : null}
+          {doc.lede && doc.description ? <p className="docs__description">{doc.description}</p> : null}
           <p className="docs__meta">
             <a href={doc.sourceUrl} rel="noopener" target="_blank">
               <GitHubIcon size={14} /> {doc.source}

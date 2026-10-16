@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
@@ -41,8 +42,37 @@ function contentWatch(): Plugin {
   };
 }
 
+/** Development only: receives the PNG rendered by /og.html and writes public/og.png. */
+function ogSave(): Plugin {
+  return {
+    name: "lg-og-save",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__og/save", (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          const png = Buffer.concat(chunks);
+          if (png.subarray(1, 4).toString() !== "PNG") {
+            res.statusCode = 400;
+            res.end("not a png");
+            return;
+          }
+          writeFileSync(fileURLToPath(new URL("./public/og.png", import.meta.url)), png);
+          res.end("ok");
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), contentWatch()],
+  plugins: [react(), contentWatch(), ogSave()],
   resolve: {
     alias: [
       { find: /^@lg\/reference$/, replacement: `${repo}spec/reference.mjs` },

@@ -282,7 +282,8 @@ async function renderDoc(entry, slugByFile) {
   }
 
   const firstPara = /<p>([\s\S]*?)<\/p>/.exec(html);
-  let description = typeof data.description === "string" ? data.description : firstPara ? stripTags(firstPara[1] ?? "").replace(/\s+/g, " ").trim() : "";
+  const explicit = typeof data.description === "string";
+  let description = explicit ? data.description : firstPara ? stripTags(firstPara[1] ?? "").replace(/\s+/g, " ").trim() : "";
   if (description.length > 180) description = `${description.slice(0, 177).replace(/\s+\S*$/, "")}…`;
   title ??= entry.title ?? entry.slug;
 
@@ -293,6 +294,7 @@ async function renderDoc(entry, slugByFile) {
     group: GROUPS.includes(data.group) ? data.group : entry.group ?? "Guides",
     order: typeof data.order === "number" ? data.order : entry.order ?? 100,
     description,
+    lede: explicit,
     source: entry.file,
     sourceUrl: `${REPO_URL}/blob/main/${entry.file}`,
     updated: gitDate(entry.file),

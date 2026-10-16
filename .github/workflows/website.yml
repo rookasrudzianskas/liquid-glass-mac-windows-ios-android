@@ -1,0 +1,71 @@
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "spec/**"
+      - "plugins/**"
+      - "assets/wallpapers/**"
+      - "scripts/build-downloads.mjs"
+      - ".github/workflows/website.yml"
+  pull_request:
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "spec/**"
+      - "plugins/**"
+      - "assets/wallpapers/**"
+      - "scripts/build-downloads.mjs"
+      - ".github/workflows/website.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Collect downloads (tolerant of missing platform artifacts)
+        run: node ../scripts/build-downloads.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build and prerender
+        run: npm run build
+
+      - name: Check prerendered routes
+        run: |
+          for f in index playground downloads skills docs 404; do
+            test -s "dist/$f.html" || { echo "missing dist/$f.html"; exit 1; }
+          done
+          test -s dist/sitemap.xml
+          test -s dist/llms.txt
+          test -s dist/downloads/manifest.json

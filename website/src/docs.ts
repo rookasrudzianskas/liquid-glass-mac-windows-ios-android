@@ -19,6 +19,8 @@ export interface TocEntry {
 
 export interface DocPage extends DocMeta {
   sourceUrl: string;
+  /** True when the description comes from front matter (not the first paragraph). */
+  lede: boolean;
   toc: TocEntry[];
   html: string;
 }

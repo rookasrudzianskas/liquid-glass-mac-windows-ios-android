@@ -327,7 +327,7 @@ code {
 /* Section scaffolding */
 
 .section {
-  padding: clamp(80px, 12vw, 160px) var(--gutter);
+  padding: clamp(64px, 8vw, 120px) var(--gutter);
 }
 
 .section__inner {

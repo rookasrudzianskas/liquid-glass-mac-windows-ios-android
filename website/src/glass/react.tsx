@@ -167,6 +167,7 @@ export interface GlassProps extends SurfaceProps, Omit<HTMLAttributes<HTMLDivEle
   stretch?: boolean;
   enterDelay?: number;
   keyboardStep?: number;
+  bounds?: "stage" | "parent";
   ref?: RefObject<HTMLDivElement | null>;
   onMotion?: (motion: SurfaceMotion | null) => void;
 }
@@ -184,6 +185,7 @@ export function Glass({
   stretch = false,
   enterDelay = 0,
   keyboardStep = 24,
+  bounds = "stage",
   className,
   style,
   children,
@@ -201,7 +203,7 @@ export function Glass({
 
   useIsoLayoutEffect(() => {
     if (!scene || !surface) return;
-    const m = new SurfaceMotion(scene, surface, { interactive, draggable, stretch, enterDelay, keyboardStep });
+    const m = new SurfaceMotion(scene, surface, { interactive, draggable, stretch, enterDelay, keyboardStep, bounds });
     motionRef.current = m;
     motionCallback.current?.(m);
     return () => {
@@ -214,8 +216,8 @@ export function Glass({
 
   useEffect(() => {
     const m = motionRef.current;
-    if (m) m.options = { interactive, draggable, stretch, enterDelay, keyboardStep };
-  }, [interactive, draggable, stretch, enterDelay, keyboardStep]);
+    if (m) m.options = { interactive, draggable, stretch, enterDelay, keyboardStep, bounds };
+  }, [interactive, draggable, stretch, enterDelay, keyboardStep, bounds]);
 
   useEffect(() => {
     if (kind !== "pending") motionRef.current?.show();

@@ -1,5 +1,9 @@
 import screens from "../generated/screens.json";
 import { Link, REPO_URL } from "../router";
+import { Glass, GlassStage } from "../glass/react";
+import { wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
+import type { WallpaperName } from "../glass/backdrop";
+import { useTheme } from "../theme";
 import type { Head } from "../router";
 import { Hero } from "./home/Hero";
 import { Platforms } from "./home/Platforms";
@@ -89,6 +93,48 @@ function Screens() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function CallToAction() {
+  const { theme, mounted } = useTheme();
+  const name = (wallpaperNames.includes("ocean" as WallpaperName) ? "ocean" : wallpaperNames[0]) as WallpaperName;
+  return (
+    <section className="section cta" aria-labelledby="cta-title">
+      <GlassStage
+        backdrop={mounted ? { kind: "wallpaper", name } : null}
+        appearance={theme}
+        className="cta__stage"
+        fallback={
+          <picture className="stage__fallback">
+            <source type="image/avif" srcSet={wallpaperSrcSet(name, "avif")} sizes="min(1180px, 100vw)" />
+            <source type="image/webp" srcSet={wallpaperSrcSet(name, "webp")} sizes="min(1180px, 100vw)" />
+            <img src={`/wallpapers/${name}-1536.jpg`} alt="" width={3072} height={3072} loading="lazy" decoding="async" />
+          </picture>
+        }
+      >
+        <Glass className="cta__card" material="regular" radius={40} interactive enterDelay={80}>
+          <h2 id="cta-title" className="cta__title">
+            Start building with glass.
+          </h2>
+          <p className="cta__lead">Free and open source under the MIT License. Packages, demo apps and agent skills are one click away.</p>
+          <div className="cta__buttons">
+            <Link href="/downloads" className="button button--primary">
+              <DownloadIcon size={18} />
+              Downloads
+            </Link>
+            <Link href="/docs" className="button button--onglass">
+              Documentation
+              <ArrowRightIcon size={18} />
+            </Link>
+            <a href={REPO_URL} className="button button--onglass" rel="noopener" target="_blank">
+              <GitHubIcon size={18} />
+              GitHub
+            </a>
+          </div>
+        </Glass>
+      </GlassStage>
     </section>
   );
 }
@@ -238,28 +284,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section cta" aria-labelledby="cta-title">
-        <div className="section__inner cta__inner">
-          <h2 id="cta-title" className="headline">
-            Start building with glass.
-          </h2>
-          <p className="lead">Free and open source under the MIT License. Packages, demo apps and agent skills are one click away.</p>
-          <div className="cta__buttons">
-            <Link href="/downloads" className="button button--primary">
-              <DownloadIcon size={18} />
-              Downloads
-            </Link>
-            <Link href="/docs" className="button button--secondary">
-              Documentation
-              <ArrowRightIcon size={18} />
-            </Link>
-            <a href={REPO_URL} className="button button--secondary" rel="noopener" target="_blank">
-              <GitHubIcon size={18} />
-              GitHub
-            </a>
-          </div>
-        </div>
-      </section>
+      <CallToAction />
     </>
   );
 }

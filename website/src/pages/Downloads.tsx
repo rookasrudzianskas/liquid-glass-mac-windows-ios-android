@@ -126,9 +126,11 @@ const PLATFORMS = [
 ] as const;
 
 export default function Downloads() {
-  const byPlatform = (p: string) => manifest.items.filter((i) => i.platform === p);
-  const general = manifest.items.filter((i) => i.platform === "all" && i.kind !== "skill");
-  const skills = manifest.items.filter((i) => i.kind === "skill");
+  // Optional items appear once they exist; required ones show as pending until then.
+  const shown = manifest.items.filter((i) => i.available || i.required !== false);
+  const byPlatform = (p: string) => shown.filter((i) => i.platform === p);
+  const general = shown.filter((i) => i.platform === "all" && i.kind !== "skill");
+  const skills = shown.filter((i) => i.kind === "skill");
   const anyAvailable = manifest.items.some((i) => i.available);
 
   return (

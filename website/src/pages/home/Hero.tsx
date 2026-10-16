@@ -105,6 +105,7 @@ export function Hero() {
             refraction={refraction ? 60 : 0}
             tint={tintHex}
             draggable
+            bounds="parent"
             interactive
             enterDelay={60}
             tabIndex={0}
@@ -137,6 +138,7 @@ export function Hero() {
             radius="capsule"
             refraction={refraction ? 60 : 0}
             draggable
+            bounds="parent"
             interactive
             enterDelay={140}
             tabIndex={0}

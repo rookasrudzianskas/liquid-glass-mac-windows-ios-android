@@ -16,6 +16,8 @@ export interface MotionOptions {
   enterDelay: number;
   /** Arrow-key step for draggable surfaces. */
   keyboardStep: number;
+  /** Where a draggable surface may go: the whole stage or its parent element. */
+  bounds: "stage" | "parent";
 }
 
 const spring = (value = 0): SpringState => ({ value, velocity: 0, target: value });
@@ -183,7 +185,7 @@ export class SurfaceMotion {
   /** Keep a draggable surface inside its stage; rubber-band past the edge while dragging. */
   private clamp(x: number, y: number, elastic: boolean): [number, number] {
     const el = this.el;
-    const parent = this.scene.root;
+    const parent = this.options.bounds === "parent" && el.parentElement ? el.parentElement : this.scene.root;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const pw = parent.clientWidth;

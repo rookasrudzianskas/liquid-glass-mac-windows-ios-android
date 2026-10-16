@@ -1,7 +1,419 @@
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { Glass, GlassStage, hexToRgb } from "../glass/react";
+import { wallpaperInfo, wallpaperNames } from "../glass/backdrop";
+import type { BackdropSpec, WallpaperName } from "../glass/backdrop";
+import type { Material } from "../glass/renderer";
+import { useTheme } from "../theme";
 import type { Head } from "../router";
+import { highlight } from "../lib/highlight";
+import type { Lang } from "../lib/highlight";
+import { CopyButton } from "../components/Code";
+import { ChevronDownIcon } from "../components/Icons";
 
-export default function Playground() {
-  return <div className="section"><h1>Playground</h1></div>;
+type BackdropId = WallpaperName | "grid" | "type";
+type AppearanceSetting = "automatic" | "light" | "dark";
+
+interface Settings {
+  backdrop: BackdropId;
+  material: Material;
+  appearance: AppearanceSetting;
+  refraction: number;
+  radius: number;
+  capsule: boolean;
+  width: number;
+  height: number;
+  tint: string | null;
+  interactive: boolean;
 }
 
-export const head = (): Head => ({ title: "Playground", description: "Playground", path: "/" });
+const DEFAULTS: Settings = {
+  backdrop: (wallpaperNames.includes("aurora" as WallpaperName) ? "aurora" : wallpaperNames[0]) as BackdropId,
+  material: "regular",
+  appearance: "automatic",
+  refraction: 60,
+  radius: 32,
+  capsule: false,
+  width: 340,
+  height: 220,
+  tint: null,
+  interactive: true,
+};
+
+const TINTS = [
+  { name: "Blue", hex: "#3d8bff" },
+  { name: "Violet", hex: "#8a5cff" },
+  { name: "Pink", hex: "#ff4f9a" },
+  { name: "Red", hex: "#ff5a4f" },
+  { name: "Amber", hex: "#ffb02e" },
+  { name: "Mint", hex: "#2fd4a3" },
+];
+
+const BACKDROP_LABELS: Record<string, string> = { dunes: "Dunes", aurora: "Aurora", ocean: "Ocean", midnight: "Midnight", grid: "Grid", type: "Type" };
+
+const clampInt = (v: unknown, lo: number, hi: number, fallback: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
+};
+
+function parse(search: string): Settings {
+  const q = new URLSearchParams(search);
+  const backdrops: string[] = [...wallpaperNames, "grid", "type"];
+  const b = q.get("backdrop");
+  const tint = q.get("tint");
+  return {
+    backdrop: (b && backdrops.includes(b) ? b : DEFAULTS.backdrop) as BackdropId,
+    material: q.get("material") === "clear" ? "clear" : q.get("material") === "regular" ? "regular" : DEFAULTS.material,
+    appearance: (["automatic", "light", "dark"].includes(q.get("appearance") ?? "") ? q.get("appearance") : DEFAULTS.appearance) as AppearanceSetting,
+    refraction: clampInt(q.get("refraction") ?? DEFAULTS.refraction, 0, 120, DEFAULTS.refraction),
+    radius: clampInt(q.get("radius") ?? DEFAULTS.radius, 0, 120, DEFAULTS.radius),
+    capsule: q.get("capsule") === "1",
+    width: clampInt(q.get("width") ?? DEFAULTS.width, 60, 560, DEFAULTS.width),
+    height: clampInt(q.get("height") ?? DEFAULTS.height, 44, 420, DEFAULTS.height),
+    tint: tint && /^[0-9a-f]{6}$/i.test(tint) ? `#${tint.toLowerCase()}` : null,
+    interactive: q.get("interactive") !== "0",
+  };
+}
+
+function serialize(s: Settings) {
+  const q = new URLSearchParams();
+  (Object.keys(DEFAULTS) as (keyof Settings)[]).forEach((k) => {
+    if (s[k] === DEFAULTS[k]) return;
+    const v = s[k];
+    if (k === "tint") q.set("tint", (v as string).slice(1));
+    else if (typeof v === "boolean") q.set(k, v ? "1" : "0");
+    else q.set(k, String(v));
+  });
+  const str = q.toString();
+  return str ? `?${str}` : "";
+}
+
+// ---------------------------------------------------------------------------
+// Code for each platform, reflecting the current settings
+
+const cap = (s: string) => s[0]?.toUpperCase() + s.slice(1);
+
+function swiftColor(hex: string) {
+  const [r, g, b] = hexToRgb(hex) ?? [0, 0, 0];
+  return `Color(red: ${r.toFixed(3)}, green: ${g.toFixed(3)}, blue: ${b.toFixed(3)})`;
+}
+
+function swiftCode(s: Settings) {
+  const args = [`material: .${s.material}`];
+  if (s.appearance !== "automatic") args.push(`appearance: .${s.appearance}`);
+  args.push(`radius: ${s.capsule ? ".capsule" : s.radius}`);
+  if (s.refraction !== 60) args.push(`refraction: ${s.refraction}`);
+  if (s.tint) args.push(`tint: ${swiftColor(s.tint)}`);
+  if (s.interactive) args.push("interactive: true");
+  return `GlassSurface(
+    ${args.join(",\n    ")}
+) {
+    Text("Liquid Glass")
+}
+.frame(width: ${s.width}, height: ${s.height})`;
+}
+
+function composeCode(s: Settings) {
+  const args = [`modifier = Modifier.size(${s.width}.dp, ${s.height}.dp)`, `shape = ${s.capsule ? "GlassShape.Capsule" : `GlassShape(${s.radius}.dp)`}`, `material = GlassMaterial.${cap(s.material)}`];
+  if (s.appearance !== "automatic") args.push(`appearance = GlassAppearance.${cap(s.appearance)}`);
+  if (s.tint) args.push(`tint = Color(0xFF${s.tint.slice(1).toUpperCase()})`);
+  if (s.refraction !== 60) args.push(`refraction = ${s.refraction}.dp`);
+  if (s.interactive) args.push("interactive = true");
+  return `GlassSurface(
+    ${args.join(",\n    ")},
+) {
+    Text("Liquid Glass")
+}`;
+}
+
+function wpfCode(s: Settings) {
+  const attrs = [`Width="${s.width}"`, `Height="${s.height}"`, `Material="${cap(s.material)}"`];
+  if (s.appearance !== "automatic") attrs.push(`Appearance="${cap(s.appearance)}"`);
+  attrs.push(`Radius="${s.capsule ? "capsule" : s.radius}"`);
+  if (s.refraction !== 60) attrs.push(`Refraction="${s.refraction}"`);
+  if (s.tint) attrs.push(`Tint="${s.tint.toUpperCase()}"`);
+  if (s.interactive) attrs.push(`IsInteractive="True"`);
+  return `<lg:GlassSurface ${attrs.join("\n                 ")}>
+    <TextBlock Text="Liquid Glass" />
+</lg:GlassSurface>`;
+}
+
+const CODE_TABS: { id: string; label: string; file: string; lang: Lang; make: (s: Settings) => string }[] = [
+  { id: "swiftui", label: "SwiftUI", file: "ContentView.swift", lang: "swift", make: swiftCode },
+  { id: "compose", label: "Compose", file: "Glass.kt", lang: "kotlin", make: composeCode },
+  { id: "wpf", label: "WPF", file: "MainWindow.xaml", lang: "xml", make: wpfCode },
+];
+
+// ---------------------------------------------------------------------------
+// Controls
+
+function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
+  const id = useId();
+  return (
+    <div className="control" role="radiogroup" aria-labelledby={id}>
+      <span id={id} className="control__label">
+        {label}
+      </span>
+      <div className="pg-segmented">
+        {options.map((o, i) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            tabIndex={value === o.value ? 0 : -1}
+            className="pg-segmented__item"
+            onClick={() => onChange(o.value)}
+            onKeyDown={(e) => {
+              const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+              if (!delta) return;
+              e.preventDefault();
+              const next = options[(i + delta + options.length) % options.length];
+              if (next) {
+                onChange(next.value);
+                (e.currentTarget.parentElement?.children[(i + delta + options.length) % options.length] as HTMLElement | undefined)?.focus();
+              }
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Slider({ label, value, min, max, step = 1, unit = "", disabled, onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; disabled?: boolean; onChange: (v: number) => void }) {
+  const id = useId();
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div className="control" data-disabled={disabled ? "" : undefined}>
+      <div className="control__row">
+        <label htmlFor={id} className="control__label">
+          {label}
+        </label>
+        <output htmlFor={id} className="control__value">
+          {value}
+          {unit}
+        </output>
+      </div>
+      <input
+        id={id}
+        type="range"
+        className="pg-range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        style={{ "--pct": `${pct}%` } as CSSProperties}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  const id = useId();
+  return (
+    <div className="control control--inline">
+      <span id={`${id}-label`} className="control__label">
+        {label}
+      </span>
+      <button id={id} type="button" role="switch" aria-checked={checked} aria-labelledby={`${id}-label`} className="pg-switch" onClick={() => onChange(!checked)}>
+        <span className="pg-switch__thumb" />
+      </button>
+    </div>
+  );
+}
+
+function TintPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const id = useId();
+  const custom = value && !TINTS.some((t) => t.hex === value) ? value : null;
+  return (
+    <div className="control" role="radiogroup" aria-labelledby={id}>
+      <span id={id} className="control__label">
+        Tint
+      </span>
+      <div className="tints">
+        <button type="button" role="radio" aria-checked={value === null} className="tint tint--none" aria-label="No tint" title="No tint" onClick={() => onChange(null)} />
+        {TINTS.map((t) => (
+          <button key={t.hex} type="button" role="radio" aria-checked={value === t.hex} className="tint" style={{ background: t.hex }} aria-label={t.name} title={t.name} onClick={() => onChange(t.hex)} />
+        ))}
+        <label className="tint tint--custom" data-checked={custom ? "" : undefined} title="Custom color" style={custom ? { background: custom } : undefined}>
+          <span className="sr-only">Custom tint color</span>
+          <input type="color" value={value ?? "#3d8bff"} onChange={(e) => onChange(e.target.value.toLowerCase())} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+export default function Playground() {
+  const { theme, mounted } = useTheme();
+  const [s, setS] = useState<Settings>(DEFAULTS);
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState(CODE_TABS[0]?.id ?? "swiftui");
+  const [codeOpen, setCodeOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const resetKey = useRef(0);
+  const [, force] = useState(0);
+  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((prev) => ({ ...prev, [k]: v }));
+
+  // Settings live in the URL so a configuration can be shared.
+  useEffect(() => {
+    setS(parse(window.location.search));
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const t = window.setTimeout(() => {
+      const next = `${window.location.pathname}${serialize(s)}`;
+      if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(window.history.state, "", next);
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [s, ready]);
+
+  const appearance = s.appearance === "automatic" ? theme : s.appearance;
+  const backdrop: BackdropSpec | null = !mounted || !ready ? null : s.backdrop === "grid" || s.backdrop === "type" ? { kind: "canvas", pattern: s.backdrop } : { kind: "wallpaper", name: s.backdrop };
+  const current = CODE_TABS.find((t) => t.id === tab) ?? CODE_TABS[0];
+  const source = useMemo(() => (current ? current.make(s) : ""), [current, s]);
+  const html = useMemo(() => (current ? highlight(source, current.lang) : ""), [source, current]);
+  const tabsId = useId();
+
+  return (
+    <div className="pg" data-appearance={appearance}>
+      <h1 className="sr-only">Liquid Glass materials lab</h1>
+      <GlassStage backdrop={backdrop} appearance={appearance} className="pg__stage" transition={450}>
+        <div className="pg__center">
+          <Glass
+            key={resetKey.current}
+            className="pg__glass"
+            material={s.material}
+            radius={s.capsule ? "capsule" : s.radius}
+            refraction={s.refraction}
+            tint={s.tint}
+            appearance={appearance}
+            draggable
+            interactive={s.interactive}
+            tabIndex={0}
+            role="img"
+            aria-label={`${s.material === "regular" ? "Regular" : "Clear"} glass, ${s.width} by ${s.height}. Drag it with the pointer, or focus it and use the arrow keys.`}
+            style={{ width: s.width, height: s.height }}
+          >
+            <span className="pg__glass-label" aria-hidden="true">
+              {s.width >= 150 && s.height >= 70 ? "Liquid Glass" : ""}
+            </span>
+          </Glass>
+        </div>
+      </GlassStage>
+
+      <aside className="pg-panel" data-open={panelOpen ? "" : undefined} aria-label="Glass settings">
+        <button type="button" className="pg-panel__toggle" aria-expanded={panelOpen} onClick={() => setPanelOpen((o) => !o)}>
+          <span>Settings</span>
+          <ChevronDownIcon size={18} />
+        </button>
+        <div className="pg-panel__body">
+          <div className="control" role="radiogroup" aria-label="Backdrop">
+            <span className="control__label" aria-hidden="true">
+              Backdrop
+            </span>
+            <div className="backdrops">
+              {[...wallpaperNames, "grid" as const, "type" as const].map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  role="radio"
+                  aria-checked={s.backdrop === b}
+                  className="backdrop-thumb"
+                  data-kind={b === "grid" || b === "type" ? b : "wallpaper"}
+                  style={b === "grid" || b === "type" ? undefined : { backgroundImage: `url(/wallpapers/${b}-640.webp)`, backgroundColor: wallpaperInfo[b as WallpaperName].color }}
+                  onClick={() => set("backdrop", b as BackdropId)}
+                >
+                  <span>{BACKDROP_LABELS[b] ?? b}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Segmented
+            label="Material"
+            value={s.material}
+            options={[
+              { value: "clear", label: "Clear" },
+              { value: "regular", label: "Regular" },
+            ]}
+            onChange={(v) => set("material", v)}
+          />
+          <Segmented
+            label="Appearance"
+            value={s.appearance}
+            options={[
+              { value: "automatic", label: "Auto" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
+            onChange={(v) => set("appearance", v)}
+          />
+          <Slider label="Refraction" value={s.refraction} min={0} max={120} onChange={(v) => set("refraction", v)} />
+          <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
+          <Toggle label="Capsule" checked={s.capsule} onChange={(v) => set("capsule", v)} />
+          <Slider label="Width" value={s.width} min={60} max={560} onChange={(v) => set("width", v)} />
+          <Slider label="Height" value={s.height} min={44} max={420} onChange={(v) => set("height", v)} />
+          <TintPicker value={s.tint} onChange={(v) => set("tint", v)} />
+          <Toggle label="Interactive" checked={s.interactive} onChange={(v) => set("interactive", v)} />
+          <div className="pg-panel__actions">
+            <button
+              type="button"
+              className="button button--secondary button--small"
+              onClick={() => {
+                setS(DEFAULTS);
+                resetKey.current++;
+                force((n) => n + 1);
+              }}
+            >
+              Reset
+            </button>
+            <CopyButton text={typeof window === "undefined" ? "" : `${window.location.origin}/playground${serialize(s)}`} label="Copy link" />
+          </div>
+        </div>
+      </aside>
+
+      <section className="pg-code" data-open={codeOpen ? "" : undefined} aria-label="Code for the current settings">
+        <div className="pg-code__bar">
+          <div className="pg-code__tabs" role="tablist" aria-label="Platform">
+            {CODE_TABS.map((t) => (
+              <button
+                key={t.id}
+                id={`${tabsId}-${t.id}`}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                aria-controls={`${tabsId}-panel`}
+                className="pg-code__tab"
+                onClick={() => {
+                  setTab(t.id);
+                  setCodeOpen(true);
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <CopyButton text={source} />
+          <button type="button" className="icon-button pg-code__collapse" aria-expanded={codeOpen} aria-label={codeOpen ? "Hide code" : "Show code"} onClick={() => setCodeOpen((o) => !o)}>
+            <ChevronDownIcon size={18} />
+          </button>
+        </div>
+        <div id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={`${tabsId}-${tab}`} className="pg-code__body code" hidden={!codeOpen} dangerouslySetInnerHTML={{ __html: html }} />
+      </section>
+    </div>
+  );
+}
+
+export const head = (): Head => ({
+  title: "Playground",
+  description: "A live Liquid Glass materials lab in WebGL2: switch Clear and Regular, appearance, refraction, corner radius, tint and size, and copy matching SwiftUI, Compose and WPF code.",
+  path: "/playground",
+});
