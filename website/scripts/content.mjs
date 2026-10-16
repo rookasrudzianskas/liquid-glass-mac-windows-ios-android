@@ -368,6 +368,16 @@ async function buildDocs() {
   }
   docs.sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group) || a.order - b.order || a.title.localeCompare(b.title));
 
+  // Warn about links to headings that do not exist (they would land at the top).
+  const idsBySlug = new Map(docs.map((d) => [d.slug, new Set([...d.html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))]));
+  for (const d of docs) {
+    for (const m of d.html.matchAll(/href="(?:\/docs\/([a-z0-9-]+))?#([^"]+)"/g)) {
+      const slug = m[1] ?? d.slug;
+      const id = decodeURIComponent(m[2] ?? "");
+      if (!idsBySlug.get(slug)?.has(id)) console.warn(`[content] ${d.source}: link to missing anchor ${slug}#${id}`);
+    }
+  }
+
   await rm(path.join(gen, "docs"), { recursive: true, force: true });
   for (const d of docs) {
     const { sections: _s, markdown: _m, ...page } = d;
