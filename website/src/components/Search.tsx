@@ -80,6 +80,29 @@ export default function Search({ onClose }: { onClose: () => void }) {
   const results = useMemo(() => (index ? search(index, query) : []), [index, query]);
   useEffect(() => setActive(0), [query]);
 
+  // Escape closes; Tab stays inside the dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === "Tab") {
+        const focusables = [...(dialogRef.current?.querySelectorAll<HTMLElement>("input, button, a[href]") ?? [])];
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const go = (r: Result) => {
     onClose();
     navigate(`/docs/${r.slug}${r.anchor ? `#${r.anchor}` : ""}`);
@@ -98,36 +121,6 @@ export default function Search({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Search documentation"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onClose();
-          } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setActive((a) => Math.min(results.length - 1, a + 1));
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            setActive((a) => Math.max(0, a - 1));
-          } else if (e.key === "Enter") {
-            const r = results[active];
-            if (r) {
-              e.preventDefault();
-              go(r);
-            }
-          } else if (e.key === "Tab") {
-            // Keep focus inside the dialog.
-            const focusables = [...(dialogRef.current?.querySelectorAll<HTMLElement>("input, button, a[href]") ?? [])];
-            const first = focusables[0];
-            const last = focusables[focusables.length - 1];
-            if (e.shiftKey && document.activeElement === first) {
-              e.preventDefault();
-              last?.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-              e.preventDefault();
-              first?.focus();
-            }
-          }
-        }}
       >
         <div className="search__field">
           <SearchIcon size={18} />
@@ -145,21 +138,38 @@ export default function Search({ onClose }: { onClose: () => void }) {
             spellCheck={false}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActive((a) => Math.min(results.length - 1, a + 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((a) => Math.max(0, a - 1));
+              } else if (e.key === "Enter") {
+                const r = results[active];
+                if (r) {
+                  e.preventDefault();
+                  go(r);
+                }
+              }
+            }}
           />
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close search">
             <CloseIcon size={18} />
           </button>
         </div>
-        <ul id={listId} role="listbox" className="search__results" aria-label="Results">
+        <div id={listId} role="listbox" className="search__results" aria-label="Results">
           {results.map((r, i) => (
-            <li
+            <div
               key={`${r.slug}#${r.anchor}`}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
               className="search__result"
+              tabIndex={-1}
               onPointerMove={() => setActive(i)}
               onClick={() => go(r)}
+              onKeyDown={(e) => e.key === "Enter" && go(r)}
             >
               <span className="search__path">
                 {r.title}
@@ -168,9 +178,9 @@ export default function Search({ onClose }: { onClose: () => void }) {
               <span className="search__snippet">
                 <Mark text={r.snippet} query={query} />
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
         {query && index && !results.length && <p className="search__empty">No results for “{query}”.</p>}
         {!query && <p className="search__empty">Search SwiftUI, Compose and WPF docs, the optics spec and the component contract.</p>}
         <p className="search__hint" aria-hidden="true">

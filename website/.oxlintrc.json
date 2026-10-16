@@ -8,8 +8,16 @@
   "rules": {
     "react/react-in-jsx-scope": "off",
     "react/no-danger": "off",
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "jsx-a11y/no-redundant-roles": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
     "unicorn/no-array-sort": "off",
-    "unicorn/prefer-add-event-listener": "off"
+    "unicorn/prefer-add-event-listener": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "import/no-unassigned-import": "off",
+    "eslint/no-underscore-dangle": "off"
   },
   "ignorePatterns": ["dist", "dist-ssr", "src/generated"]
 }

@@ -113,7 +113,7 @@ export function isRoutable(url: URL) {
   return true;
 }
 
-export function handleLinkClick(e: MouseEvent<HTMLAnchorElement> | globalThis.MouseEvent, anchor: HTMLAnchorElement, navigate: Router["navigate"]) {
+export function handleLinkClick(e: MouseEvent<HTMLElement> | globalThis.MouseEvent, anchor: HTMLAnchorElement, navigate: Router["navigate"]) {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   if (anchor.target && anchor.target !== "_self") return;
   if (anchor.hasAttribute("download")) return;
@@ -125,7 +125,7 @@ export function handleLinkClick(e: MouseEvent<HTMLAnchorElement> | globalThis.Mo
   navigate(url.pathname + url.search + url.hash);
 }
 
-export function Link({ href, onClick, onMouseEnter, onFocus, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
+export function Link({ href, onClick, onMouseEnter, onFocus, children, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
   const { navigate, path } = useRouter();
   const current = normalizePath(href.split(/[?#]/)[0] ?? "") === path;
   return (
@@ -145,6 +145,8 @@ export function Link({ href, onClick, onMouseEnter, onFocus, ...rest }: AnchorHT
         prefetch(href);
       }}
       {...rest}
-    />
+    >
+      {children}
+    </a>
   );
 }

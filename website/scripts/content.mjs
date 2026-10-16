@@ -442,8 +442,18 @@ async function buildSnippets(docs) {
 async function buildStaticCode() {
   const file = path.join(site, "src/content/code.json");
   const samples = await readJson(file, {});
+  // Package ids and versions come from the downloads manifest when it exists.
+  const manifest = await readJson(path.join(pub, "downloads/manifest.json"), null);
+  const nuget = manifest?.items?.filter((i) => i.id?.startsWith("nuget-") && i.packageId) ?? [];
+  const nugetId = (nuget.find((i) => /wpf/i.test(i.packageId)) ?? nuget[0])?.packageId ?? "LiquidGlassEngineering.Wpf";
+  const vars = { NUGET_ID: nugetId, VERSION: manifest?.version ?? "1.0.0" };
+  const fill = (s) => s.replace(/\{\{(\w+)\}\}/g, (_m, k) => vars[k] ?? _m);
+  await writeIfChanged(path.join(gen, "packages.json"), json({ nugetId, version: vars.VERSION }));
   const out = {};
-  for (const [key, { code, lang }] of Object.entries(samples)) out[key] = { code, ...(await highlight(code, lang)) };
+  for (const [key, { code: raw, lang }] of Object.entries(samples)) {
+    const code = fill(raw);
+    out[key] = { code, ...(await highlight(code, lang)) };
+  }
   await writeIfChanged(path.join(gen, "code.json"), json(out));
 }
 

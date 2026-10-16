@@ -1,7 +1,7 @@
 {
   "spm": {
     "lang": "swift",
-    "code": "// Package.swift\ndependencies: [\n    .package(url: \"https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android\", from: \"1.0.0\"),\n],\ntargets: [\n    .target(name: \"App\", dependencies: [\n        .product(name: \"LiquidGlass\", package: \"liquid-glass-mac-windows-ios-android\"),\n    ]),\n]"
+    "code": "// Package.swift\ndependencies: [\n    .package(url: \"https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android\", from: \"{{VERSION}}\"),\n],\ntargets: [\n    .target(name: \"App\", dependencies: [\n        .product(name: \"LiquidGlass\", package: \"liquid-glass-mac-windows-ios-android\"),\n    ]),\n]"
   },
   "gradleRepo": {
     "lang": "kotlin",
@@ -9,15 +9,15 @@
   },
   "gradleDep": {
     "lang": "kotlin",
-    "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:1.0.0\")\n}"
+    "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
   },
   "jitpack": {
     "lang": "kotlin",
-    "code": "// settings.gradle.kts: repositories { maven(\"https://jitpack.io\") }\nimplementation(\"com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0\")"
+    "code": "// settings.gradle.kts: repositories { maven(\"https://jitpack.io\") }\nimplementation(\"com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{{VERSION}}\")"
   },
   "nugetCli": {
     "lang": "shellscript",
-    "code": "dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json --name liquid-glass\ndotnet add package LiquidGlass.Wpf --version 1.0.0"
+    "code": "dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json --name liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"
   },
   "nugetConfig": {
     "lang": "xml",
@@ -50,5 +50,9 @@
   "fallbackWindows": {
     "lang": "xml",
     "code": "<lg:GlassScene>\n  <lg:GlassScene.Content>\n    <Image Source=\"Assets/Wallpaper.jpg\" Stretch=\"UniformToFill\" />\n  </lg:GlassScene.Content>\n  <lg:GlassSurface Material=\"Regular\" CornerRadius=\"24\">\n    <TextBlock Text=\"Liquid Glass\" FontSize=\"22\" FontWeight=\"SemiBold\" />\n  </lg:GlassSurface>\n</lg:GlassScene>"
+  },
+  "nugetRef": {
+    "lang": "xml",
+    "code": "<PackageReference Include=\"{{NUGET_ID}}\" Version=\"{{VERSION}}\" />"
   }
 }
