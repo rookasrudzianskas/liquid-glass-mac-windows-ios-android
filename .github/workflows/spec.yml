@@ -1,0 +1,25 @@
+name: Spec
+
+on:
+  push:
+    branches: [main]
+    paths: ["spec/**", ".github/workflows/spec.yml"]
+  pull_request:
+    paths: ["spec/**", ".github/workflows/spec.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  vectors:
+    name: Golden vectors are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Regenerate spec/vectors.json
+        run: node spec/generate-vectors.mjs
+      - name: Fail if the committed vectors are stale
+        run: git diff --exit-code -- spec/vectors.json
