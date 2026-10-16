@@ -16,6 +16,21 @@ final class StudioUITests: XCTestCase {
         return app
     }
 
+    /// Waits until `condition` holds, polling the UI for up to `timeout` seconds.
+    private func waitUntil(timeout: TimeInterval = 8, _ condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+        return condition()
+    }
+
+    /// Lets animations run for `seconds` without asserting anything.
+    private func settle(_ seconds: TimeInterval = 1) {
+        RunLoop.current.run(until: Date().addingTimeInterval(seconds))
+    }
+
     private func snap(_ name: String) {
         guard let directory = ProcessInfo.processInfo.environment["LG_SHOTS"] else { return }
         let url = URL(fileURLWithPath: directory).appendingPathComponent("ui-\(name).png")
@@ -41,17 +56,17 @@ final class StudioUITests: XCTestCase {
         let app = launch("hero")
         app.buttons["More"].tap()
         let item = app.buttons["Materials lab"]
-        XCTAssertTrue(item.waitForExistence(timeout: 3))
-        sleep(1)
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        // Let the panel finish growing out of its trigger.
+        settle(1)
         snap("menu-open")
         // A tap outside dismisses it.
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)).tap()
-        sleep(1)
-        snap("menu-after-outside-tap")
-        XCTAssertTrue(item.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(item.waitForNonExistence(timeout: 5))
         // Choosing an item runs it and closes the menu.
         app.buttons["More"].tap()
-        XCTAssertTrue(item.waitForExistence(timeout: 3))
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        settle(1)
         item.tap()
         XCTAssertTrue(app.staticTexts["Refraction"].waitForExistence(timeout: 5))
     }
@@ -61,23 +76,30 @@ final class StudioUITests: XCTestCase {
         let toggle = app.switches["Bluetooth"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertEqual(toggle.value as? String, "0")
-        // Bring the row out from under the tab bar, then tap the switch
-        // itself, at the trailing end of its row.
-        app.swipeUp(velocity: .slow)
-        sleep(1)
+        // Bring the row well clear of the floating tab bar, then tap the
+        // switch itself, at the trailing end of its row.
+        let clear = app.frame.height * 0.6
+        for _ in 0..<6 where toggle.frame.maxY > clear {
+            app.swipeUp(velocity: .slow)
+            settle(2)
+        }
+        XCTAssertLessThan(toggle.frame.maxY, clear)
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        XCTAssertEqual(toggle.value as? String, "1")
+        XCTAssertTrue(waitUntil { toggle.value as? String == "1" }, "switch did not turn on")
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        XCTAssertEqual(toggle.value as? String, "0")
+        XCTAssertTrue(waitUntil { toggle.value as? String == "0" }, "switch did not turn off")
     }
 
     func testMenuInScrollViewChangesSelection() {
         let app = launch("controls")
-        app.buttons["Sort: Newest"].tap()
+        let sort = app.buttons["Sort: Newest"]
+        XCTAssertTrue(sort.waitForExistence(timeout: 5))
+        sort.tap()
         let oldest = app.buttons["Oldest"]
-        XCTAssertTrue(oldest.waitForExistence(timeout: 3))
+        XCTAssertTrue(oldest.waitForExistence(timeout: 5))
+        settle(1)
         oldest.tap()
-        XCTAssertTrue(app.buttons["Sort: Oldest"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Sort: Oldest"].waitForExistence(timeout: 5))
     }
 
     func testSliderFollowsDrag() {
@@ -87,7 +109,7 @@ final class StudioUITests: XCTestCase {
         let before = slider.value as? String
         let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5))
         start.press(forDuration: 0.3, thenDragTo: slider.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)))
-        XCTAssertNotEqual(slider.value as? String, before)
+        XCTAssertTrue(waitUntil { slider.value as? String != before }, "slider value did not change")
     }
 
     func testStoriesScroll() {
@@ -96,13 +118,12 @@ final class StudioUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let top = title.frame.minY
         app.swipeUp(velocity: .slow)
-        sleep(2)
+        XCTAssertTrue(waitUntil { title.frame.minY < top - 100 }, "stories did not scroll")
+        settle(2)
         snap("stories-scrolled")
-        XCTAssertLessThan(title.frame.minY, top - 100)
         // The toolbar scrolls back to the top.
         app.buttons["Scroll to top"].tap()
-        sleep(2)
-        XCTAssertEqual(title.frame.minY, top, accuracy: 2)
+        XCTAssertTrue(waitUntil { abs(title.frame.minY - top) < 2 }, "did not return to the top")
     }
 
     /// Holds a press on the hero card and drags it, long enough to capture

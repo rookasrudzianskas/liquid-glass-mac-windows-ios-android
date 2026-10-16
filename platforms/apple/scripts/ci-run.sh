@@ -7,6 +7,12 @@ title="$1"; shift
 log="$(mktemp)"
 "$@" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
+if [ "$status" -ne 0 ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
+  # Annotations show on the run page without signing in.
+  grep -E "error:|failed \(" "$log" | head -10 | while IFS= read -r line; do
+    echo "::error title=$title::${line//$'\n'/ }"
+  done
+fi
 if [ "$status" -ne 0 ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
   {
     echo "### $title failed (exit $status)"
