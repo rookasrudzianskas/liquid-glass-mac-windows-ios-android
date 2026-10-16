@@ -51,3 +51,22 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_PREVIEWS: YES
         DEAD_CODE_STRIPPING: YES
+    scheme:
+      testTargets:
+        - LiquidGlassStudioUITests
+  LiquidGlassStudioUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: LiquidGlassStudio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.rookasrudzianskas.liquidglass.studio.uitests
+        TEST_TARGET_NAME: LiquidGlassStudio
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""

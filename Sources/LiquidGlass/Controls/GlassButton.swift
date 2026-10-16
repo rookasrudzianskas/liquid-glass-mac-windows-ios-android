@@ -20,6 +20,8 @@ public struct GlassButton<Label: View>: View {
     private let action: () -> Void
     private let label: Label
     private let iconOnly: Bool
+    /// The tooltip of an icon-only button: its otherwise invisible title.
+    private let help: Text?
     private let radius: GlassRadius?
     private let material: GlassMaterial?
     private let tint: Color?
@@ -43,6 +45,7 @@ public struct GlassButton<Label: View>: View {
         self.action = action
         self.label = label()
         self.iconOnly = false
+        self.help = nil
         self.radius = radius
         self.material = material
         self.tint = tint
@@ -57,6 +60,7 @@ public struct GlassButton<Label: View>: View {
         )
         Button(action: action) { label }
             .buttonStyle(style)
+            .modifier(OptionalHelp(text: help))
             .opacity(isEnabled ? 1 : 0.45)
             .modifier(GlassPressGestures(model: toolbarItem || !isEnabled ? nil : interaction, tracking: $tracking))
     }
@@ -96,6 +100,7 @@ extension GlassButton where Label == SwiftUI.Label<Text, Image?> {
         self.action = action
         self.label = SwiftUI.Label { Text(titleKey) } icon: { Image(systemName: systemImage) }
         self.iconOnly = true
+        self.help = Text(titleKey)
         self.radius = .circle
         self.material = material
         self.tint = tint
@@ -235,6 +240,15 @@ private struct GlassButtonBody: View {
     }
 }
 
+/// Adds a tooltip when there is one.
+struct OptionalHelp: ViewModifier {
+    let text: Text?
+
+    func body(content: Content) -> some View {
+        if let text { content.help(text) } else { content }
+    }
+}
+
 /// Draws content in white on tinted glass; otherwise keeps the glass's own
 /// foreground color.
 struct OnTintForeground: ViewModifier {
@@ -255,7 +269,8 @@ private struct GlassButtonLabelStyle: LabelStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         if iconOnly {
-            configuration.icon
+            // The system style keeps the title as the accessibility label.
+            SwiftUI.Label(configuration).labelStyle(.iconOnly)
         } else {
             HStack(spacing: GlassControlMetrics.labelSpacing) {
                 configuration.icon

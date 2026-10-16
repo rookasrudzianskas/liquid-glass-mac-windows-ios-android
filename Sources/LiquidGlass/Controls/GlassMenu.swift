@@ -22,6 +22,8 @@ import SwiftUI
 public struct GlassMenu<Label: View, Content: View>: View {
     private let options: GlassSurfaceOptions
     private let iconOnly: Bool
+    /// The tooltip of an icon-only trigger: its otherwise invisible title.
+    private let help: Text?
     private let content: Content
     private let label: Label
 
@@ -51,6 +53,7 @@ public struct GlassMenu<Label: View, Content: View>: View {
             tint: tint, interactive: true, motion: motion
         )
         self.iconOnly = false
+        self.help = nil
         self.content = content()
         self.label = label()
     }
@@ -87,6 +90,7 @@ public struct GlassMenu<Label: View, Content: View>: View {
                 )]
             }
             .accessibilityAddTraits(morph.isOpen ? .isSelected : [])
+            .modifier(OptionalHelp(text: help))
     }
 
     @ViewBuilder
@@ -131,6 +135,7 @@ extension GlassMenu where Label == SwiftUI.Label<Text, Image?> {
             tint: tint, interactive: true, motion: motion
         )
         self.iconOnly = true
+        self.help = Text(titleKey)
         self.content = content()
         self.label = SwiftUI.Label { Text(titleKey) } icon: { Image(systemName: systemImage) }
     }

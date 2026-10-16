@@ -10,6 +10,7 @@
 		0BA2FEED50236B7902014714 /* StoriesPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B74512A514C9FF055365E836 /* StoriesPage.swift */; };
 		1461250567FFF542114C04D4 /* LabPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD19812911ECEACC6BCD51A /* LabPage.swift */; };
 		231E85C1AA135D4A57E78337 /* LiquidGlass in Frameworks */ = {isa = PBXBuildFile; productRef = 05E396049073C094BF1D960F /* LiquidGlass */; };
+		2FAD1D4F8949A39AF5A5ECA1 /* StudioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C021210E2539BC71848A9F23 /* StudioUITests.swift */; };
 		550E5A06C422A38A1941BBF3 /* HeroPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8A7CF5A16DE2AC24FB36A9 /* HeroPage.swift */; };
 		61D8FF777163493E2C1BFB63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DC0EF49900ECD33D3738436A /* Assets.xcassets */; };
 		C914A400AB808DFF7DC24054 /* StudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED92FEF0768E7ACE959C29A /* StudioApp.swift */; };
@@ -17,15 +18,27 @@
 		EFFE636589C23771E3436A47 /* ControlsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9DA4D2ED94032754B2D1193 /* ControlsPage.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A9670ED1EB63C9587FC636CC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 13697DCEBC1F368285ECC14D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 03FC98FB870C2D41F642D13F;
+			remoteInfo = LiquidGlassStudio;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		094866A8F9D628C5F02E69A8 /* LIQUID GLASS */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "LIQUID GLASS"; path = ../../..; sourceTree = SOURCE_ROOT; };
 		3F8A7CF5A16DE2AC24FB36A9 /* HeroPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroPage.swift; sourceTree = "<group>"; };
 		68B05C9CA0CA6251AC7FF2F3 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
 		851883A6618F21EA7B78229A /* LiquidGlassStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiquidGlassStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACD19812911ECEACC6BCD51A /* LabPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabPage.swift; sourceTree = "<group>"; };
+		ADB2A7E718E17B46A44AAA3C /* LiquidGlassStudioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiquidGlassStudioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AED92FEF0768E7ACE959C29A /* StudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioApp.swift; sourceTree = "<group>"; };
 		B74512A514C9FF055365E836 /* StoriesPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoriesPage.swift; sourceTree = "<group>"; };
 		B9DA4D2ED94032754B2D1193 /* ControlsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsPage.swift; sourceTree = "<group>"; };
+		C021210E2539BC71848A9F23 /* StudioUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioUITests.swift; sourceTree = "<group>"; };
 		DC0EF49900ECD33D3738436A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -62,10 +75,19 @@
 			name = Packages;
 			sourceTree = "<group>";
 		};
+		34E9A3B5BE47DC9286996334 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				C021210E2539BC71848A9F23 /* StudioUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 		A6047BA93BD718F2EC80CEF8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				851883A6618F21EA7B78229A /* LiquidGlassStudio.app */,
+				ADB2A7E718E17B46A44AAA3C /* LiquidGlassStudioUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +98,7 @@
 				0DBA45716794063C601A8A5D /* Packages */,
 				F3566BAF13223A4EAD8F9129 /* Resources */,
 				049667E262A40DD117CBEA43 /* Sources */,
+				34E9A3B5BE47DC9286996334 /* UITests */,
 				A6047BA93BD718F2EC80CEF8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -111,6 +134,24 @@
 			productReference = 851883A6618F21EA7B78229A /* LiquidGlassStudio.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5BAAC9059EA5ED036AD1D2D0 /* LiquidGlassStudioUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB436AABE8EBBBF01E36026F /* Build configuration list for PBXNativeTarget "LiquidGlassStudioUITests" */;
+			buildPhases = (
+				6A13A86C9EA8FB5D2D7BFBAB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D840699888824C7BEBCF94E8 /* PBXTargetDependency */,
+			);
+			name = LiquidGlassStudioUITests;
+			packageProductDependencies = (
+			);
+			productName = LiquidGlassStudioUITests;
+			productReference = ADB2A7E718E17B46A44AAA3C /* LiquidGlassStudioUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -123,6 +164,11 @@
 					03FC98FB870C2D41F642D13F = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
+					};
+					5BAAC9059EA5ED036AD1D2D0 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+						TestTargetID = 03FC98FB870C2D41F642D13F;
 					};
 				};
 			};
@@ -144,6 +190,7 @@
 			projectRoot = "";
 			targets = (
 				03FC98FB870C2D41F642D13F /* LiquidGlassStudio */,
+				5BAAC9059EA5ED036AD1D2D0 /* LiquidGlassStudioUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -173,7 +220,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6A13A86C9EA8FB5D2D7BFBAB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2FAD1D4F8949A39AF5A5ECA1 /* StudioUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D840699888824C7BEBCF94E8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 03FC98FB870C2D41F642D13F /* LiquidGlassStudio */;
+			targetProxy = A9670ED1EB63C9587FC636CC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		173F4651B1D724597448CE57 /* Release */ = {
@@ -228,12 +291,32 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
+		};
+		47D72EB832F45E88C307A40E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rookasrudzianskas.liquidglass.studio.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiquidGlassStudio;
+			};
+			name = Debug;
 		};
 		B0CF1F1464C24137AA492B0B /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -327,7 +410,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -367,6 +449,27 @@
 			};
 			name = Debug;
 		};
+		E8A64D7A59AED163C66EFDF2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rookasrudzianskas.liquidglass.studio.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiquidGlassStudio;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -375,6 +478,15 @@
 			buildConfigurations = (
 				BA509E7C84020DE3EFF78FCA /* Debug */,
 				173F4651B1D724597448CE57 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AB436AABE8EBBBF01E36026F /* Build configuration list for PBXNativeTarget "LiquidGlassStudioUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				47D72EB832F45E88C307A40E /* Debug */,
+				E8A64D7A59AED163C66EFDF2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

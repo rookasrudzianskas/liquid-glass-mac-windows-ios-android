@@ -18,10 +18,9 @@ struct LiquidGlassStudioApp: App {
 /// its foreground, and the tab bar floats over all of them, so its lens
 /// keeps moving smoothly between pages.
 struct StudioRoot: View {
-    // Stored in UserDefaults, so `-page lab -appearance dark` launch
-    // arguments open a page directly.
-    @AppStorage("page") private var page = StudioPage.hero
-    @AppStorage("appearance") private var appearance = GlassAppearance.automatic
+    // `-page lab -appearance dark` launch arguments choose where to start.
+    @State private var page = StudioPage(rawValue: UserDefaults.standard.string(forKey: "page") ?? "") ?? .hero
+    @State private var appearance = GlassAppearance(rawValue: UserDefaults.standard.string(forKey: "appearance") ?? "") ?? .automatic
     @State private var lab = LabSettings()
     @State private var stories = GlassScrollPosition()
 
