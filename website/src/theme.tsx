@@ -49,6 +49,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const root = document.documentElement;
       root.dataset.theme = next;
       root.style.colorScheme = next;
+      // Browser chrome follows the chosen theme, not only the system one.
+      for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = next === "dark" ? "#000000" : "#f5f5f7";
     };
     apply();
     if (preference !== "system") return;

@@ -715,6 +715,11 @@ function addItem(ctx, spec) {
 
 // Picks one file when several match a slot: files beat folders, then `rank`, then release
 // beats debug, then the newest, then the name. The others are reported.
+/** A download file name safe for URLs: spaces and unusual characters become dashes. */
+function safeName(name) {
+  return name.replace(/[^A-Za-z0-9._+-]+/g, "-");
+}
+
 function pickBest(list, label, rank = () => 0) {
   if (list.length === 0) return null;
   const ranked = [...list].sort(
@@ -1146,19 +1151,51 @@ function collectWindows(ctx) {
     else if (entry.stat.isDirectory() && entry.name === "nuget") nugetDir = entry;
     else warn(`ignoring unrecognised Windows artifact ${entry.display}`);
   }
-  const studio = pickBest(zips, "windows-studio", (e) => (e.name.toLowerCase().includes("studio") ? 0 : 1));
-  addItem(ctx, {
-    id: "windows-studio",
-    name: "Liquid Glass Studio for Windows",
-    platform: "windows",
-    kind: "app",
-    fileName: "liquid-glass-studio-windows.zip",
-    version: (studio && versionFromName(studio.name)) || ctx.version,
-    requirements: REQUIREMENTS.windows,
-    required: true,
-    hint: "artifacts/windows/*.zip",
-    ...(studio ? planDownload(ctx, studio, "downloads/liquid-glass-studio-windows.zip") : null),
-  });
+  // Studio builds: x64 (framework-dependent, required), x64 self-contained and
+  // ARM64. Original file names are kept, since docs/windows.md refers to them.
+  const variants = [
+    {
+      id: "windows-studio",
+      name: "Liquid Glass Studio for Windows (x64)",
+      match: (n) => !/arm64/.test(n) && !/self-?contained/.test(n),
+      fallbackName: "LiquidGlassStudio-win-x64.zip",
+      requirements: "Windows 10 1809 or later, x64; .NET 10 Desktop Runtime",
+      required: true,
+    },
+    {
+      id: "windows-studio-self-contained",
+      name: "Liquid Glass Studio for Windows (x64, self-contained)",
+      match: (n) => !/arm64/.test(n) && /self-?contained/.test(n),
+      fallbackName: "LiquidGlassStudio-win-x64-self-contained.zip",
+      requirements: "Windows 10 1809 or later, x64; no .NET install needed",
+      required: false,
+    },
+    {
+      id: "windows-studio-arm64",
+      name: "Liquid Glass Studio for Windows (ARM64)",
+      match: (n) => /arm64/.test(n),
+      fallbackName: "LiquidGlassStudio-win-arm64.zip",
+      requirements: "Windows 11 on ARM64; .NET 10 Desktop Runtime",
+      required: false,
+    },
+  ];
+  for (const v of variants) {
+    const candidates = zips.filter((e) => v.match(e.name.toLowerCase()));
+    const studio = pickBest(candidates, v.id, (e) => (e.name.toLowerCase().includes("studio") ? 0 : 1));
+    const fileName = studio ? safeName(studio.name) : v.fallbackName;
+    addItem(ctx, {
+      id: v.id,
+      name: v.name,
+      platform: "windows",
+      kind: "app",
+      fileName,
+      version: (studio && versionFromName(studio.name)) || ctx.version,
+      requirements: v.requirements,
+      required: v.required,
+      hint: `artifacts/windows/${v.fallbackName}`,
+      ...(studio ? planDownload(ctx, studio, `downloads/${fileName}`) : null),
+    });
+  }
   collectNuGet(ctx, nugetDir);
 }
 

@@ -32,11 +32,21 @@ export function wallpaperSrcSet(name: WallpaperName, format: "avif" | "webp" | "
   return wallpapers.sizes.map((s) => `/wallpapers/${name}-${s}.${format} ${s}w`).join(", ");
 }
 
+/**
+ * The wallpaper size for a stage: the same buckets as the CSS fallback in
+ * glass.css (.wallpaper-fallback), so the WebGL texture reuses the cached file.
+ */
+export function wallpaperSize(maxDimension: number, dpr: number) {
+  const big = maxDimension > 1024;
+  if (dpr >= 1.5) return big ? 3072 : 2048;
+  return big ? 2048 : 1024;
+}
+
 function neededWidth(canvas: HTMLCanvasElement | null) {
   const w = canvas?.clientWidth || window.innerWidth;
   const h = canvas?.clientHeight || window.innerHeight;
   // Wallpapers are square: cover-fitting needs the larger side.
-  return Math.max(w, h) * Math.min(window.devicePixelRatio || 1, 2);
+  return wallpaperSize(Math.max(w, h, window.innerWidth, window.innerHeight), window.devicePixelRatio || 1);
 }
 
 function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number, h: number, dark: boolean) {

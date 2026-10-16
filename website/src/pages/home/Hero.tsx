@@ -1,6 +1,7 @@
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { Glass, GlassStage, GlassTabBar } from "../../glass/react";
-import { notePictureFormat, wallpaperInfo, wallpaperNames, wallpaperSrcSet } from "../../glass/backdrop";
+import { wallpaperInfo, wallpaperNames } from "../../glass/backdrop";
 import type { WallpaperName } from "../../glass/backdrop";
 import type { Material } from "../../glass/renderer";
 import { useTheme } from "../../theme";
@@ -26,30 +27,21 @@ const SWATCH: Record<string, string> = {
 const defaultWallpaper = (theme: "light" | "dark"): WallpaperName =>
   (theme === "dark" ? (wallpaperNames.includes("midnight" as WallpaperName) ? "midnight" : wallpaperNames[0]) : wallpaperNames[0]) as WallpaperName;
 
-function HeroPicture() {
-  const light = wallpaperNames[0];
-  const dark = (wallpaperNames.includes("midnight" as WallpaperName) ? "midnight" : light) as WallpaperName;
-  if (!light) return null;
-  const sizes = "(max-aspect-ratio: 1/1) 100vh, 100vw";
-  return (
-    <picture className="stage__fallback">
-      <source media="(prefers-color-scheme: dark)" type="image/avif" srcSet={wallpaperSrcSet(dark, "avif")} sizes={sizes} />
-      <source media="(prefers-color-scheme: dark)" type="image/webp" srcSet={wallpaperSrcSet(dark, "webp")} sizes={sizes} />
-      <source type="image/avif" srcSet={wallpaperSrcSet(light, "avif")} sizes={sizes} />
-      <source type="image/webp" srcSet={wallpaperSrcSet(light, "webp")} sizes={sizes} />
-      <img
-        src={`/wallpapers/${light}-1536.jpg`}
-        srcSet={wallpaperSrcSet(light, "jpg")}
-        sizes={sizes}
-        alt=""
-        width={3072}
-        height={3072}
-        fetchPriority="high"
-        decoding="async"
-        onLoad={(e) => notePictureFormat(e.currentTarget.currentSrc)}
-      />
-    </picture>
-  );
+/**
+ * The static wallpaper under the canvas, as CSS backgrounds so the one that
+ * matches <html data-theme> (set before first paint) is the only download.
+ */
+function HeroFallback() {
+  const light = defaultWallpaper("light");
+  const dark = defaultWallpaper("dark");
+  const vars = (name: WallpaperName, prefix: string) => ({
+    [`--${prefix}-s1`]: `url("/wallpapers/${name}-1024.webp")`,
+    [`--${prefix}-s2`]: `url("/wallpapers/${name}-2048.webp")`,
+    [`--${prefix}-l1`]: `url("/wallpapers/${name}-2048.webp")`,
+    [`--${prefix}-l2`]: `url("/wallpapers/${name}-3072.webp")`,
+    [`--${prefix}-color`]: wallpaperInfo[name].color,
+  });
+  return <div className="stage__fallback wallpaper-fallback" aria-hidden="true" style={{ ...vars(light, "wl"), ...vars(dark, "wd") } as CSSProperties} />;
 }
 
 export function Hero() {
@@ -74,7 +66,7 @@ export function Hero() {
 
   return (
     <section className="hero" data-tone={tone} data-tone-light={lightTone} data-tone-dark={darkTone} aria-labelledby="hero-title">
-      <GlassStage backdrop={current ? { kind: "wallpaper", name: current } : null} appearance={theme} className="hero__stage" fallback={<HeroPicture />}>
+      <GlassStage backdrop={current ? { kind: "wallpaper", name: current } : null} appearance={theme} className="hero__stage" fallback={<HeroFallback />}>
         <div className="hero__copy">
           <p className="hero__eyebrow">iOS · macOS · Android · Windows</p>
           <h1 id="hero-title" className="hero__title">

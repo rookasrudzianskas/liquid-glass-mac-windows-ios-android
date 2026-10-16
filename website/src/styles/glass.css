@@ -30,6 +30,33 @@
   z-index: -2;
 }
 
+/* Theme-aware wallpaper fallback. Sizes mirror wallpaperSize() in backdrop.ts. */
+.wallpaper-fallback {
+  background-color: var(--wl-color);
+  background-position: 50% 42%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-image: var(--wl-s2);
+  background-image: image-set(var(--wl-s1) 1x, var(--wl-s2) 2x);
+}
+
+[data-theme="dark"] .wallpaper-fallback {
+  background-color: var(--wd-color);
+  background-image: var(--wd-s2);
+  background-image: image-set(var(--wd-s1) 1x, var(--wd-s2) 2x);
+}
+
+@media (min-width: 1025px), (min-height: 1025px) {
+  .wallpaper-fallback {
+    background-image: var(--wl-l1);
+    background-image: image-set(var(--wl-l1) 1x, var(--wl-l2) 2x);
+  }
+  [data-theme="dark"] .wallpaper-fallback {
+    background-image: var(--wd-l1);
+    background-image: image-set(var(--wd-l1) 1x, var(--wd-l2) 2x);
+  }
+}
+
 .stage__canvas {
   position: absolute;
   inset: 0;
