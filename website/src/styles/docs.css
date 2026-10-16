@@ -560,3 +560,12 @@ a.doc-card:hover {
 .prose p[align="center"] img {
   min-width: 0;
 }
+
+/* Tall phone screenshots should not fill a whole screen. */
+.prose p:not([align]) > img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(680px, 78vh);
+  margin: 0 auto;
+}
