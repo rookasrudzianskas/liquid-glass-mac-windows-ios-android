@@ -12,7 +12,9 @@ mkdir -p "$out"
 codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
 rm -f "$out/LiquidGlassStudio-macOS.zip"
-ditto -c -k --keepParent "$app" "$out/LiquidGlassStudio-macOS.zip"
+# No resource forks, extended attributes or quarantine: the zip holds no
+# AppleDouble (._*) or __MACOSX entries.
+ditto -c -k --norsrc --noextattr --noqtn --keepParent "$app" "$out/LiquidGlassStudio-macOS.zip"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 cat > "$out/README.txt" <<TEXT
 Liquid Glass Studio $version for macOS 14 or later (Apple silicon and Intel)
@@ -21,11 +23,13 @@ The demo of the LiquidGlass Swift package: native Liquid Glass in SwiftUI
 and Metal. Source: platforms/apple/Studio in
 https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android
 
+First move "Liquid Glass Studio" to your Applications folder.
+
 The app is ad-hoc signed, not notarized, so macOS blocks its first launch.
-On macOS 15 or later: open it once, then open System Settings > Privacy &
-Security and click Open Anyway next to "Liquid Glass Studio". On macOS 14:
-Control-click (or right-click) the app, choose Open, then confirm. Or, on
-any version, run:
+Open it once, then open System Settings > Privacy & Security and click
+Open Anyway next to "Liquid Glass Studio" (on macOS 14, Control-click the
+app, choose Open, then confirm also works). Or, with the app in
+Applications, run:
 
   xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"
 

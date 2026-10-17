@@ -398,7 +398,7 @@ Interactive glass follows the finger without owning the touch. On iOS 18 and lat
 The demo app, in [`platforms/apple/Studio`](../platforms/apple/Studio), runs on iPhone, iPad and Mac:
 
 1. **Hero:** a wallpaper under a draggable Regular glass card, a floating toolbar with the appearance switch, Share (the system share sheet) and a menu with checked appearance items, and the tab bar.
-2. **Controls:** buttons in every size, tinted and icon-only, a toolbar, sliders, switches, a tab bar and menus, in a native `ScrollView` over a wallpaper (two columns on the Mac and on iPad in landscape). Content fades out as it scrolls under the status bar, over a progressive blur of the wallpaper.
+2. **Controls:** buttons in every size, tinted and icon-only, a toolbar, sliders, switches, a tab bar and menus, in a native `ScrollView` over a wallpaper (two columns on the Mac and on iPad in landscape). Content fades out under the status bar and above the tab bar; on iOS a haze over a progressive blur of the wallpaper keeps the status bar legible.
 3. **Materials lab:** live material, appearance, refraction, radius, tint and wallpaper controls for a draggable lens, on a Regular glass panel with Regular pickers.
 4. **Progressive blur:** a `GlassScrollView` of stories with blurred top and bottom edges under a Regular toolbar, with a Filter menu of story categories.
 
