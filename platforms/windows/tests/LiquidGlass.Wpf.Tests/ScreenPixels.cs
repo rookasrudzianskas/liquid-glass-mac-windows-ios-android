@@ -76,6 +76,16 @@ internal sealed class ScreenPixels
         }
     }
 
+    /// <summary>The color at device pixel (<paramref name="x"/>, <paramref name="y"/>) from the origin.</summary>
+    public (byte R, byte G, byte B) Rgb(int x, int y)
+    {
+        var px = _originX + x;
+        var py = _originY + y;
+        if (px < 0 || py < 0 || px >= Width || py >= Height) throw new ArgumentOutOfRangeException(nameof(x), $"({x}, {y}) is outside the capture");
+        var i = (py * Width + px) * 4;
+        return (_pixels[i + 2], _pixels[i + 1], _pixels[i]);
+    }
+
     /// <summary>The green channel at device pixel (<paramref name="x"/>, <paramref name="y"/>) from the origin.</summary>
     public double Green(int x, int y)
     {

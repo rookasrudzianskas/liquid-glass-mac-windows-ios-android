@@ -171,21 +171,30 @@ public class RenderingTests
             source.Children.Add(new Border { Background = Brushes.Black });
             source.Children.Add(white);
             var blur = new GlassProgressiveBlur { Edge = GlassEdge.Bottom, Size = 80, Blur = edgeBlur, Source = source, Height = 240, VerticalAlignment = VerticalAlignment.Top };
-            var content = new Grid { Width = size, Height = size, Children = { source, blur } };
+            // A marker outside the band whose color changes with each rebuild: a capture that shows the new color shows
+            // the rebuilt blur too (WPF presents whole frames), not an earlier frame still on screen.
+            var marker = new Border { Width = 10, Height = 10, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Background = Brushes.Black };
+            var content = new Grid { Width = size, Height = size, Children = { source, blur, marker } };
             var scaled = new Border { Child = content, LayoutTransform = new ScaleTransform(scale, scale) };
             var root = new Border { Child = scaled };
             var px = (int)Math.Round(size * scale);
             var window = Sta.Show(root, px, px);
             // Plan the passes for this scale, as the element does on such a display.
             blur.ScaleOverride = scale;
+            marker.Background = Brushes.Red;
             Sta.Pump();
             Sta.Wait(0.5);
             Assert.Equal(GlassProgressive.Levels, blur.LevelRadii.Count);
             if (scale > 1) Assert.True(blur.LevelRadii[GlassProgressive.Levels - 1].Count > 1, "the strongest level should need more than one pass");
 
-            // Above the band the source is sharp: black on the left, white on the right once the frame is on screen.
-            var screen = ScreenPixels.CaptureWhen(window, root,
-                s => s.Green((int)(280 * scale), (int)(20 * scale)) - s.Green((int)(20 * scale), (int)(20 * scale)) > 200, 20);
+            // The frame with the planned passes is on screen once the marker is red; above the band the source is sharp.
+            bool Drawn(ScreenPixels s, bool red)
+            {
+                var (r, _, b) = s.Rgb((int)(5 * scale), (int)(5 * scale));
+                var shown = red ? r > 200 && b < 60 : b > 200 && r < 60;
+                return shown && s.Green((int)(280 * scale), (int)(20 * scale)) - s.Green((int)(20 * scale), (int)(20 * scale)) > 200;
+            }
+            var screen = ScreenPixels.CaptureWhen(window, root, s => Drawn(s, red: true), 30);
             var bitmap = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(root);
             var pixels = new byte[px * px * 4];
@@ -223,10 +232,10 @@ public class RenderingTests
             var passes = string.Join("; ", blur.LevelRadii.Select(level => string.Join(" + ", level.Select(r => (r * scale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)))));
             // For comparison: the same passes nested inside one another instead of chained through brushes.
             blur.NestPasses = true;
+            marker.Background = Brushes.Blue;
             Sta.Pump();
             Sta.Wait(0.5);
-            var nested = ScreenPixels.CaptureWhen(window, root,
-                s => s.Green((int)(280 * scale), (int)(20 * scale)) - s.Green((int)(20 * scale), (int)(20 * scale)) > 200, 20);
+            var nested = ScreenPixels.CaptureWhen(window, root, s => Drawn(s, red: false), 30);
             var nested6 = nested is null ? double.NaN : Sigma((x, y) => nested.Green(x, y), 239);
             var nested5 = nested is null ? double.NaN : Sigma((x, y) => nested.Green(x, y), 160 + level5 * 80);
             blur.NestPasses = false;
