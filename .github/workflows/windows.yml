@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           # .NET 10 builds everything; .NET 8 runs the library's net8.0-windows build under test.
           dotnet-version: |
