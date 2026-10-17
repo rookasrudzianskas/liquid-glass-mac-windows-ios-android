@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using LiquidGlass.Wpf.Rendering;
@@ -13,7 +14,7 @@ namespace LiquidGlass.Wpf;
 /// <code language="xml"><![CDATA[
 /// <lg:GlassButton Content="Share" Click="OnShare" />
 /// <lg:GlassButton Size="Large" Tint="#0A84FF" Content="Continue" />
-/// <lg:GlassButton IsIconOnly="True" AutomationProperties.Name="Favorite" Content="&#xE734;" FontFamily="Segoe Fluent Icons" />
+/// <lg:GlassButton IsIconOnly="True" AutomationProperties.Name="Favorite" Content="&#xE734;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
 /// ]]></code>
 /// </example>
 [TemplatePart(Name = SurfacePart, Type = typeof(GlassSurface))]
@@ -130,6 +131,11 @@ public class GlassButton : Button
         base.OnApplyTemplate();
         if (GetTemplateChild(SurfacePart) is GlassSurface surface) surface.InputSource = this;
     }
+
+    /// <inheritdoc />
+    /// <remarks>The trigger of a <see cref="GlassMenu"/> also reports the menu's ExpandCollapse state.</remarks>
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => TemplatedParent is GlassMenu menu ? new GlassMenuTriggerAutomationPeer(this, menu) : base.OnCreateAutomationPeer();
 
     /// <inheritdoc />
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)

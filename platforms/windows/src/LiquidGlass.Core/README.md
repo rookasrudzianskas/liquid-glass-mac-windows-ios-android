@@ -22,4 +22,5 @@ var tone = GlassMaterialOptics.MaterialColor(new Rgb(0.2, 0.5, 0.9), GlassMateri
 ```
 
 For WPF controls that render this model, install `LiquidGlassEngineering.Wpf`.
-Targets .NET Standard 2.0. MIT licensed; the optical model is ported from the MIT-licensed Glass HQ liquid-glass web library.
+Targets .NET Standard 2.0. MIT licensed; the optical model is ported from the MIT-licensed Glass HQ liquid-glass web library
+(`LICENSE` and `NOTICE.md` in the package).

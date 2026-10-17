@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
@@ -15,15 +16,16 @@ namespace LiquidGlass.Wpf;
 /// <see cref="GlassToolbarSpacer"/> splits the toolbar into separate glass clusters; clusters spring to their new size
 /// when items come and go. Plain <see cref="System.Windows.Controls.Button"/>s and
 /// <see cref="System.Windows.Controls.Primitives.ToggleButton"/>s inside take the toolbar button style (no glass of
-/// their own, a soft highlight in the foreground color); pressing anywhere on a cluster presses its glass.
+/// their own, a soft highlight in the foreground color, and a focus ring in that color for keyboard focus); pressing
+/// anywhere on a cluster presses its glass.
 /// </summary>
 /// <example>
 /// <code language="xml"><![CDATA[
 /// <lg:GlassToolbar>
-///   <Button Content="&#xE72B;" ToolTip="Back" />
-///   <Button Content="&#xE72A;" ToolTip="Forward" />
+///   <Button Content="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Back" ToolTip="Back" />
+///   <Button Content="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Forward" ToolTip="Forward" />
 ///   <lg:GlassToolbarSpacer />
-///   <Button Content="&#xE72D;" ToolTip="Share" />
+///   <Button Content="&#xE72D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Share" ToolTip="Share" />
 /// </lg:GlassToolbar>
 /// ]]></code>
 /// </example>
@@ -78,6 +80,12 @@ public class GlassToolbar : Control
         GlassScene.AddContentForegroundOwner(typeof(GlassToolbar));
         FocusableProperty.OverrideMetadata(typeof(GlassToolbar), new FrameworkPropertyMetadata(false));
         KeyboardNavigation.TabNavigationProperty.OverrideMetadata(typeof(GlassToolbar), new FrameworkPropertyMetadata(KeyboardNavigationMode.Continue));
+        // Plain buttons in the toolbar draw their focus ring in their template (in the glass's foreground); show it for
+        // keyboard focus only, as the glass controls do.
+        EventManager.RegisterClassHandler(typeof(GlassToolbar), Keyboard.GotKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(OnItemGotFocus));
+        EventManager.RegisterClassHandler(typeof(GlassToolbar), Keyboard.LostKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(OnItemLostFocus));
+        EventManager.RegisterClassHandler(typeof(GlassToolbar), Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(OnItemPreviewMouseDown));
+        EventManager.RegisterClassHandler(typeof(GlassToolbar), Keyboard.KeyDownEvent, new KeyEventHandler(OnItemKeyDown), true);
     }
 
     /// <summary>Creates a toolbar.</summary>
@@ -169,6 +177,28 @@ public class GlassToolbar : Control
     {
         base.OnPropertyChanged(e);
         if (GlassAppearanceTracker.Affects(e.Property)) _appearance.Update();
+    }
+
+    private static void OnItemGotFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (e.NewFocus is ButtonBase button) GlassScene.SetIsFocusVisible(button, InputManager.Current.MostRecentInputDevice is KeyboardDevice);
+    }
+
+    private static void OnItemLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (e.OldFocus is ButtonBase button) GlassScene.SetIsFocusVisible(button, false);
+    }
+
+    private static void OnItemPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Keyboard.FocusedElement is ButtonBase button && ((GlassToolbar)sender).IsAncestorOf(button)) GlassScene.SetIsFocusVisible(button, false);
+    }
+
+    private static void OnItemKeyDown(object sender, KeyEventArgs e)
+    {
+        // Keys go to the focused element: a navigation key on a button that was focused with the mouse shows its ring.
+        if (e.Key is Key.Tab or Key.Left or Key.Right or Key.Up or Key.Down && e.OriginalSource is ButtonBase button)
+            GlassScene.SetIsFocusVisible(button, true);
     }
 
     private static void OnClusterOptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

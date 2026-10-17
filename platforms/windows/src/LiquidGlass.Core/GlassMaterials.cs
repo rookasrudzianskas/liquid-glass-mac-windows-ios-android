@@ -66,7 +66,8 @@ public sealed class RegularToneSpec
     public double ToneWeight { get; }
 }
 
-/// <summary>Material constants (OPTICS §3), ported from the Glass HQ web library.</summary>
+/// <summary>Material constants, ported from the Glass HQ web library.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#3-materials">Liquid Glass optics specification: Materials</seealso>
 public static class GlassMaterials
 {
     /// <summary>Clear glass is not frosted.</summary>

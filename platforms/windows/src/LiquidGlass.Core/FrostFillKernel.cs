@@ -5,12 +5,13 @@ namespace LiquidGlass;
 
 /// <summary>
 /// The wide fill blur of Regular glass, approximated in the shader by sampling the frost over a sparse grid
-/// (OPTICS §3 allows this). Gaussian variances add, so blurring the σ = 7.33 frost by
+/// (the optics specification allows this). Gaussian variances add, so blurring the σ = 7.33 frost by
 /// <c>σₑ = √(σ_fill² − 7.33²)</c> gives the σ_fill fill. The kernel is a separable 9 × 9 grid whose 1-D weights are a
 /// discrete Gaussian, chosen so the grid's variance equals σₑ² exactly; the result therefore matches the true
 /// Gaussian to second order on smooth backdrops. The taps are about 2.1 frost σ apart: the already-frosted
 /// texture keeps about 1% of the energy at that spacing, so the sparse grid shows no visible aliasing.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#3-materials">Liquid Glass optics specification: Materials</seealso>
 public sealed class FrostFillKernel
 {
     /// <summary>Taps on each side of the center (the grid is (2·Radius + 1)² taps).</summary>

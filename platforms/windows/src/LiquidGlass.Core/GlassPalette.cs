@@ -2,7 +2,8 @@ using System;
 
 namespace LiquidGlass;
 
-/// <summary>Colors of the accessibility modes and foregrounds (OPTICS §8).</summary>
+/// <summary>Colors of the accessibility modes and foregrounds.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#8-accessibility">Liquid Glass optics specification: Accessibility</seealso>
 public static class GlassPalette
 {
     /// <summary>Opaque fill that replaces the material when transparency is reduced, light appearance (<c>#F2F2F7</c> at 0.94).</summary>
@@ -57,9 +58,11 @@ public readonly struct GlassVeil
 }
 
 /// <summary>
-/// The fallback material drawn where the pixel shader cannot run (OPTICS §3 and COMPONENTS "Fallbacks"):
+/// The fallback material drawn where the pixel shader cannot run:
 /// the platform blur for Regular glass plus a veil fitted to the material's tone curve, and the rim light.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#3-materials">Liquid Glass optics specification: Materials</seealso>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/COMPONENTS.md#behavior-every-port-implements">Liquid Glass component contract: fallbacks</seealso>
 public static class GlassFallback
 {
     private static readonly GlassVeil ClearLightVeil = Fit(v => GlassMaterialOptics.ClearTone(v, false));

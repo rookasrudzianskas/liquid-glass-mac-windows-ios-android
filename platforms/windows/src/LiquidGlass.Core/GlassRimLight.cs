@@ -3,9 +3,10 @@ using System;
 namespace LiquidGlass;
 
 /// <summary>
-/// The rim overlay painted over the glass (OPTICS §4): a specular line along the top and bottom of the outline,
+/// The rim overlay painted over the glass: a specular line along the top and bottom of the outline,
 /// a soft inner diffuse glow, and a shade on the left and right sides.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#4-rim-light">Liquid Glass optics specification: Rim light</seealso>
 public static class GlassRimLight
 {
     private const double Spread = 1.08;

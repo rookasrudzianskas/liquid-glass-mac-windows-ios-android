@@ -48,7 +48,8 @@ public readonly struct GlassSurfaceOptics
     public bool Nested { get; }
 }
 
-/// <summary>Composites one pixel of a glass surface exactly as the shaders do (OPTICS §5).</summary>
+/// <summary>Composites one pixel of a glass surface exactly as the shaders do.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#5-composite">Liquid Glass optics specification: Composite</seealso>
 public static class GlassPixel
 {
     /// <summary>Composites the glass pixel whose center is at (<paramref name="x"/>, <paramref name="y"/>) relative to the surface center.</summary>

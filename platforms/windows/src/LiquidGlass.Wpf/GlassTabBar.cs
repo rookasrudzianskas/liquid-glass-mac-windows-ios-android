@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -10,9 +11,10 @@ using LiquidGlass.Wpf.Rendering;
 namespace LiquidGlass.Wpf;
 
 /// <summary>
-/// A capsule tab bar: a Clear glass lens slides between the items on the track spring and stretches with its speed
-/// (COMPONENTS §4). The lens can be dragged across the bar to choose an item; arrow keys move the selection; the
-/// selected label is at full opacity and the others at 0.85. Exposes the Tab and TabItem automation roles.
+/// A capsule tab bar: a Clear glass lens slides between the items on the track spring and stretches with its speed.
+/// The lens can be dragged across the bar to choose an item; arrow keys move the selection; the selected label is at
+/// full opacity and the others at 0.85. Once an item is selected, one always is: Ctrl+click and clearing the selection
+/// keep it (removing the selected item selects a neighbor). Exposes the Tab and TabItem automation roles.
 /// </summary>
 /// <example>
 /// <code language="xml"><![CDATA[
@@ -67,6 +69,7 @@ public class GlassTabBar : ListBox, IGlassAnimation
     private Canvas? _lensHost;
     private bool _ready;
     private Drag? _drag;
+    private int _lastSelectedIndex = -1;
 
     static GlassTabBar()
     {
@@ -149,8 +152,8 @@ public class GlassTabBar : ListBox, IGlassAnimation
         _ready = false;
     }
 
-    /// <inheritdoc />
-    public bool Tick(double dt)
+    // Advanced by the frame loop; not part of the public surface.
+    bool IGlassAnimation.Tick(double dt)
     {
         var target = SelectedBox();
         if (target is not { } box || _lens is null) return false;
@@ -207,6 +210,16 @@ public class GlassTabBar : ListBox, IGlassAnimation
     /// <inheritdoc />
     protected override void OnSelectionChanged(SelectionChangedEventArgs e)
     {
+        // A tab bar always has a selection while it has items: undo a deselection (Ctrl+click on the selected item,
+        // SelectedIndex = -1), and move to a neighbor when the selected item itself was removed.
+        if (SelectedIndex < 0 && Items.Count > 0 && e.RemovedItems.Count > 0)
+        {
+            var previous = e.RemovedItems[0];
+            if (previous is not null && Items.Contains(previous)) SetCurrentValue(SelectedItemProperty, previous);
+            else SetCurrentValue(SelectedIndexProperty, Math.Max(0, Math.Min(_lastSelectedIndex, Items.Count - 1)));
+            return;
+        }
+        if (SelectedIndex >= 0) _lastSelectedIndex = SelectedIndex;
         base.OnSelectionChanged(e);
         GlassFrameLoop.Start(this);
     }
@@ -406,12 +419,25 @@ public class GlassTabBarItem : ListBoxItem
     }
 }
 
-/// <summary>Exposes a <see cref="GlassTabBar"/> to UI Automation as a tab list.</summary>
-public sealed class GlassTabBarAutomationPeer : ListBoxAutomationPeer
+/// <summary>Exposes a <see cref="GlassTabBar"/> to UI Automation as a tab list whose single selection is required.</summary>
+public sealed class GlassTabBarAutomationPeer : ListBoxAutomationPeer, ISelectionProvider
 {
     /// <summary>Creates the peer.</summary>
     public GlassTabBarAutomationPeer(GlassTabBar owner) : base(owner)
     {
+    }
+
+    bool ISelectionProvider.CanSelectMultiple => false;
+
+    bool ISelectionProvider.IsSelectionRequired => true;
+
+    IRawElementProviderSimple[] ISelectionProvider.GetSelection()
+    {
+        var selected = ((GlassTabBar)Owner).SelectedItem;
+        if (selected is null || GetChildren() is not { } children) return Array.Empty<IRawElementProviderSimple>();
+        foreach (var child in children)
+            if (child is ItemAutomationPeer item && Equals(item.Item, selected)) return new[] { ProviderFromPeer(child) };
+        return Array.Empty<IRawElementProviderSimple>();
     }
 
     /// <inheritdoc />

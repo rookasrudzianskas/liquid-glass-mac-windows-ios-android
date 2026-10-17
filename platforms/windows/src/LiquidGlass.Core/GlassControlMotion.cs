@@ -4,8 +4,9 @@ namespace LiquidGlass;
 
 /// <summary>
 /// Motion of the native-style value controls (slider and switch): the measured switch spring, the press
-/// crossfade that lifts a thumb into glass, and the thumb geometry (OPTICS §6).
+/// crossfade that lifts a thumb into glass, and the thumb geometry.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#6-interaction">Liquid Glass optics specification: Interaction</seealso>
 public static class GlassControlMotion
 {
     /// <summary>Slider thumb width at rest.</summary>

@@ -2,7 +2,8 @@ using System;
 
 namespace LiquidGlass;
 
-/// <summary>A damped spring described by its perceptual duration and bounce (OPTICS §6).</summary>
+/// <summary>A damped spring described by its perceptual duration and bounce.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#6-interaction">Liquid Glass optics specification: Interaction</seealso>
 public readonly struct SpringOptions : IEquatable<SpringOptions>
 {
     /// <summary>Creates spring options.</summary>

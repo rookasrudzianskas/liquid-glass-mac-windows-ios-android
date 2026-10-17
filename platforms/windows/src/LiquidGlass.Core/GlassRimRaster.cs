@@ -34,9 +34,10 @@ public sealed class RimImage
 }
 
 /// <summary>
-/// Rasterizes the rim light (OPTICS §4) on the CPU. The fallback material uses it where the pixel shader cannot run,
+/// Rasterizes the rim light on the CPU. The fallback material uses it where the pixel shader cannot run,
 /// so the rim is exactly the one the shader draws.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#4-rim-light">Liquid Glass optics specification: Rim light</seealso>
 public static class GlassRimRaster
 {
     /// <summary>The rim reaches into the glass this far (the diffuse glow), in layout units.</summary>

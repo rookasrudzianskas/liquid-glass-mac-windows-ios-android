@@ -2,7 +2,8 @@ using System;
 
 namespace LiquidGlass;
 
-/// <summary>Progressive edge blur: six blur levels plus the sharp backdrop (OPTICS §7).</summary>
+/// <summary>Progressive edge blur: six blur levels plus the sharp backdrop.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#7-progressive-blur">Liquid Glass optics specification: Progressive blur</seealso>
 public static class GlassProgressive
 {
     /// <summary>Number of blurred levels (level 0 is the sharp backdrop).</summary>

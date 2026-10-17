@@ -43,7 +43,8 @@ public readonly struct GlowParameters
     public double Hover { get; }
 }
 
-/// <summary>Press, drag and glow response of interactive glass (OPTICS §6).</summary>
+/// <summary>Press, drag and glow response of interactive glass.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#6-interaction">Liquid Glass optics specification: Interaction</seealso>
 public static class GlassInteractionModel
 {
     /// <summary>Controls at most this large give a little under the finger; larger surfaces only at their edges.</summary>

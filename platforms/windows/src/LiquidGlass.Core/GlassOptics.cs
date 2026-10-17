@@ -1,6 +1,7 @@
 namespace LiquidGlass;
 
-/// <summary>Constants of the optical model (<c>spec/OPTICS.md</c>).</summary>
+/// <summary>Constants of the optical model.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md">Liquid Glass optics specification</seealso>
 public static class GlassOptics
 {
     /// <summary>Depth of the refracting bevel inside the outline, in layout units.</summary>

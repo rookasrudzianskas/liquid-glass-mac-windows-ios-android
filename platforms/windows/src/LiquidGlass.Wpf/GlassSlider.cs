@@ -9,9 +9,10 @@ namespace LiquidGlass.Wpf;
 
 /// <summary>
 /// A slider with a 6-unit track, an accent fill and a 20 × 16 white thumb that lifts into Clear glass while it is
-/// dragged (OPTICS §6). All of <see cref="Slider"/>'s behavior applies: keyboard steps, ticks, snapping, vertical
+/// dragged. All of <see cref="Slider"/>'s behavior applies: keyboard steps, ticks, snapping, vertical
 /// orientation and UI Automation's RangeValue pattern. Clicking the track moves the thumb there.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#6-interaction">Liquid Glass optics specification: Interaction</seealso>
 /// <example>
 /// <code language="xml"><![CDATA[
 /// <lg:GlassSlider Minimum="0" Maximum="100" Value="{Binding Volume}" AutomationProperties.Name="Volume" />

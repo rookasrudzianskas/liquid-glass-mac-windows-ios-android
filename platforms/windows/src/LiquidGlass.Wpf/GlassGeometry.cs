@@ -6,8 +6,9 @@ namespace LiquidGlass.Wpf;
 
 /// <summary>
 /// Continuous-corner outlines as WPF geometry: the exact outline glass is drawn with, for clips, borders,
-/// focus rings and hit shapes (OPTICS §1).
+/// focus rings and hit shapes.
 /// </summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#1-shape">Liquid Glass optics specification: Shape</seealso>
 public static class GlassGeometry
 {
     /// <summary>A frozen outline of <paramref name="size"/> at the origin.</summary>

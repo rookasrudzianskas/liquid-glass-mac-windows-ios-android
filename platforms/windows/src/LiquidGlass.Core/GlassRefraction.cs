@@ -2,7 +2,8 @@ using System;
 
 namespace LiquidGlass;
 
-/// <summary>Refraction through the 20-unit bevel inside the outline (OPTICS §2).</summary>
+/// <summary>Refraction through the 20-unit bevel inside the outline.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#2-refraction">Liquid Glass optics specification: Refraction</seealso>
 public static class GlassRefraction
 {
     /// <summary>Displacement weight: 1 on the outline, falling to 0 at <paramref name="bevel"/> inside.</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -11,8 +12,9 @@ namespace LiquidGlass.Wpf;
 
 /// <summary>
 /// An on/off switch: a 54 × 24 track with a white thumb that moves on the measured switch spring (response 0.47 s,
-/// damping 0.7) and lifts into Clear glass while pressed (OPTICS §6). The thumb can be dragged; Space toggles.
-/// <see cref="ContentControl.Content"/> is the label, drawn before the track.
+/// damping 0.7) and lifts into Clear glass while pressed. The thumb can be dragged; Space toggles.
+/// <see cref="ContentControl.Content"/> is the label, drawn before the track. UI Automation: a toggle switch (a button
+/// with the Toggle pattern).
 /// </summary>
 /// <example>
 /// <code language="xml"><![CDATA[
@@ -87,8 +89,8 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
         UpdateTrack();
     }
 
-    /// <inheritdoc />
-    public bool Tick(double dt)
+    // Advanced by the frame loop; not part of the public surface.
+    bool IGlassAnimation.Tick(double dt)
     {
         if (_dragging) return true;
         var target = Target();
@@ -97,6 +99,9 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
         GlassScene.FindScene(this)?.RequestRealign();
         return !(_position.Equals(target) && _velocity.Equals(0));
     }
+
+    /// <inheritdoc />
+    protected override AutomationPeer OnCreateAutomationPeer() => new GlassSwitchAutomationPeer(this);
 
     /// <inheritdoc />
     protected override void OnChecked(RoutedEventArgs e)
@@ -228,7 +233,15 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
     private void UpdateTrack()
     {
         var on = IsChecked == true;
-        var color = SystemParameters.HighContrast
+        var highContrast = SystemParameters.HighContrast;
+        if (_track is not null)
+        {
+            // In a contrast theme the off track is the window color: outline it in the text color, as Windows does.
+            _track.BorderBrush = highContrast ? SystemColors.ControlTextBrush : null;
+            _track.BorderThickness = new Thickness(highContrast ? 1 : 0);
+        }
+        if (_thumb is not null) _thumb.ContrastFace = on ? SystemColors.HighlightTextBrush : SystemColors.ControlTextBrush;
+        var color = highContrast
             ? on ? SystemColors.HighlightColor : SystemColors.ControlColor
             : on ? Tint is { A: > 0 } tint ? tint : GlassSystemSettings.AccentColor : OffColor;
         if (_trackBrush.Color == color) return;
@@ -244,4 +257,19 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
         });
     }
+}
+
+/// <summary>Exposes a <see cref="GlassSwitch"/> to UI Automation as a toggle switch: a button with the Toggle pattern.</summary>
+public sealed class GlassSwitchAutomationPeer : ToggleButtonAutomationPeer
+{
+    /// <summary>Creates the peer.</summary>
+    public GlassSwitchAutomationPeer(GlassSwitch owner) : base(owner)
+    {
+    }
+
+    /// <inheritdoc />
+    protected override string GetLocalizedControlTypeCore() => "toggle switch";
+
+    /// <inheritdoc />
+    protected override string GetClassNameCore() => nameof(GlassSwitch);
 }

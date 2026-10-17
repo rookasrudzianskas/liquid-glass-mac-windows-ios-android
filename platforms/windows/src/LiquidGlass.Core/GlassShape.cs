@@ -3,7 +3,8 @@ using System.Collections.Generic;
 
 namespace LiquidGlass;
 
-/// <summary>Corner geometry of a glass outline (OPTICS §1).</summary>
+/// <summary>Corner geometry of a glass outline.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#1-shape">Liquid Glass optics specification: Shape</seealso>
 public readonly struct ShapeParameters : IEquatable<ShapeParameters>
 {
     /// <summary>Creates corner geometry.</summary>
@@ -56,7 +57,8 @@ public readonly struct ShapeSample
     public double NormalY { get; }
 }
 
-/// <summary>The continuous-corner outline shared by glass, clip paths, borders and hit shapes (OPTICS §1).</summary>
+/// <summary>The continuous-corner outline shared by glass, clip paths, borders and hit shapes.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#1-shape">Liquid Glass optics specification: Shape</seealso>
 public static class GlassShape
 {
     /// <summary>

@@ -8,8 +8,8 @@ using LiquidGlass.Wpf.Rendering;
 namespace LiquidGlass.Wpf;
 
 /// <summary>
-/// The thumb of a <see cref="GlassSlider"/> or <see cref="GlassSwitch"/> (OPTICS §6). At rest it is an opaque white
-/// capsule with a soft shadow; while <see cref="IsLifted"/> it grows by <see cref="GrowX"/> × <see cref="GrowY"/> per
+/// The thumb of a <see cref="GlassSlider"/> or <see cref="GlassSwitch"/>. At rest it is an opaque white capsule with
+/// a soft shadow (in a contrast theme, a solid system-color capsule); while <see cref="IsLifted"/> it grows by <see cref="GrowX"/> × <see cref="GrowY"/> per
 /// side and crossfades into Clear glass that refracts the track beneath it, stretching along its path with its speed.
 /// </summary>
 /// <remarks>A template part of the slider and switch templates; it sizes itself to its rest size.</remarks>
@@ -45,6 +45,7 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         Visibility = Visibility.Hidden,
     };
     private readonly ScaleTransform _stretch = new();
+    private readonly DropShadowEffect _shadow = new() { BlurRadius = 10, ShadowDepth = 1.5, Direction = 270, Opacity = 0.2, Color = Colors.Black, RenderingBias = RenderingBias.Quality };
     private double _clock;
     private double _progress;
     private double _pressStart;
@@ -54,6 +55,7 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
     private bool _pulse;
     private Vector _velocity;
     private Point? _lastCenter;
+    private Brush? _contrastFace;
 
     static GlassValueThumb()
     {
@@ -63,7 +65,7 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
     /// <summary>Creates a thumb.</summary>
     public GlassValueThumb()
     {
-        _face.Effect = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 1.5, Direction = 270, Opacity = 0.2, Color = Colors.Black, RenderingBias = RenderingBias.Quality };
+        _face.Effect = _shadow;
         _body.Children.Add(_face);
         _body.Children.Add(_lens);
         _body.RenderTransform = _stretch;
@@ -73,12 +75,17 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         {
             LayoutUpdated -= OnLayoutUpdated;
             LayoutUpdated += OnLayoutUpdated;
+            GlassSystemSettings.Changed -= OnSettingsChanged;
+            GlassSystemSettings.Changed += OnSettingsChanged;
+            UpdateVisuals();
         };
         Unloaded += (_, _) =>
         {
             LayoutUpdated -= OnLayoutUpdated;
+            GlassSystemSettings.Changed -= OnSettingsChanged;
             GlassFrameLoop.Stop(this);
         };
+        UpdateVisuals();
     }
 
     /// <summary>Whether the thumb is held and lifted into glass.</summary>
@@ -119,6 +126,20 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
     /// <summary>How far the thumb has lifted into glass, 0..1.</summary>
     internal double Progress => _progress;
 
+    /// <summary>The face in a contrast theme (default: the system text color); a switch uses the highlight text color when on.</summary>
+    internal Brush? ContrastFace
+    {
+        get => _contrastFace;
+        set
+        {
+            _contrastFace = value;
+            UpdateVisuals();
+        }
+    }
+
+    /// <summary>The brush the thumb's face is painted with.</summary>
+    internal Brush FaceBrush => _face.Background;
+
     /// <inheritdoc />
     protected override int VisualChildrenCount => 1;
 
@@ -152,8 +173,8 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         if (e.Property == GlassScene.AppearanceProperty || e.Property == GlassScene.MotionProperty) UpdateVisuals();
     }
 
-    /// <inheritdoc />
-    public bool Tick(double dt)
+    // Advanced by the frame loop; not part of the public surface.
+    bool IGlassAnimation.Tick(double dt)
     {
         _clock += dt;
         var motion = GlassResolve.Motion(this);
@@ -225,10 +246,17 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         if (_lens.Lens is { } lens) lens.LocalBackdrop = Backdrop;
     }
 
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.CheckAccess()) UpdateVisuals();
+        else Dispatcher.BeginInvoke(new Action(UpdateVisuals));
+    }
+
     private void UpdateVisuals()
     {
         var highContrast = SystemParameters.HighContrast;
-        _face.Background = highContrast ? SystemColors.ControlTextBrush : Brushes.White;
+        _face.Background = highContrast ? _contrastFace ?? SystemColors.ControlTextBrush : Brushes.White;
+        _face.Effect = highContrast ? null : _shadow;
         var glass = highContrast ? 0 : _progress;
         _face.Opacity = 1 - glass;
         _lens.Opacity = glass;

@@ -2,7 +2,8 @@ using System;
 
 namespace LiquidGlass;
 
-/// <summary>Color response of the materials on sRGB, unpremultiplied channels (OPTICS §3).</summary>
+/// <summary>Color response of the materials on sRGB, unpremultiplied channels.</summary>
+/// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#3-materials">Liquid Glass optics specification: Materials</seealso>
 public static class GlassMaterialOptics
 {
     /// <summary>Luma with the SVG <c>feColorMatrix</c> weights.</summary>
