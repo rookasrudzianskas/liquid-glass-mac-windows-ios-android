@@ -55,6 +55,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
+import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
 import io.github.rookasrudzianskas.liquidglass.optics.sat
 import org.junit.Assert.assertEquals
@@ -171,10 +172,18 @@ class GlassRenderingTest {
      */
     private val linearBackdrop: (Float, Float) -> FloatArray = { x, y -> floatArrayOf(sat(0.5f + x / 400f), sat(0.5f + y / 400f), 0.6f, 1f) }
 
+    /** [linearBackdrop] around a surface centered at ([centerX], [centerY]) in the scene instead. */
+    private fun linearBackdropAround(centerX: Float, centerY: Float): (Float, Float) -> FloatArray {
+        val dx = centerX - (Left + Width / 2f)
+        val dy = centerY - (Top + Height / 2f)
+        return { x, y -> linearBackdrop(x + dx, y + dy) }
+    }
+
     /**
      * Null when every sampled pixel of a surface (width × height at left, top,
      * with [radius] corners, null for a capsule) is within [Tolerance] of the
-     * reference, else where it is worst. [backdropAt] gives the backdrop the glass
+     * reference, else where it is worst. [refraction] defaults to the travel of a
+     * surface that sets none, measured on this size. [backdropAt] gives the backdrop the glass
      * refracts and [baseAt] what lies beneath it (the backdrop, or lower glass),
      * both relative to the surface center.
      */
@@ -188,7 +197,7 @@ class GlassRenderingTest {
         width: Int = Width,
         height: Int = Height,
         radius: Float? = Radius.toFloat(),
-        refraction: Float = 60f,
+        refraction: Float = defaultRefraction(width.toFloat(), height.toFloat()),
         nested: Boolean = false,
         backdropAt: (Float, Float) -> FloatArray = uniformBackdrop,
         baseAt: (Float, Float) -> FloatArray = backdropAt,
@@ -614,6 +623,88 @@ class GlassRenderingTest {
     }
 
     @Test
+    fun unsetRefractionFollowsTheSurfaceSize() {
+        // A 120 × 34 capsule (a small button) over the gradient travels 0.75 × 34 = 25.5, not the full 60.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(LinearBackdropBrush)) }
+                Box(Modifier.offset(SmallLeft.dp, SmallTop.dp).size(SmallWidth.dp, SmallHeight.dp).liquidGlass(GlassShape.Capsule))
+            }
+        }
+        assertRendered(scene) { image ->
+            fun differenceAt(refraction: Float) = differenceFromReference(
+                image, regular = false, dark = false, tint = null,
+                left = SmallLeft, top = SmallTop, width = SmallWidth, height = SmallHeight,
+                radius = null, refraction = refraction, backdropAt = linearBackdrop,
+            )
+            when {
+                differenceAt(60f) == null -> "the small capsule refracts the full 60"
+                else -> differenceAt(25.5f)
+            }
+        }
+    }
+
+    @Test
+    fun unsetRefractionIsMeasuredOnTheRestingSize() {
+        // The capsule's glass grown 12 px per side, as a press grows it: still 25.5 (its resting 34),
+        // not the 43.5 its grown 58 would give.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val grown = GlassDynamics(bounds = { size -> Rect(-12f, -12f, size.width + 12f, size.height + 12f) })
+        val params = GlassSurfaceParams(
+            shape = GlassShape.Capsule,
+            material = null,
+            appearance = null,
+            tint = Color.Unspecified,
+            refraction = Dp.Unspecified,
+            interactive = false,
+            motion = null,
+            opacity = 1f,
+            interactionSource = null,
+        )
+        val scene = @Composable {
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(LinearBackdropBrush)) }
+                Box(Modifier.offset(SmallLeft.dp, SmallTop.dp).size(SmallWidth.dp, SmallHeight.dp).glassSurface(params, grown))
+            }
+        }
+        assertRendered(scene) {
+            differenceFromReference(
+                it, regular = false, dark = false, tint = null,
+                left = SmallLeft - 12, top = SmallTop - 12, width = SmallWidth + 24, height = SmallHeight + 24,
+                radius = null, refraction = 25.5f, backdropAt = linearBackdrop,
+            )
+        }
+    }
+
+    @Test
+    fun explicitRefractionIsUsedAsGiven() {
+        // The scene sets 50: the unset capsule uses it as given (not 25.5); a capsule that sets 60 keeps its own.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val upperTop = 50
+        val lowerTop = 150
+        val scene = @Composable {
+            GlassScene(appearance = GlassAppearance.Light, refraction = 50.dp, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(LinearBackdropBrush)) }
+                Box(Modifier.offset(SmallLeft.dp, upperTop.dp).size(SmallWidth.dp, SmallHeight.dp).liquidGlass(GlassShape.Capsule))
+                Box(Modifier.offset(SmallLeft.dp, lowerTop.dp).size(SmallWidth.dp, SmallHeight.dp).liquidGlass(GlassShape.Capsule, refraction = 60.dp))
+            }
+        }
+        val centerX = SmallLeft + SmallWidth / 2f
+        assertRendered(scene) { image ->
+            differenceFromReference(
+                image, regular = false, dark = false, tint = null,
+                left = SmallLeft, top = upperTop, width = SmallWidth, height = SmallHeight, radius = null, refraction = 50f,
+                backdropAt = linearBackdropAround(centerX, upperTop + SmallHeight / 2f),
+            )?.let { "scene refraction: $it" } ?: differenceFromReference(
+                image, regular = false, dark = false, tint = null,
+                left = SmallLeft, top = lowerTop, width = SmallWidth, height = SmallHeight, radius = null, refraction = 60f,
+                backdropAt = linearBackdropAround(centerX, lowerTop + SmallHeight / 2f),
+            )?.let { "surface refraction: $it" }
+        }
+    }
+
+    @Test
     fun clearGlassOverRegularGlassKeepsItsSideShade() {
         // A Clear capsule inside a Regular card composites over the card, its rim's side shade included.
         assumeTrue(Build.VERSION.SDK_INT >= 33)
@@ -669,7 +760,7 @@ class GlassRenderingTest {
         }
         val expected = glassPixel(
             x = 0.5f, y = 0.5f, width = 48f, height = 40f, radius = 12f,
-            regular = false, dark = false, refraction = 60f, pixel = 1f, tint = null,
+            regular = false, dark = false, refraction = defaultRefraction(48f, 40f), pixel = 1f, tint = null,
             base = backdrop, sample = { _, _ -> backdrop },
         )
         assertRendered(scene) { image ->
@@ -827,6 +918,12 @@ class GlassRenderingTest {
         const val Width = 200
         const val Height = 120
         const val Radius = 24
+
+        /** A small button's capsule (120 × 34), centered on the test surface and the gradient. */
+        const val SmallWidth = 120
+        const val SmallHeight = 34
+        const val SmallLeft = Left + (Width - SmallWidth) / 2
+        const val SmallTop = Top + (Height - SmallHeight) / 2
 
         /** Two surfaces side by side. */
         const val PairLeft = 10

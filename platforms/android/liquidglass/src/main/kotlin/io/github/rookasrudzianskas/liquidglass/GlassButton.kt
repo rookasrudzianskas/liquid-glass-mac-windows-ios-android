@@ -82,7 +82,8 @@ public class GlassButtonSize private constructor(
  * @param material Clear or Regular; null inherits the scene's.
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass (a prominent button); the label turns white or dark to stay legible.
- * @param refraction optical travel at the rim; [Dp.Unspecified] inherits the scene's.
+ * @param refraction optical travel at the rim, used as given; [Dp.Unspecified] takes the scene's, or when the
+ *   scene sets none follows the resting size: `min(60 dp, 0.75 × the shorter side)` ([GlassDefaults.refraction]).
  * @param interactive whether the glass grows, stretches and lights up under the finger.
  * @param motion overrides the scene's motion.
  * @param interactionSource source of the button's interactions; the press drives the glass.

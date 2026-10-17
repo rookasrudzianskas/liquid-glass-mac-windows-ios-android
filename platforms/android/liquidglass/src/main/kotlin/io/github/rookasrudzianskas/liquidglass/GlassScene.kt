@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import io.github.rookasrudzianskas.liquidglass.internal.GlassContentElement
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSceneState
 import io.github.rookasrudzianskas.liquidglass.internal.GlassStyle
@@ -58,7 +59,9 @@ public val LocalGlassContentColor: ProvidableCompositionLocal<Color> =
  * @param modifier modifier for the scene's box.
  * @param material default material of surfaces in the scene.
  * @param appearance light or dark glass; [GlassAppearance.Automatic] follows `isSystemInDarkTheme()`.
- * @param refraction default optical travel at the rim of surfaces.
+ * @param refraction optical travel at the rim of surfaces that set none. [Dp.Unspecified] (the default)
+ *   lets each follow its resting size, `min(60 dp, 0.75 × its shorter side)` ([GlassDefaults.refraction]);
+ *   a value here is used as given by every surface that sets none.
  * @param motion how much glass animates; the system "Remove animations" setting always reduces it.
  * @param reduceTransparency replaces the material with an opaque fill (`#F2F2F7` / `#1C1C1E` at 94%), keeping the rim light.
  * @param increaseContrast adds a 1 dp inner border and uses the Regular material. Follows the system contrast setting by default.
@@ -69,7 +72,7 @@ public fun GlassScene(
     modifier: Modifier = Modifier,
     material: GlassMaterial = GlassMaterial.Clear,
     appearance: GlassAppearance = GlassAppearance.Automatic,
-    refraction: Dp = GlassDefaults.Refraction,
+    refraction: Dp = Dp.Unspecified,
     motion: GlassMotion = GlassMotion.Full,
     reduceTransparency: Boolean = false,
     increaseContrast: Boolean = GlassDefaults.systemIncreaseContrast(),
@@ -79,7 +82,7 @@ public fun GlassScene(
         material = material,
         appearance = appearance,
         systemDark = isSystemInDarkTheme(),
-        refraction = refraction.value,
+        refraction = if (refraction.isSpecified) refraction.value else null,
         motion = motion,
         systemReduceMotion = rememberSystemReduceMotion(),
         reduceTransparency = reduceTransparency,

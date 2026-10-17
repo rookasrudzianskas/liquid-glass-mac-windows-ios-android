@@ -47,6 +47,7 @@ import androidx.compose.ui.node.traverseDescendants
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
@@ -55,6 +56,7 @@ import io.github.rookasrudzianskas.liquidglass.GlassShape
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
 import io.github.rookasrudzianskas.liquidglass.optics.SpringValue
 import io.github.rookasrudzianskas.liquidglass.optics.HOVER_GLOW
+import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glow
 import io.github.rookasrudzianskas.liquidglass.optics.pressScale
 import io.github.rookasrudzianskas.liquidglass.optics.rubberBand
@@ -87,6 +89,11 @@ internal class GlassDynamics(
     val opacity: () -> Float = { 1f },
     /** The glass rectangle inside the node, in its local pixels; null keeps the node's bounds. */
     val bounds: ((Size) -> Rect)? = null,
+    /**
+     * Size of the glass at rest (no press, stretch or morph) in local pixels, which an unset
+     * refraction is measured on; null takes the node's size.
+     */
+    val restingSize: ((Size) -> Size)? = null,
     /** Overrides the corner radius in dp ([Dp.Unspecified] for a capsule); null keeps the shape's. */
     val radius: (() -> Dp)? = null,
     /** When set, a container forwards pointer input through it instead of the surface observing its own. */
@@ -424,7 +431,7 @@ internal class GlassSurfaceNode(
             opacity = opacity(),
             contrast = style.increaseContrast,
             tint = params.tint.inSrgb(),
-            refraction = (if (params.refraction == Dp.Unspecified) style.refraction else params.refraction.value) * k,
+            refraction = refractionDp(size, density) * k,
             glowX = (glowAt.x - center.x) / density,
             glowY = (glowAt.y - center.y) / density,
             glowRadius = glow(widthDp, heightDp, dark).radius,
@@ -442,6 +449,17 @@ internal class GlassSurfaceNode(
 
     private fun opacity(): Float =
         (params.opacity * (dynamics?.opacity?.invoke() ?: 1f) * (fade?.invoke() ?: 1f)).coerceIn(0f, 1f)
+
+    /**
+     * The surface's own refraction, else its scene's, else the size-based default measured on the
+     * resting glass (the node's size, before press growth and stretch), so a press never changes it.
+     */
+    private fun refractionDp(size: Size, density: Float): Float {
+        if (params.refraction.isSpecified) return params.refraction.value
+        style.refraction?.let { return it }
+        val resting = dynamics?.restingSize?.invoke(size) ?: size
+        return defaultRefraction(resting.width / density, resting.height / density)
+    }
 
     private fun radiusDp(): Float? {
         val override = dynamics?.radius?.invoke()

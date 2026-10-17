@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -82,7 +83,9 @@ public class GlassTab(public val label: String, public val icon: ImageVector? = 
  * lens marking the selection. The lens slides to a newly selected tab on the
  * track spring, lifting into Clear glass and stretching with its speed; drag
  * it across the bar to choose a tab. Arrow keys move the selection, and the
- * focused tab shows a focus ring.
+ * focused tab shows a focus ring. Unless the scene sets a refraction, the bar
+ * and the lens each follow their resting size ([GlassDefaults.refraction]):
+ * 46.5 dp for the 62 dp bar, 40.5 dp for its 54 dp lens.
  *
  * ```
  * var tab by remember { mutableIntStateOf(0) }
@@ -282,6 +285,8 @@ private class TabLens {
     val dynamics = GlassDynamics(
         opacity = { liftState.floatValue.coerceIn(0f, 1f) },
         bounds = { _ -> rect() },
+        // An unset refraction follows the lens at rest, one tab wide, not the bar or the lifted lens.
+        restingSize = { _ -> Size(tabWidth * density, (barHeight - 2 * inset).coerceAtLeast(0f) * density) },
     )
 
     /** Pixels per dp of the last layout. */

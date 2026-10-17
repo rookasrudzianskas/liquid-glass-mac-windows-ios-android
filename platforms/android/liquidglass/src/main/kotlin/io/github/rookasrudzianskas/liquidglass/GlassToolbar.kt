@@ -36,6 +36,8 @@ import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
  * capsule; flexible spacers share the toolbar's free width. With
  * [interactive] glass, the cluster under the finger grows and lights up. A
  * [GlassMenu] opened from an item grows out of the item's cluster and covers it.
+ * Unless the scene sets a refraction, each cluster's follows its size: 39 dp
+ * for the 52 dp capsule ([GlassDefaults.refraction]).
  *
  * ```
  * GlassToolbar(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {

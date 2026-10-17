@@ -17,8 +17,17 @@ import kotlin.math.sqrt
 // reference lives with the tests (src/sharedTest), which check both against
 // spec/vectors.json.
 
-/** Default optical travel at the outline, in dp. */
+/** Full optical travel at the outline, in dp: what a surface that sets none uses once its shorter side is 80 dp or more. */
 internal const val DEFAULT_REFRACTION: Float = 60f
+
+/**
+ * Refraction a surface uses when it sets none, in dp: the full [DEFAULT_REFRACTION],
+ * limited for small controls to three quarters of their shorter side so they never
+ * pull in backdrop from far outside their outline. Measured on the resting size, so
+ * a press does not change it.
+ */
+internal fun defaultRefraction(width: Float, height: Float): Float =
+    min(DEFAULT_REFRACTION, 0.75f * max(0f, min(width, height)))
 
 /** Continuous corners reach this far along each edge, relative to the radius. */
 internal const val CONTINUOUS_EXTENT: Float = 1.528f

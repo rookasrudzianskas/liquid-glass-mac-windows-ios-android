@@ -404,6 +404,7 @@ private fun MenuPanel(
         opacity = 1f,
         interactionSource = null,
     )
+    // The glass morphs out of the trigger; an unset refraction follows the open panel (the node's size) throughout.
     val dynamics = remember(menu, shape) {
         GlassDynamics(
             opacity = { (menu.morph / 0.15f).coerceIn(0f, 1f) },

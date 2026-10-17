@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
 import io.github.rookasrudzianskas.liquidglass.GlassMotion
-import io.github.rookasrudzianskas.liquidglass.optics.DEFAULT_REFRACTION
 
 /**
  * Glass defaults in effect at a point of the composition: set by the nearest
@@ -39,8 +38,8 @@ internal data class GlassStyle(
     val appearance: GlassAppearance = GlassAppearance.Automatic,
     /** The system dark theme, used when [appearance] is automatic. */
     val systemDark: Boolean = false,
-    /** Refraction in dp. */
-    val refraction: Float = DEFAULT_REFRACTION,
+    /** Refraction in dp the scene sets for its surfaces, or null for none: each then follows its own resting size. */
+    val refraction: Float? = null,
     val motion: GlassMotion = GlassMotion.Full,
     /** The system asked for less animation (animator duration scale 0). */
     val systemReduceMotion: Boolean = false,

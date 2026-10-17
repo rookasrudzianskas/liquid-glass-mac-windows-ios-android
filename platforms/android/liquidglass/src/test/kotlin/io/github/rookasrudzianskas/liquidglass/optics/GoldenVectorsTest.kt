@@ -1,5 +1,7 @@
 package io.github.rookasrudzianskas.liquidglass.optics
 
+import androidx.compose.ui.unit.dp
+import io.github.rookasrudzianskas.liquidglass.GlassDefaults
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -109,6 +111,19 @@ class GoldenVectorsTest {
             close(c.f("dx"), dx, "dx $c")
             close(c.f("dy"), dy, "dy $c")
         }
+    }
+
+    @Test
+    fun defaultRefractionMatches() {
+        val cases = list("defaultRefraction")
+        for (c in cases) {
+            val width = c.f("width")
+            val height = c.f("height")
+            close(c.f("value"), defaultRefraction(width, height), "defaultRefraction $c")
+            close(c.f("value"), defaultRefraction(height, width), "defaultRefraction transposed $c")
+            close(c.f("value"), GlassDefaults.refraction(width.dp, height.dp).value, "GlassDefaults.refraction $c")
+        }
+        assertEquals(9, cases.size)
     }
 
     @Test

@@ -52,7 +52,8 @@ import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
  * @param material Clear or Regular; null inherits the scene's.
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass (never the content); [Color.Unspecified] for none.
- * @param refraction optical travel at the rim; [Dp.Unspecified] inherits the scene's (60 dp).
+ * @param refraction optical travel at the rim, used as given; [Dp.Unspecified] takes the scene's, or when the
+ *   scene sets none follows the resting size: `min(60 dp, 0.75 × the shorter side)` ([GlassDefaults.refraction]).
  * @param interactive press grow, drag stretch and glow.
  * @param motion overrides the scene's motion; system reduce motion still applies.
  * @param opacity multiplies the glass, for fading it in and out.
@@ -98,7 +99,8 @@ public fun Modifier.liquidGlass(
  * @param material Clear or Regular; null inherits the scene's.
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass (never the content); [Color.Unspecified] for none.
- * @param refraction optical travel at the rim; [Dp.Unspecified] inherits the scene's.
+ * @param refraction optical travel at the rim, used as given; [Dp.Unspecified] takes the scene's, or when the
+ *   scene sets none follows the resting size: `min(60 dp, 0.75 × the shorter side)` ([GlassDefaults.refraction]).
  * @param interactive press grow, drag stretch and glow.
  * @param motion overrides the scene's motion.
  * @param contentAlignment alignment of the content inside the surface.

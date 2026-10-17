@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rookasrudzianskas.liquidglass.internal.rememberSystemIncreaseContrast
 import io.github.rookasrudzianskas.liquidglass.optics.DEFAULT_REFRACTION
+import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 
 /** The two Liquid Glass materials. */
 public enum class GlassMaterial {
@@ -48,8 +49,20 @@ public enum class GlassMotion {
 
 /** Defaults shared by every Liquid Glass component, taken from spec/OPTICS.md. */
 public object GlassDefaults {
-    /** Optical travel at the rim of a surface. */
+    /**
+     * The full optical travel at the rim (60 dp): what a surface that sets no
+     * refraction uses once its shorter side is 80 dp or more. See [refraction].
+     */
     public val Refraction: Dp = DEFAULT_REFRACTION.dp
+
+    /**
+     * The refraction a surface of this resting size uses when neither it nor its
+     * scene sets one: `min(60 dp, 0.75 × the shorter side)` (spec/OPTICS.md §2).
+     * A 34 dp button gets 25.5 dp, a 52 dp toolbar 39 dp, a 62 dp tab bar 46.5 dp;
+     * anything 80 dp or more on both sides gets the full [Refraction]. Surfaces
+     * measure it on their layout size, so a press or stretch does not change it.
+     */
+    public fun refraction(width: Dp, height: Dp): Dp = defaultRefraction(width.value, height.value).dp
 
     /** Corner radius of a plain [GlassSurface]. */
     public val SurfaceRadius: Dp = 16.dp
