@@ -38,6 +38,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -60,6 +61,16 @@ import kotlin.math.roundToInt
  * Drag the thumb, or touch the track to jump there. Keyboard arrows step it,
  * and TalkBack can set it directly.
  *
+ * Give every slider a [label]. TalkBack reads the value as a percentage of the
+ * range; when the value means something else, describe it with
+ * `Modifier.semantics { stateDescription = "60 dp" }`.
+ *
+ * ```
+ * GlassSlider(volume, { volume = it }, label = "Volume")
+ * GlassSlider(radius, { radius = it }, Modifier.semantics { stateDescription = "${radius.roundToInt()} dp" },
+ *     valueRange = 0f..80f, label = "Corner radius")
+ * ```
+ *
  * @param value current value, within [valueRange].
  * @param onValueChange called with each new value while dragging.
  * @param modifier modifier for the slider; it fills the width it is given, 44 dp tall.
@@ -70,6 +81,7 @@ import kotlin.math.roundToInt
  * @param tint color of the filled track; unspecified uses the platform accent.
  * @param appearance light or dark glass for the thumb; null inherits the scene's.
  * @param motion overrides the scene's motion.
+ * @param label what the slider sets, read by accessibility services.
  */
 @Composable
 public fun GlassSlider(
@@ -83,6 +95,7 @@ public fun GlassSlider(
     tint: Color = Color.Unspecified,
     appearance: GlassAppearance? = null,
     motion: GlassMotion? = null,
+    label: String? = null,
 ) {
     require(steps >= 0) { "steps must be nonnegative" }
     require(valueRange.endInclusive > valueRange.start) { "valueRange must not be empty" }
@@ -139,6 +152,7 @@ public fun GlassSlider(
             }
             .progressSemantics(value, valueRange, steps)
             .semantics {
+                if (label != null) contentDescription = label
                 if (enabled) {
                     setProgress { target ->
                         update(target)

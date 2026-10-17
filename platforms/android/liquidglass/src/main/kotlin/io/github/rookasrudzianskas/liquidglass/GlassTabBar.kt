@@ -1,8 +1,10 @@
 package io.github.rookasrudzianskas.liquidglass
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,7 +81,8 @@ public class GlassTab(public val label: String, public val icon: ImageVector? = 
  * A Liquid Glass tab bar: a 62 dp capsule of icon-and-label tabs with a glass
  * lens marking the selection. The lens slides to a newly selected tab on the
  * track spring, lifting into Clear glass and stretching with its speed; drag
- * it across the bar to choose a tab. Arrow keys move the selection.
+ * it across the bar to choose a tab. Arrow keys move the selection, and the
+ * focused tab shows a focus ring.
  *
  * ```
  * var tab by remember { mutableIntStateOf(0) }
@@ -98,6 +101,8 @@ public class GlassTab(public val label: String, public val icon: ImageVector? = 
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the bar's glass.
  * @param selectedContentColor icon and label color of the selected tab; unspecified uses the glass foreground.
+ * @param unselectedContentColor icon and label color of the other tabs; unspecified uses the glass
+ *   foreground at 85%, which keeps the labels legible over mid-tone backdrops.
  * @param interactive whether the bar's glass grows and lights up under the finger.
  * @param motion overrides the scene's motion.
  */
@@ -111,6 +116,7 @@ public fun GlassTabBar(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     selectedContentColor: Color = Color.Unspecified,
+    unselectedContentColor: Color = Color.Unspecified,
     interactive: Boolean = true,
     motion: GlassMotion? = null,
 ) {
@@ -125,6 +131,7 @@ public fun GlassTabBar(
     val onSelect by rememberUpdatedState(onSelectedIndexChange)
     val selected by rememberUpdatedState(selectedIndex)
     val focus = remember(tabs.size) { List(tabs.size) { FocusRequester() } }
+    val sources = remember(tabs.size) { List(tabs.size) { MutableInteractionSource() } }
     SideEffect {
         lens.motion = style.motion(motion)
         lens.count = tabs.size
@@ -146,6 +153,7 @@ public fun GlassTabBar(
     ProvideGlassContentColor(appearance, tint) {
         val contentColor = LocalGlassContentColor.current
         val selectedColor = if (selectedContentColor.isSpecified) selectedContentColor else contentColor
+        val unselectedColor = if (unselectedContentColor.isSpecified) unselectedContentColor else contentColor.copy(alpha = UnselectedAlpha)
         val dark = style.isDark(appearance)
         Box(
             modifier
@@ -202,15 +210,17 @@ public fun GlassTabBar(
             ) {
                 val shown = lens.shownIndex
                 tabs.forEachIndexed { index, tab ->
-                    val color = if (index == shown) selectedColor else contentColor.copy(alpha = UnselectedAlpha)
+                    val color = if (index == shown) selectedColor else unselectedColor
+                    val focused by sources[index].collectIsFocusedAsState()
                     Column(
                         Modifier
                             .weight(1f)
                             .heightIn(min = TabBarHeight - TabBarInset * 2)
+                            .then(if (focused) Modifier.border(2.dp, FocusRingColor, GlassShape.Capsule) else Modifier)
                             .focusRequester(focus[index])
                             .selectable(
                                 selected = index == selectedIndex,
-                                interactionSource = remember { MutableInteractionSource() },
+                                interactionSource = sources[index],
                                 indication = null,
                                 role = Role.Tab,
                                 onClick = {
@@ -219,7 +229,9 @@ public fun GlassTabBar(
                                         onSelect(index)
                                     }
                                 },
-                            ),
+                            )
+                            // Neighboring labels keep a gap at large font sizes, and ellipsize inside it.
+                            .padding(horizontal = TabCellPadding),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                     ) {
@@ -359,7 +371,8 @@ private class TabLens {
             liftSpring.step(if (reduced) lift.critical() else lift, dt)
         }
         publish()
-        return slot.isSettled && liftSpring.isSettled && !pressed && !dragging
+        // A finger resting on the bar needs no frames once the springs settle; press() and dragTo() wake the loop.
+        return slot.isSettled && liftSpring.isSettled
     }
 
     private fun publish() {
@@ -371,7 +384,10 @@ private class TabLens {
 
 private val TabBarHeight = 62.dp
 private val TabBarInset = 4.dp
-private const val UnselectedAlpha = 0.62f
+private val TabCellPadding = 4.dp
+
+/** Unselected tabs: the spec's 0.85, legible (4.5:1) over mid-tone backdrops where a 62% secondary label is not. */
+private const val UnselectedAlpha = 0.85f
 
 /** Lens speed (dp/s) above which it lifts into glass on its own. */
 private const val LiftSpeed = 60f

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -13,9 +14,11 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -31,7 +34,8 @@ import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
  * [GlassButton]s inside become toolbar items on the toolbar's glass. A
  * [GlassToolbarSpacer] splits the items into clusters, each its own glass
  * capsule; flexible spacers share the toolbar's free width. With
- * [interactive] glass, the cluster under the finger grows and lights up.
+ * [interactive] glass, the cluster under the finger grows and lights up. A
+ * [GlassMenu] opened from an item grows out of the item's cluster and covers it.
  *
  * ```
  * GlassToolbar(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
@@ -73,10 +77,15 @@ public fun GlassToolbar(
         interactionSource = null,
     )
     ProvideGlassContentColor(appearance, tint) {
-        SubcomposeLayout(modifier.pointerInput(state) { forwardPointers(state) }) { constraints ->
+        SubcomposeLayout(
+            modifier
+                .pointerInput(state) { forwardPointers(state) }
+                // The space the clusters are laid out in, for menus that open from an item.
+                .onGloballyPositioned { state.coordinates = it },
+        ) { constraints ->
             val inset = ToolbarInset.roundToPx()
             val items = subcompose(ToolbarSlot.Items) {
-                CompositionLocalProvider(LocalGlassToolbarItem provides true, content = content)
+                CompositionLocalProvider(LocalGlassToolbarItem provides true, LocalGlassToolbarClusters provides state, content = content)
             }
             val itemConstraints = Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight)
             // Runs of items between spacers are clusters; adjacent spacers merge into one gap.
@@ -170,11 +179,30 @@ private sealed interface ToolbarSegment {
     class Gap(var minWidth: Int, var flexible: Boolean) : ToolbarSegment
 }
 
+/** The clusters of the toolbar an item sits in, for a [GlassMenu] opened from that item. */
+internal interface ToolbarClusters {
+    /** The bounds of the cluster holding [item], in [item]'s own coordinates, or null when unknown. */
+    fun clusterAround(item: LayoutCoordinates): Rect?
+}
+
+/** Provided by [GlassToolbar] to its items. */
+internal val LocalGlassToolbarClusters = staticCompositionLocalOf<ToolbarClusters?> { null }
+
 /** Cluster rectangles from the last layout and the handles that drive their glass. */
-private class ToolbarState {
+private class ToolbarState : ToolbarClusters {
+    /** Cluster rectangles in [coordinates], absolute (not mirrored in RTL). */
     var clusters: List<Rect> = emptyList()
+    var coordinates: LayoutCoordinates? = null
     val handles = mutableListOf<GlassPointerHandle>()
     val dynamics = mutableListOf<GlassDynamics>()
+
+    override fun clusterAround(item: LayoutCoordinates): Rect? {
+        val toolbar = coordinates?.takeIf { it.isAttached } ?: return null
+        if (!item.isAttached) return null
+        val center = toolbar.localPositionOf(item, Offset(item.size.width / 2f, item.size.height / 2f))
+        val cluster = clusters.firstOrNull { it.contains(center) } ?: return null
+        return Rect(item.localPositionOf(toolbar, cluster.topLeft), item.localPositionOf(toolbar, cluster.bottomRight))
+    }
 }
 
 /** Feeds touches to the cluster they land in, without consuming them (the items stay clickable). */

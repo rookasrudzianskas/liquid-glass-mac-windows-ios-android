@@ -3,11 +3,13 @@ package io.github.rookasrudzianskas.liquidglass
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -163,6 +165,7 @@ public fun GlassMenu(
     val menu = remember { MenuState() }
     val animator = remember(scope) { FrameAnimator(scope, menu::step) }
     val dismiss by rememberUpdatedState(onDismissRequest)
+    val toolbar = LocalGlassToolbarClusters.current
     val panel: @Composable () -> Unit = {
         MenuPanel(menu, menu.expanded, { dismiss() }, modifier, material, appearance, tint, shape, content)
     }
@@ -173,6 +176,7 @@ public fun GlassMenu(
         menu.density = density
         menu.panel = panel
         menu.locals = locals
+        menu.toolbar = toolbar
         menu.open(expanded)
     }
     val visible by remember(menu) { derivedStateOf { menu.visible } }
@@ -204,7 +208,7 @@ public fun GlassMenu(
         }
         if (present && scene == null) {
             Popup(
-                popupPositionProvider = remember(menu) { MenuPopupPosition() },
+                popupPositionProvider = remember(menu) { MenuPopupPosition(menu) },
                 onDismissRequest = { dismiss() },
                 properties = PopupProperties(focusable = true),
             ) { panel() }
@@ -231,7 +235,8 @@ public fun GlassMenu(
 
 /**
  * A menu row: an optional icon and a label, 44 dp tall (more with large fonts).
- * Choosing it runs [onClick] and closes the menu.
+ * Choosing it runs [onClick] and closes the menu. With a keyboard, the focused
+ * row is highlighted and ringed.
  *
  * @param text the label.
  * @param onClick the action.
@@ -255,13 +260,15 @@ public fun GlassMenuItem(
     val dismiss = LocalMenuDismiss.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    val focused by source.collectIsFocusedAsState()
     val foreground = LocalGlassContentColor.current
     val color = if (destructive) DestructiveColor else foreground
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .background(if (pressed) foreground.copy(alpha = 0.08f) else Color.Transparent, ItemShape)
+            .background(if (pressed || focused) foreground.copy(alpha = 0.08f) else Color.Transparent, ItemShape)
+            .then(if (focused) Modifier.border(2.dp, FocusRingColor, ItemShape) else Modifier)
             .semantics { if (checked != null) toggleableState = ToggleableState(checked) }
             .clickable(source, indication = null, enabled = enabled, role = if (checked != null) Role.Checkbox else Role.Button) {
                 onClick()
@@ -386,7 +393,8 @@ private fun MenuPanel(
     if (expanded && LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
     ProvideGlassContentColor(appearance, tint) {
-        CompositionLocalProvider(LocalMenuDismiss provides onDismiss) {
+        // The panel sees its call site's locals; it is not part of a toolbar even when its trigger is.
+        CompositionLocalProvider(LocalMenuDismiss provides onDismiss, LocalGlassToolbarItem provides false, LocalGlassToolbarClusters provides null) {
             Column(
                 modifier
                     .width(IntrinsicMenuWidth)
@@ -428,9 +436,11 @@ private class MorphShape(private val menu: MenuState, private val shape: GlassSh
 }
 
 /** Popup placement outside a scene: the same rule as the in-scene overlay. */
-private class MenuPopupPosition : PopupPositionProvider {
+private class MenuPopupPosition(private val menu: MenuState) : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
-        val anchor = Rect(anchorBounds.left.toFloat(), anchorBounds.top.toFloat(), anchorBounds.right.toFloat(), anchorBounds.bottom.toFloat())
+        // anchorBounds are the trigger's; the panel covers the toolbar cluster around it when there is one.
+        val inTrigger = menu.anchorInTrigger() ?: Rect(0f, 0f, anchorBounds.width.toFloat(), anchorBounds.height.toFloat())
+        val anchor = inTrigger.translate(anchorBounds.left.toFloat(), anchorBounds.top.toFloat())
         return placePanel(anchor, popupContentSize, 0, 0, windowSize.width, windowSize.height, windowSize.width)
     }
 }
@@ -444,6 +454,9 @@ private class MenuState {
     var animator: FrameAnimator? = null
     var trigger: LayoutCoordinates? = null
     var panelCoordinates: LayoutCoordinates? = null
+
+    /** The toolbar the trigger is an item of, if any. */
+    var toolbar: ToolbarClusters? = null
 
     /** Pixels per dp. */
     var density = 1f
@@ -500,14 +513,27 @@ private class MenuState {
         return spring.isSettled
     }
 
-    /** The trigger's bounds in [host], for placing the panel. */
+    /**
+     * What the panel grows out of and covers, in the trigger's coordinates: for a
+     * toolbar item the whole cluster it sits in (whose glass would otherwise show
+     * around the panel), else the trigger itself (null). The cluster is overlapped
+     * by [ClusterOverlap], so the capsule's ends stay inside the panel's rounder
+     * continuous corners; whatever lies under the panel is frosted away.
+     */
+    fun anchorInTrigger(): Rect? {
+        val trigger = trigger?.takeIf { it.isAttached } ?: return null
+        return toolbar?.clusterAround(trigger)?.inflate(ClusterOverlap.value * density)
+    }
+
+    /** The anchor's bounds in [host], for placing the panel. */
     fun triggerIn(host: LayoutCoordinates): Rect {
         val trigger = trigger?.takeIf { it.isAttached && host.isAttached } ?: return Rect.Zero
+        val anchor = anchorInTrigger() ?: Rect(Offset.Zero, trigger.size.toSize())
         if (trigger.findRootCoordinates() !== host.findRootCoordinates()) {
             // The trigger is in another window (a dialog): place by screen position instead.
-            return Rect(trigger.localToScreen(Offset.Zero) - host.localToScreen(Offset.Zero), trigger.size.toSize())
+            return Rect(trigger.localToScreen(anchor.topLeft) - host.localToScreen(Offset.Zero), anchor.size)
         }
-        return host.localBoundingBoxOf(trigger, clipBounds = false)
+        return Rect(host.localPositionOf(trigger, anchor.topLeft), host.localPositionOf(trigger, anchor.bottomRight))
     }
 
     /** The glass rectangle inside a panel of [size] pixels: from the trigger's bounds to the full panel. */
@@ -525,12 +551,13 @@ private class MenuState {
         return Dp(mix(from.height / 2f / density, shape.radius.value, morphState.floatValue))
     }
 
-    /** The trigger's bounds relative to the panel (screen-based, so it also works across a popup window). */
+    /** The anchor's bounds relative to the panel (screen-based, so it also works across a popup window). */
     private fun triggerInPanel(): Rect? {
         val trigger = trigger?.takeIf { it.isAttached } ?: return null
         val panel = panelCoordinates?.takeIf { it.isAttached } ?: return null
-        val topLeft = trigger.localToScreen(Offset.Zero) - panel.localToScreen(Offset.Zero)
-        return Rect(topLeft, Size(trigger.size.width.toFloat(), trigger.size.height.toFloat()))
+        val anchor = anchorInTrigger() ?: Rect(Offset.Zero, trigger.size.toSize())
+        val topLeft = trigger.localToScreen(anchor.topLeft) - panel.localToScreen(Offset.Zero)
+        return Rect(topLeft, anchor.size)
     }
 }
 
@@ -550,6 +577,9 @@ private val CheckMark: ImageVector = ImageVector.Builder("CheckMark", 24.dp, 24.
 }.build()
 
 private val MenuInset = 6.dp
+
+/** How far a menu reaches past the toolbar cluster it opens from. */
+private val ClusterOverlap = 1.dp
 private val IntrinsicMenuWidth = 250.dp
 private val ItemShape = RoundedCornerShape(22.dp)
 private val ItemTextStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Normal)

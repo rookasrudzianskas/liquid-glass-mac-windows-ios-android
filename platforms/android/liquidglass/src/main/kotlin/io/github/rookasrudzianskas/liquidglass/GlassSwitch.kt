@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -62,6 +63,17 @@ import kotlin.math.abs
  * Toggling plays a haptic. It occupies 54 × 44 dp, the extra height being the
  * touch target.
  *
+ * Give every switch a [label]: TalkBack reads it with the switch's state
+ * ("Wi-Fi, switch, on"). A visible text next to the switch is then read twice
+ * unless it is hidden from accessibility (`Modifier.clearAndSetSemantics {}`).
+ *
+ * ```
+ * Row(verticalAlignment = Alignment.CenterVertically) {
+ *     GlassText("Wi-Fi", Modifier.weight(1f).clearAndSetSemantics {})
+ *     GlassSwitch(wifi, { wifi = it }, label = "Wi-Fi")
+ * }
+ * ```
+ *
  * @param checked whether the switch is on.
  * @param onCheckedChange called with the new state when the user toggles it.
  * @param modifier modifier for the switch.
@@ -69,6 +81,7 @@ import kotlin.math.abs
  * @param tint color of the track when on; unspecified uses the platform accent.
  * @param appearance light or dark glass for the thumb; null inherits the scene's.
  * @param motion overrides the scene's motion.
+ * @param label what the switch controls, read by accessibility services.
  */
 @Composable
 public fun GlassSwitch(
@@ -79,6 +92,7 @@ public fun GlassSwitch(
     tint: Color = Color.Unspecified,
     appearance: GlassAppearance? = null,
     motion: GlassMotion? = null,
+    label: String? = null,
 ) {
     val style = LocalGlassStyle.current
     val dark = style.isDark(appearance)
@@ -121,6 +135,7 @@ public fun GlassSwitch(
             .size(TrackWidth, SwitchHeight)
             .semantics(mergeDescendants = true) {
                 role = Role.Switch
+                if (label != null) contentDescription = label
                 toggleableState = ToggleableState(checked)
                 if (enabled) {
                     onClick {
