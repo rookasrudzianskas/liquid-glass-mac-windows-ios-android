@@ -58,9 +58,15 @@ jobs:
           if-no-files-found: warn
 
   gpu:
-    name: GPU rendering tests (emulator)
+    name: GPU rendering tests (emulator, API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # 34: the AGSL glass against the reference. 31: the fallback over the platform blur.
+        # 28: the fallback without RenderEffect. Each must draw glass and never crash.
+        api-level: [34, 31, 28]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -73,17 +79,17 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Instrumented tests on Android 14
+      - name: Instrumented tests
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           working-directory: platforms/android
           # The measured GPU error of each case is logged; surface it (and crashes) as annotations.
-          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I ShaderVectorTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|ShaderVectorTest|AndroidRuntime" | head -60 | sed 's/^/::notice title=GPU test log::/'; exit $status
+          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I GlassDensityTest:I ShaderVectorTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|GlassDensityTest|ShaderVectorTest|AndroidRuntime" | head -80 | sed 's/^/::notice title=GPU test log::/'; exit $status
       - name: Report failed tests
         if: failure()
         run: |
@@ -100,6 +106,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-gpu-tests
+          name: android-gpu-tests-api${{ matrix.api-level }}
           path: platforms/android/liquidglass/build/reports/androidTests/
           if-no-files-found: warn
