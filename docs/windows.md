@@ -239,7 +239,8 @@ share.Click += (_, _) => Share();
 | `Size` | `Regular` | `Small` (24), `Regular` (32), `Large` (40). |
 | `IsIconOnly` | false | Square, circular outline. Give it `AutomationProperties.Name`. |
 | `Radius` | `capsule` | `circle` for icon-only buttons. |
-| `Tint`, `Refraction`, `IsInteractive`, `Material`, `Appearance` | | As on `GlassSurface`. |
+| `IsInteractive` | true | Press grow, drag stretch, release overshoot and the pointer glow. |
+| `Tint`, `Refraction`, `Material`, `Appearance` | | As on `GlassSurface`. |
 
 Everything else is `Button`: `Click`, `Command`, `IsDefault`, `IsCancel`, access keys (`_Save`).
 
