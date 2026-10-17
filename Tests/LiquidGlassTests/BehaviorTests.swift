@@ -349,7 +349,15 @@ final class BehaviorTests: XCTestCase {
             XCTAssertTrue(isDark(color), "\(color) takes a dark label")
             XCTAssertTrue(isDark(color, .regular), "\(color) takes a dark label on Regular glass")
         }
-        for color in [Color.blue, .red, .purple, .indigo, .accentColor, Color(red: 1, green: 0.176, blue: 0.333)] {
+        // Fixed blue, red, purple and indigo (the iOS 17 and macOS 14 system
+        // colors): system colors change between releases, and iOS 26's
+        // lighter blue sits within 0.1% of a tie on Regular glass.
+        let saturated = [
+            Color(red: 0, green: 0.478, blue: 1), Color(red: 1, green: 0.231, blue: 0.188),
+            Color(red: 0.686, green: 0.322, blue: 0.871), Color(red: 0.345, green: 0.337, blue: 0.839),
+            Color(red: 1, green: 0.176, blue: 0.333),
+        ]
+        for color in saturated {
             XCTAssertFalse(isDark(color), "\(color) takes a white label")
             XCTAssertFalse(isDark(color, .regular), "\(color) takes a white label on Regular glass")
         }
