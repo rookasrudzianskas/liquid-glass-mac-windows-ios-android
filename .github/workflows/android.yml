@@ -83,7 +83,7 @@ jobs:
           disable-animations: true
           working-directory: platforms/android
           # The measured GPU error of each case is logged; surface it (and crashes) as annotations.
-          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|AndroidRuntime" | head -40 | sed 's/^/::notice title=GPU test log::/'; exit $status
+          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I ShaderVectorTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|ShaderVectorTest|AndroidRuntime" | head -60 | sed 's/^/::notice title=GPU test log::/'; exit $status
       - name: Report failed tests
         if: failure()
         run: |
@@ -92,7 +92,8 @@ jobs:
           for path in glob.glob("platforms/android/liquidglass/build/outputs/androidTest-results/connected/**/*.xml", recursive=True):
               for case in ET.parse(path).getroot().iter("testcase"):
                   for failure in list(case.findall("failure")) + list(case.findall("error")):
-                      message = (failure.get("message") or failure.text or "").strip().splitlines()[0][:400]
+                      lines = (failure.get("message") or failure.text or "").strip().splitlines()
+                      message = (lines[0] if lines else "failed")[:400]
                       print(f"::error title={case.get('name')}::{message}")
           PY
       - name: Upload test reports
