@@ -75,6 +75,15 @@ final class OpticsVectorTests: XCTestCase {
         }
     }
 
+    func testDefaultRefraction() {
+        let cases = Vectors.cases("defaultRefraction")
+        XCTAssertEqual(cases.count, 9)
+        for (i, c) in cases.enumerated() {
+            let value = GlassOptics.defaultRefraction(width: c.double("width"), height: c.double("height"))
+            assertClose(value, c.double("value"), accuracy: tolerance, "defaultRefraction[\(i)] \(c)")
+        }
+    }
+
     func testCoverage() {
         XCTAssertEqual(GlassOptics.coverage(distance: 0, pixel: 1.0 / 3.0), 0.5)
         XCTAssertEqual(GlassOptics.coverage(distance: -1, pixel: 1.0 / 3.0), 1)

@@ -486,6 +486,7 @@ private struct GlassMenuMorphing: ViewModifier {
                             refraction: options.refraction, tint: options.tint, interactive: false, motion: options.motion
                         ),
                         defaultMaterial: .regular, outline: rect.offsetBy(dx: -union.minX, dy: -union.minY),
+                        restingSize: proxy.size,
                         content: Color.clear.frame(width: union.width, height: union.height)
                     )
                     .offset(x: union.minX, y: union.minY)

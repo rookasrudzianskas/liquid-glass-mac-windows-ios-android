@@ -30,7 +30,10 @@ public struct GlassSurface<Content: View>: View {
     ///   - material: Clear or Regular glass; `nil` inherits the scene's material.
     ///   - appearance: Light or dark glass; `nil` inherits.
     ///   - radius: The corner radius, `.capsule` or `.circle`. Default 16.
-    ///   - refraction: Optical travel at the rim in points; `nil` inherits (60).
+    ///   - refraction: Optical travel at the rim in points; `nil` inherits
+    ///     the scene's or, when none is set, follows the surface's resting
+    ///     size: 60, or three quarters of the shorter side below 80 points
+    ///     (``GlassOptics/defaultRefraction(width:height:)``).
     ///   - tint: Colors the glass, never the content. The content's default
     ///     foreground turns white or `#111113`, whichever contrasts more with
     ///     the tinted glass; a `foregroundStyle` you set inside wins.

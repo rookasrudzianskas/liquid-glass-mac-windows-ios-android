@@ -14,7 +14,9 @@ import Foundation
 public enum GlassOptics {
     /// Depth of the refracting bevel inside the outline, in points.
     public static let bevel = 20.0
-    /// Default optical travel at the outline, in points.
+    /// Optical travel at the outline, in points, of a surface that sets no
+    /// refraction and whose shorter side is at least 80 points; smaller ones
+    /// use less (``defaultRefraction(width:height:)``).
     public static let defaultRefraction = 60.0
     /// Continuous corners reach this far along each edge, relative to the radius.
     public static let continuousExtent = 1.528
@@ -120,6 +122,18 @@ public enum GlassOptics {
     public static func edgeProfile(distance: Double, bevel: Double = GlassOptics.bevel) -> Double {
         let depth = sat(-distance / bevel)
         return 1 - sat(((2 - depth) * depth).squareRoot())
+    }
+
+    /// The refraction of a `width × height` surface that sets none
+    /// (`spec/OPTICS.md` §2): the full ``defaultRefraction``, limited for
+    /// small controls to three quarters of their shorter side, so they never
+    /// pull in backdrop from far outside their outline. A 34-point button
+    /// travels 25.5 points, a 52-point toolbar 39 and a 62-point tab bar 46.5.
+    ///
+    /// Measure it on the surface's resting size: a press or a stretch
+    /// doesn't change it.
+    public static func defaultRefraction(width: Double, height: Double) -> Double {
+        min(defaultRefraction, 0.75 * max(0, min(width, height)))
     }
 
     /// Where a glass pixel samples its backdrop, relative to itself.

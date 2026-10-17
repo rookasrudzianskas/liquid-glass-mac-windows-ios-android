@@ -70,6 +70,41 @@ final class BehaviorTests: XCTestCase {
         XCTAssertEqual(lens.valuesInVisualOrder, [AnyHashable(3), AnyHashable(2), AnyHashable(1)])
     }
 
+    /// The lens stretches with its speed while it moves, but its refraction
+    /// is measured on the tab it rests at.
+    func testTabLensRefractsAtItsRestingSize() {
+        let lens = TabLens()
+        let a = CGRect(x: 4, y: 4, width: 100, height: 54), b = CGRect(x: 216, y: 4, width: 120, height: 54)
+        lens.select(a, motion: .full)
+        lens.select(b, motion: .full)
+        var stretched = false
+        run(lens, seconds: 1) {
+            stretched = stretched || lens.presentation.height < b.height - 1
+            XCTAssertEqual(lens.restingSize, b.size)
+        }
+        XCTAssertTrue(stretched, "the lens stretches while it moves")
+    }
+
+    // MARK: Refraction
+
+    /// Unset, refraction follows the resting size (`spec/OPTICS.md` §2); one
+    /// set on the scene or the environment applies at every size; a
+    /// surface's own wins over both.
+    func testRefractionResolution() {
+        let button = CGSize(width: 120, height: 34), card = CGSize(width: 320, height: 200)
+        var environment = EnvironmentValues()
+        XCTAssertNil(environment.glassRefraction)
+        XCTAssertEqual(environment.resolvedGlassRefraction(nil, restingSize: button), 25.5)
+        XCTAssertEqual(environment.resolvedGlassRefraction(nil, restingSize: card), 60)
+        XCTAssertEqual(environment.resolvedGlassRefraction(7.75, restingSize: CGSize(width: 37, height: 24)), 7.75)
+        XCTAssertEqual(environment.resolvedGlassRefraction(-4, restingSize: button), 0)
+        environment.glassRefraction = 60
+        XCTAssertEqual(environment.resolvedGlassRefraction(nil, restingSize: button), 60)
+        XCTAssertEqual(environment.resolvedGlassRefraction(5, restingSize: button), 5)
+        environment.glassRefraction = nil
+        XCTAssertEqual(environment.resolvedGlassRefraction(nil, restingSize: button), 25.5)
+    }
+
     // MARK: Switch thumb
 
     func testSwitchReducedMotionGlidesWithoutOvershoot() {

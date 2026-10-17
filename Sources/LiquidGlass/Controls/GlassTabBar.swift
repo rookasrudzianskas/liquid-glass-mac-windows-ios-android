@@ -89,7 +89,7 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
                                 material: options.material, appearance: options.appearance, radius: .capsule,
                                 refraction: nil, tint: nil, interactive: false, motion: options.motion
                             ),
-                            outline: lens.presentation, extraPadding: 12,
+                            outline: lens.presentation, restingSize: lens.restingSize, extraPadding: 12,
                             content: Color.clear.frame(width: proxy.size.width, height: proxy.size.height)
                         )
                     }
@@ -299,6 +299,12 @@ final class TabLens: GlassAnimating {
     /// The lens outline in the bar's local points, stretched with its speed.
     private(set) var presentation = CGRect.zero
     private(set) var isPlaced = false
+
+    /// The lens's size once its springs settle, unstretched: the tab it is
+    /// moving to. Its unset refraction is measured on it.
+    var restingSize: CGSize {
+        CGSize(width: width.state.target, height: height.state.target)
+    }
 
     @ObservationIgnored var tabs: [TabFrame] = []
     @ObservationIgnored private var x = SpringChannel(0, .track)

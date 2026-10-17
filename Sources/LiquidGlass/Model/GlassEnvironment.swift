@@ -11,7 +11,7 @@ private struct GlassAppearanceKey: EnvironmentKey {
 }
 
 private struct GlassRefractionKey: EnvironmentKey {
-    static let defaultValue = GlassOptics.defaultRefraction
+    static let defaultValue: Double? = nil
 }
 
 private struct GlassMotionKey: EnvironmentKey {
@@ -33,8 +33,13 @@ extension EnvironmentValues {
         set { self[GlassAppearanceKey.self] = newValue }
     }
 
-    /// The optical travel at the rim, in points, when a component doesn't set one.
-    public var glassRefraction: Double {
+    /// The optical travel at the rim, in points, of glass that doesn't set
+    /// its own, at every size.
+    ///
+    /// `nil`, the default, lets each surface's resting size decide:
+    /// ``GlassOptics/defaultRefraction(width:height:)`` gives large surfaces
+    /// 60 points and small controls three quarters of their shorter side.
+    public var glassRefraction: Double? {
         get { self[GlassRefractionKey.self] }
         set { self[GlassRefractionKey.self] = newValue }
     }
@@ -57,9 +62,12 @@ extension View {
         environment(\.glassAppearance, appearance)
     }
 
-    /// Sets the default refraction, in points of optical travel at the rim.
-    public func glassRefraction(_ refraction: Double) -> some View {
-        environment(\.glassRefraction, max(0, refraction))
+    /// Sets the refraction, in points of optical travel at the rim, of glass
+    /// inside this view that doesn't set its own. It applies at every size;
+    /// `nil` restores the default, which follows each surface's resting size
+    /// (``GlassOptics/defaultRefraction(width:height:)``).
+    public func glassRefraction(_ refraction: Double?) -> some View {
+        environment(\.glassRefraction, refraction.map { max(0, $0) })
     }
 
     /// Sets how much glass inside this view moves in response to input.

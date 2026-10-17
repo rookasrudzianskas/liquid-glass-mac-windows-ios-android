@@ -48,7 +48,10 @@ public struct GlassButton<Label: View>: View {
     ///   - radius: The outline; `nil` is a capsule.
     ///   - material: Clear or Regular glass; `nil` inherits the scene's.
     ///   - appearance: Light or dark glass; `nil` inherits.
-    ///   - refraction: Optical travel at the rim in points; `nil` inherits.
+    ///   - refraction: Optical travel at the rim in points; `nil` inherits
+    ///     the scene's or, when none is set, follows the button's resting
+    ///     size (33 points for a 44-point button,
+    ///     ``GlassOptics/defaultRefraction(width:height:)``).
     ///   - tint: Colors the glass. The label turns white or dark, whichever
     ///     contrasts more with the tinted glass.
     ///   - prominent: Tints the glass with the accent color when `tint` is `nil`.

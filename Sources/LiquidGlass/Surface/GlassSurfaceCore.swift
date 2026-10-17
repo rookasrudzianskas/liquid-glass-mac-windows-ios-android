@@ -13,21 +13,30 @@ struct GlassSurfaceOptions {
 }
 
 extension EnvironmentValues {
-    /// Resolves glass options against this environment.
-    func glassStyle(_ options: GlassSurfaceOptions, defaultMaterial: GlassMaterial? = nil) -> GlassRenderStyle {
+    /// Resolves glass options against this environment for a surface whose
+    /// resting size (before press and stretch) is `restingSize`.
+    func glassStyle(_ options: GlassSurfaceOptions, defaultMaterial: GlassMaterial? = nil, restingSize: CGSize) -> GlassRenderStyle {
         let increaseContrast = colorSchemeContrast == .increased
         let material = increaseContrast ? .regular : (options.material ?? defaultMaterial ?? glassMaterial)
         return GlassRenderStyle(
             material: material,
             dark: (options.appearance ?? glassAppearance).isDark(in: colorScheme),
             radius: options.radius,
-            refraction: max(0, options.refraction ?? glassRefraction),
+            refraction: resolvedGlassRefraction(options.refraction, restingSize: restingSize),
             tint: options.tint.map { $0.resolve(in: self).srgb },
             nested: glassNested,
             increaseContrast: increaseContrast,
             reduceTransparency: accessibilityReduceTransparency,
             pixel: 1 / Double(max(displayScale, 1))
         )
+    }
+
+    /// The refraction a surface draws with (`spec/OPTICS.md` §2): its own,
+    /// else the one set on the scene or the environment, else the default
+    /// for its resting size.
+    func resolvedGlassRefraction(_ requested: Double?, restingSize: CGSize) -> Double {
+        if let explicit = requested ?? glassRefraction { return max(0, explicit) }
+        return GlassOptics.defaultRefraction(width: Double(restingSize.width), height: Double(restingSize.height))
     }
 
     /// The motion level after Reduce Motion.
@@ -76,7 +85,8 @@ struct GlassForegroundStyle: ViewModifier {
     @Environment(\.self) private var environment
 
     func body(content: Content) -> some View {
-        let style = environment.glassStyle(options, defaultMaterial: defaultMaterial)
+        // Only the colors are used, and they don't depend on the size.
+        let style = environment.glassStyle(options, defaultMaterial: defaultMaterial, restingSize: .zero)
         let explicit = (options.appearance ?? environment.glassAppearance) != .automatic
         content
             .transformEnvironment(\.colorScheme) { scheme in
@@ -102,6 +112,12 @@ struct GlassSurfaceCore<Content: View>: View {
     var defaultMaterial: GlassMaterial?
     /// Overrides the outline, in local points (menus morphing, selection lenses).
     var outline: CGRect?
+    /// The size an unset refraction is measured on, when it isn't the
+    /// outline's (or, without one, the bounds'): a tab lens that stretches
+    /// with its speed rests at its tab's size, and a menu panel whose
+    /// outline grows out of its trigger rests open. Presses and drags scale
+    /// the outline in the shader and never change it.
+    var restingSize: CGSize?
     /// Fades the glass (not the content) in and out.
     var opacity: Double = 1
     /// Extra room around the surface for outlines that grow past its bounds.
@@ -132,20 +148,21 @@ struct GlassSurfaceCore<Content: View>: View {
     }
 
     private var surface: some View {
-        let style = environment.glassStyle(options, defaultMaterial: defaultMaterial)
         let motion = environment.glassMotion(options.motion)
         let interactive = options.interactive && environment.isEnabled
         return content
             .environment(\.glassNested, true)
             .modifier(GlassForegroundStyle(options: options, defaultMaterial: defaultMaterial))
-            .clipShape(GlassOutlineShape(rect: outline, radius: style.radius))
+            .clipShape(GlassOutlineShape(rect: outline, radius: options.radius))
             .modifier(GlassPressTransform(model: interactive ? model : nil))
             .background {
                 GeometryReader { proxy in
+                    let shape = outline?.size ?? proxy.size
+                    let style = environment.glassStyle(options, defaultMaterial: defaultMaterial, restingSize: restingSize ?? shape)
                     GlassLayerHost(
                         size: proxy.size, style: style, motion: motion, outline: outline, opacity: opacity,
                         padding: GlassRendering.padding(
-                            size: outline?.size ?? proxy.size, refraction: style.refraction,
+                            size: shape, refraction: style.refraction,
                             frosted: style.material == .regular, interactive: interactive, extra: extraPadding),
                         localBackdrop: localBackdrop, model: interactive || interaction != nil ? model : nil
                     )
@@ -154,7 +171,7 @@ struct GlassSurfaceCore<Content: View>: View {
                 // geometry, touches and the shader do in every layout direction.
                 .environment(\.layoutDirection, .leftToRight)
             }
-            .contentShape(GlassOutlineShape(rect: outline, radius: style.radius))
+            .contentShape(GlassOutlineShape(rect: outline, radius: options.radius))
             .modifier(GlassPressGestures(model: interactive && handlesInput ? model : nil, tracking: $tracking))
     }
 }

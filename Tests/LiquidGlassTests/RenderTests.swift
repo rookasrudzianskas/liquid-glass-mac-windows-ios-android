@@ -45,13 +45,15 @@ final class RenderTests: XCTestCase {
     // MARK: Clear
 
     /// The model's color at a pixel center `(px, py)` (in points) of a
-    /// capsule centered in the scene, over the gradient.
+    /// capsule centered in the scene, over the gradient. `refraction` `nil`
+    /// is the default for the capsule's size (48 for 200 × 64).
     private func expected(px: Double, py: Double, material: GlassMaterial = .clear, dark: Bool,
-                          pixel: Double = 1, tint: SIMD3<Double>? = nil) -> SIMD4<Double> {
+                          pixel: Double = 1, tint: SIMD3<Double>? = nil, refraction: Double? = nil) -> SIMD4<Double> {
         let x = px - Double(size.width) / 2, y = py - Double(size.height) / 2
+        let width = Double(surface.width), height = Double(surface.height)
         return GlassOptics.glassPixel(
-            x: x, y: y, width: Double(surface.width), height: Double(surface.height), radius: .capsule,
-            material: material, dark: dark, refraction: GlassOptics.defaultRefraction, tint: tint, pixel: pixel,
+            x: x, y: y, width: width, height: height, radius: .capsule, material: material, dark: dark,
+            refraction: refraction ?? GlassOptics.defaultRefraction(width: width, height: height), tint: tint, pixel: pixel,
             sample: { dx, dy in vectorBackdrop(x + dx, y + dy) }, base: vectorBackdrop(x, y)
         )
     }
@@ -86,6 +88,42 @@ final class RenderTests: XCTestCase {
         try checkClear(appearance: .light, tint: Color(.sRGB, red: tint.x, green: tint.y, blue: tint.z), srgbTint: tint)
     }
 
+    // MARK: Refraction
+
+    /// Glass that sets no refraction travels by its size (the 200 × 64
+    /// capsule 48 points, not 60, `spec/OPTICS.md` §2); a scene's or an
+    /// environment's refraction applies at every size; a surface's own wins.
+    func testRefractionPrecedence() throws {
+        let cases: [(String, scene: Double?, environment: Double?, surface: Double?, expected: Double)] = [
+            ("unset", nil, nil, nil, 48),
+            ("scene's", 60, nil, nil, 60),
+            ("environment's", 60, 30, nil, 30),
+            ("surface's", 60, 30, 12, 12),
+        ]
+        for (name, scene, environment, own, refraction) in cases {
+            let glass = GlassSurface(radius: .capsule, refraction: own) { Color.clear.frame(width: surface.width, height: surface.height) }
+            let image = try render(GlassScene(material: .clear, appearance: .light, refraction: scene) {
+                GlassContent { gradient }
+                centered(environment.map { AnyView(glass.glassRefraction($0)) } ?? AnyView(glass))
+            })
+            assertMatchesModel(image, in: capsuleRect, "\(name) refraction") { px, py in
+                expected(px: Double(px) + 0.5, py: Double(py) + 0.5, dark: false, refraction: refraction)
+            }
+        }
+        // Over this gradient 48 and 60 points of travel differ by up to
+        // 5.5/255 near the rim, more than the 3/255 tolerance, so the checks
+        // tell even those two apart.
+        var largest = 0.0
+        for py in Int(capsuleRect.minY)..<Int(capsuleRect.maxY) {
+            for px in Int(capsuleRect.minX)..<Int(capsuleRect.maxX) {
+                let x = Double(px) + 0.5, y = Double(py) + 0.5
+                let d = expected(px: x, py: y, dark: false, refraction: 48) - expected(px: x, py: y, dark: false, refraction: 60)
+                largest = max(largest, d.array.map(abs).max() ?? 0)
+            }
+        }
+        XCTAssertGreaterThan(largest, 1.5 * tolerance)
+    }
+
     // MARK: Regular
 
     /// Regular glass over a sine: the frost and the fill are Gaussian blurs of
@@ -108,9 +146,10 @@ final class RenderTests: XCTestCase {
         for (px, py) in [(310, 200), (400, 200), (480, 200), (360, 150), (440, 250), (400, 140), (400, 260)] {
             let x = (Double(px) + 0.5) / 2, y = (Double(py) + 0.5) / 2
             let cx = x - Double(size.width) / 2, cy = y - Double(size.height) / 2
+            let width = Double(surface.width), height = Double(surface.height)
             let model = GlassOptics.glassPixel(
-                x: cx, y: cy, width: Double(surface.width), height: Double(surface.height), radius: .capsule,
-                material: .regular, dark: dark, pixel: 0.5,
+                x: cx, y: cy, width: width, height: height, radius: .capsule, material: .regular, dark: dark,
+                refraction: GlassOptics.defaultRefraction(width: width, height: height), pixel: 0.5,
                 sample: { dx, _ in
                     let c = GlassOptics.frostColor(frost: blurred(x + dx, sigma: frostSigma), fill: blurred(x + dx, sigma: fillSigma), dark: dark)
                     return SIMD4(c.x, c.y, c.z, 1)
@@ -631,13 +670,15 @@ final class RenderTests: XCTestCase {
     // MARK: Comparing with the model
 
     /// The model's color of pixel `(px, py)` of a surface at `rect` over the
-    /// backdrop-only render `plain`, sampled as the shader samples its layer.
+    /// backdrop-only render `plain`, sampled as the shader samples its layer,
+    /// with the default refraction for the surface's size.
     private func model(of rect: CGRect, radius: GlassRadius, over plain: Bitmap, px: Int, py: Int) -> SIMD4<Double> {
         let s = plain.scale
         let x = (Double(px) + 0.5) / s, y = (Double(py) + 0.5) / s
+        let width = Double(rect.width), height = Double(rect.height)
         return GlassOptics.glassPixel(
-            x: x - Double(rect.midX), y: y - Double(rect.midY), width: Double(rect.width), height: Double(rect.height),
-            radius: radius, dark: false, pixel: 1 / s,
+            x: x - Double(rect.midX), y: y - Double(rect.midY), width: width, height: height, radius: radius, dark: false,
+            refraction: GlassOptics.defaultRefraction(width: width, height: height), pixel: 1 / s,
             sample: { dx, dy in plain.sample(x: x + dx, y: y + dy) }, base: plain.pixel(px, py)
         )
     }

@@ -97,7 +97,10 @@ public struct GlassScene<Backdrop: View, Foreground: View>: View {
     /// - Parameters:
     ///   - material: The default material inside the scene, or `nil` to inherit.
     ///   - appearance: The default appearance inside the scene, or `nil` to inherit.
-    ///   - refraction: The default optical travel at the rim, or `nil` to inherit.
+    ///   - refraction: The optical travel at the rim of glass inside that
+    ///     sets none, at every size, or `nil` to inherit. Unset everywhere,
+    ///     each surface's resting size decides
+    ///     (``GlassOptics/defaultRefraction(width:height:)``).
     ///   - motion: The default motion level, or `nil` to inherit.
     ///   - content: A ``GlassContent`` followed by the foreground.
     public init(
