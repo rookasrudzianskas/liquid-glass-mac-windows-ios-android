@@ -57,6 +57,10 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     public static readonly DependencyProperty PanelRadiusProperty = DependencyProperty.Register(
         nameof(PanelRadius), typeof(GlassRadius), typeof(GlassMenu), new FrameworkPropertyMetadata(GlassRadius.FromValue(28)));
 
+    /// <summary>Motion of the trigger and the panel (inherited). Reduced motion keeps the morph, critically damped; none opens and closes the panel at once.</summary>
+    public static readonly DependencyProperty MotionProperty = GlassSurface.MotionProperty.AddOwner(typeof(GlassMenu),
+        new FrameworkPropertyMetadata(GlassMotion.Full, FrameworkPropertyMetadataOptions.Inherits));
+
     /// <summary>Tint of the trigger and the panel, or null.</summary>
     public static readonly DependencyProperty TintProperty = GlassSurface.TintProperty.AddOwner(typeof(GlassMenu),
         new FrameworkPropertyMetadata(null, OnTintChanged));
@@ -100,12 +104,17 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         DefaultStyleKeyProperty.OverrideMetadata(typeof(GlassMenu), new FrameworkPropertyMetadata(typeof(GlassMenu)));
         GlassScene.AddContentForegroundOwner(typeof(GlassMenu));
         FocusableProperty.OverrideMetadata(typeof(GlassMenu), new FrameworkPropertyMetadata(false));
+        // A focus scope, as WPF's menus and toolbars are: focusing the trigger leaves the window's focused element (a
+        // text box, say) in place, so routed commands on the items (Copy, Paste) act on it.
+        FocusManager.IsFocusScopeProperty.OverrideMetadata(typeof(GlassMenu), new FrameworkPropertyMetadata(true));
     }
 
     /// <summary>Creates a menu.</summary>
     public GlassMenu()
     {
         _appearance = new GlassAppearanceTracker(this, () => Tint);
+        // IsOpen set before the menu could open (in XAML, or by a binding whose source starts true) opens it now.
+        Loaded += (_, _) => OpenIfPending();
         Unloaded += (_, _) =>
         {
             Close(immediately: true);
@@ -155,6 +164,13 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         set => SetValue(PanelRadiusProperty, value);
     }
 
+    /// <summary>Motion of the trigger and the panel.</summary>
+    public GlassMotion Motion
+    {
+        get => (GlassMotion)GetValue(MotionProperty);
+        set => SetValue(MotionProperty, value);
+    }
+
     /// <summary>Tint of the trigger and the panel, or null.</summary>
     public Color? Tint
     {
@@ -197,6 +213,8 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
             _trigger.Click += OnTriggerClick;
             _trigger.PreviewKeyDown += OnTriggerKeyDown;
         }
+        UpdateTriggerFontSize();
+        OpenIfPending();
     }
 
     // Advanced by the frame loop; not part of the public surface.
@@ -228,6 +246,7 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     {
         base.OnPropertyChanged(e);
         if (GlassAppearanceTracker.Affects(e.Property)) _appearance.Update();
+        if (e.Property == FontSizeProperty) UpdateTriggerFontSize();
     }
 
     /// <summary>Called by an item when it was chosen.</summary>
@@ -245,6 +264,24 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         // The trigger has keyboard focus, so screen readers announce the state change from its peer.
         if (menu._trigger is not null)
             (UIElementAutomationPeer.FromElement(menu._trigger) as GlassMenuTriggerAutomationPeer)?.RaiseExpandCollapseChanged(oldValue, newValue);
+    }
+
+    /// <summary>
+    /// A text size the application gave the menu reaches the trigger as well as the items; the theme's own size leaves
+    /// the trigger at the size its <see cref="Size"/> calls for.
+    /// </summary>
+    private void UpdateTriggerFontSize()
+    {
+        if (_trigger is null) return;
+        var source = DependencyPropertyHelper.GetValueSource(this, FontSizeProperty).BaseValueSource;
+        if (source is BaseValueSource.Default or BaseValueSource.DefaultStyle or BaseValueSource.DefaultStyleTrigger or BaseValueSource.Inherited)
+            _trigger.ClearValue(FontSizeProperty);
+        else _trigger.FontSize = FontSize;
+    }
+
+    private void OpenIfPending()
+    {
+        if (IsOpen && IsLoaded && _trigger is not null && (_panel is null || _panel.Visibility != Visibility.Visible || !_panel.IsHitTestVisible)) Open();
     }
 
     private void OnTriggerClick(object sender, RoutedEventArgs e)
@@ -297,9 +334,11 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         }
         panel.Visibility = Visibility.Visible;
         HookDismiss();
-        if (GlassResolve.Motion(this) == GlassMotion.Full && _layer is not null)
+        var motion = GlassResolve.Motion(this);
+        if (motion != GlassMotion.None && _layer is not null)
         {
-            _morph.Animate(1, GlassSprings.Morph);
+            // Reduced motion keeps the morph, critically damped.
+            _morph.Animate(1, GlassResolve.Spring(GlassSprings.Morph, motion));
             Morph(_morph.Value);
             GlassFrameLoop.Start(this);
         }
@@ -324,14 +363,15 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         if (_panel is null) return;
         if (_panel.Visibility == Visibility.Visible && _panel.IsHitTestVisible) RaiseMenuEvent(_panel, AutomationEvents.MenuClosed);
         var hadFocus = _panel.IsKeyboardFocusWithin;
-        if (immediately || GlassResolve.Motion(this) != GlassMotion.Full || _layer is null)
+        var motion = GlassResolve.Motion(this);
+        if (immediately || motion == GlassMotion.None || _layer is null)
         {
             _morph.Jump(0);
             Detach();
         }
         else
         {
-            _morph.Animate(0, GlassSprings.Morph);
+            _morph.Animate(0, GlassResolve.Spring(GlassSprings.Morph, motion));
             GlassFrameLoop.Start(this);
             _panel.IsHitTestVisible = false;
         }
@@ -356,7 +396,7 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         _list = new GlassMenuItemsHost(this);
         KeyboardNavigation.SetDirectionalNavigation(_list, KeyboardNavigationMode.Cycle);
         KeyboardNavigation.SetTabNavigation(_list, KeyboardNavigationMode.Cycle);
-        var panel = new GlassMenuPanel
+        var panel = new GlassMenuPanel(this)
         {
             Padding = new Thickness(Inset),
             MinWidth = MinPanelWidth,
@@ -367,7 +407,6 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         };
         KeyboardNavigation.SetTabNavigation(panel, KeyboardNavigationMode.Cycle);
         KeyboardNavigation.SetControlTabNavigation(panel, KeyboardNavigationMode.Cycle);
-        AutomationProperties.SetName(panel, AutomationProperties.GetName(this) is { Length: > 0 } name ? name : Header?.ToString() ?? "Menu");
         panel.PreviewKeyDown += OnPanelKeyDown;
         _panel = panel;
         ConfigurePanel(panel);
@@ -547,6 +586,12 @@ public class GlassMenuItem : ButtonBase
     public static readonly DependencyProperty StaysOpenOnClickProperty = DependencyProperty.Register(
         nameof(StaysOpenOnClick), typeof(bool), typeof(GlassMenuItem), new FrameworkPropertyMetadata(false));
 
+    /// <summary>Raised when <see cref="IsChecked"/> becomes true (the same routed event as WPF's <see cref="MenuItem.Checked"/>).</summary>
+    public static readonly RoutedEvent CheckedEvent = MenuItem.CheckedEvent.AddOwner(typeof(GlassMenuItem));
+
+    /// <summary>Raised when <see cref="IsChecked"/> becomes false (the same routed event as WPF's <see cref="MenuItem.Unchecked"/>).</summary>
+    public static readonly RoutedEvent UncheckedEvent = MenuItem.UncheckedEvent.AddOwner(typeof(GlassMenuItem));
+
     private bool _contentFromHeader;
     private bool _copyingHeader;
 
@@ -563,6 +608,20 @@ public class GlassMenuItem : ButtonBase
         {
             if (IsEnabled) Focus();
         };
+    }
+
+    /// <summary>Raised when the item becomes checked, however that happens (a click, UI Automation, code).</summary>
+    public event RoutedEventHandler Checked
+    {
+        add => AddHandler(CheckedEvent, value);
+        remove => RemoveHandler(CheckedEvent, value);
+    }
+
+    /// <summary>Raised when the item becomes unchecked.</summary>
+    public event RoutedEventHandler Unchecked
+    {
+        add => AddHandler(UncheckedEvent, value);
+        remove => RemoveHandler(UncheckedEvent, value);
     }
 
     /// <summary>The item's label.</summary>
@@ -667,7 +726,12 @@ public class GlassMenuItem : ButtonBase
     }
 
     private static void OnIsCheckedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => (UIElementAutomationPeer.FromElement((GlassMenuItem)d) as GlassMenuItemAutomationPeer)?.RaiseToggleChanged((bool)e.OldValue, (bool)e.NewValue);
+    {
+        var item = (GlassMenuItem)d;
+        var on = (bool)e.NewValue;
+        item.RaiseEvent(new RoutedEventArgs(on ? CheckedEvent : UncheckedEvent, item));
+        (UIElementAutomationPeer.FromElement(item) as GlassMenuItemAutomationPeer)?.RaiseToggleChanged((bool)e.OldValue, on);
+    }
 }
 
 /// <summary>
@@ -757,6 +821,18 @@ internal sealed class GlassMenuTriggerAutomationPeer : ButtonAutomationPeer, IEx
 /// <summary>The panel of an open <see cref="GlassMenu"/>: glass in the scene's popup layer, a Menu to UI Automation.</summary>
 internal sealed class GlassMenuPanel : GlassSurface
 {
+    static GlassMenuPanel()
+    {
+        // A focus scope of its own: a routed command on an item that nothing in the menu handles goes on to the
+        // element that has focus in the window (WPF's command routing transfers it at a focus scope).
+        FocusManager.IsFocusScopeProperty.OverrideMetadata(typeof(GlassMenuPanel), new FrameworkPropertyMetadata(true));
+    }
+
+    public GlassMenuPanel(GlassMenu menu) => Menu = menu;
+
+    /// <summary>The menu the panel belongs to.</summary>
+    public GlassMenu Menu { get; }
+
     protected override AutomationPeer OnCreateAutomationPeer() => new PanelPeer(this);
 
     private sealed class PanelPeer : FrameworkElementAutomationPeer
@@ -768,6 +844,15 @@ internal sealed class GlassMenuPanel : GlassSurface
         protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Menu;
 
         protected override string GetClassNameCore() => nameof(GlassMenu);
+
+        /// <summary>The menu's name as it is now: its automation name, or else its header (which may change).</summary>
+        protected override string GetNameCore()
+        {
+            var name = base.GetNameCore();
+            if (!string.IsNullOrEmpty(name)) return name;
+            var menu = ((GlassMenuPanel)Owner).Menu;
+            return AutomationProperties.GetName(menu) is { Length: > 0 } menuName ? menuName : menu.Header?.ToString() ?? "Menu";
+        }
     }
 }
 
@@ -837,11 +922,11 @@ public sealed class GlassMenuItemAutomationPeer : FrameworkElementAutomationPeer
     }
 
     /// <inheritdoc />
-    public void Toggle()
-    {
-        if (!IsEnabled()) throw new ElementNotEnabledException();
-        Item.SetCurrentValue(GlassMenuItem.IsCheckedProperty, !Item.IsChecked);
-    }
+    /// <remarks>
+    /// Chooses the item as a click does (it toggles, raises Click, runs the command and closes the menu unless the item
+    /// stays open on click), so an application that follows Click stays in step with assistive technology.
+    /// </remarks>
+    public void Toggle() => Invoke();
 
     /// <inheritdoc />
     public override object? GetPattern(PatternInterface patternInterface) => patternInterface switch

@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:lg="clr-namespace:LiquidGlass.Wpf">
+                    xmlns:lg="clr-namespace:LiquidGlass.Wpf"
+                    xmlns:r="clr-namespace:LiquidGlass.Wpf.Rendering">
 
   <FontFamily x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}">Segoe UI Variable Text, Segoe UI</FontFamily>
 
@@ -84,6 +85,10 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Width" Value="{Binding Height, RelativeSource={RelativeSource Self}}" />
       </Trigger>
+      <!-- Icon fonts have one weight: at SemiBold WPF would embolden an icon glyph synthetically and smear it. -->
+      <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}, Converter={x:Static r:IconGlyph.Converter}}" Value="True">
+        <Setter Property="FontWeight" Value="Normal" />
+      </DataTrigger>
     </Style.Triggers>
   </Style>
 
@@ -388,6 +393,12 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <!-- Icon glyphs at the icon font's only weight. -->
+      <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}, Converter={x:Static r:IconGlyph.Converter}}" Value="True">
+        <Setter Property="FontWeight" Value="Normal" />
+      </DataTrigger>
+    </Style.Triggers>
   </Style>
 
   <Style TargetType="{x:Type lg:GlassToolbar}">
@@ -405,6 +416,8 @@
     <Style.Resources>
       <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}" />
       <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}" />
+      <!-- Glass buttons, and the trigger of a menu, take the toolbar look as well: the cluster is their glass. -->
+      <Style TargetType="{x:Type lg:GlassButton}" BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}" />
     </Style.Resources>
   </Style>
 
@@ -507,13 +520,21 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type lg:GlassMenu}">
+          <!-- FontSize reaches the trigger from code, only when the application set one (GlassMenu.UpdateTriggerFontSize). -->
           <lg:GlassButton x:Name="PART_Trigger" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
                           Size="{TemplateBinding Size}" IsIconOnly="{TemplateBinding IsIconOnly}" Tint="{TemplateBinding Tint}"
                           FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}"
+                          Foreground="{TemplateBinding Foreground}"
                           AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}" />
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <!-- An icon header at the icon font's only weight (the trigger takes the menu's weight). -->
+      <DataTrigger Binding="{Binding Header, RelativeSource={RelativeSource Self}, Converter={x:Static r:IconGlyph.Converter}}" Value="True">
+        <Setter Property="FontWeight" Value="Normal" />
+      </DataTrigger>
+    </Style.Triggers>
     <Style.Resources>
       <Style TargetType="{x:Type Separator}">
         <Setter Property="Margin" Value="10,4" />
