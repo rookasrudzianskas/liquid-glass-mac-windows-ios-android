@@ -19,6 +19,8 @@ Bundled references, all copied from the repository's `spec/` folder:
 - [references/liquid-glass.glsl](references/liquid-glass.glsl): the canonical shader library (GLSL ES 3.00). Translate this, don't re-derive it.
 - [references/vectors.json](references/vectors.json): golden test data generated from `reference.mjs`.
 
+The model is ported from the MIT-licensed Glass HQ liquid-glass library. A port that copies or translates `reference.mjs` or the shader is a copy of substantial portions of it: ship [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md) (the Glass HQ copyright and permission notice) with it.
+
 ## Steps
 
 1. **Read OPTICS.md fully.** Note the conventions: layout units, y down, coordinates relative to the surface center, sRGB gamma-encoded unpremultiplied color math, `pixel = 1 / displayScale`.
@@ -45,3 +47,4 @@ Bundled references, all copied from the repository's `spec/` folder:
 - Scalar tests pass against every section of `vectors.json`.
 - GPU readback matches the `glassPixel` cases.
 - Side-by-side screenshots with an official port at the same size, material and radius are indistinguishable.
+- The port ships LICENSE and NOTICE.md.
