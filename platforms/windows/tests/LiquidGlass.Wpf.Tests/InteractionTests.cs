@@ -64,6 +64,39 @@ public class InteractionTests
         });
     }
 
+    /// <summary>A press drives the light on the glow spring (0.42 s, no bounce): it rises to full and never passes it.</summary>
+    [Fact]
+    public void PressLightRisesOnTheGlowSpringWithoutOvershoot()
+    {
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                var scene = new GlassScene { Content = new Border { Background = Brushes.SteelBlue } };
+                scene.Children.Add(button);
+                var window = Sta.Show(scene, 400, 200);
+                var lens = ((GlassSurface)button.Template.FindName("PART_Surface", button)).Lens!;
+                var glow = new List<double>();
+                EventHandler sample = (_, _) => glow.Add(lens.GlowAmount);
+                CompositionTarget.Rendering += sample;
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
+                Wait(1.2);
+                CompositionTarget.Rendering -= sample;
+                Assert.True(glow.Count(g => g > 0.05 && g < 0.95) >= 2, "the light should rise over several frames");
+                Assert.True(glow.Max() <= 1 + 1e-9, $"the light overshot: {glow.Max():F4}");
+                Assert.True(glow.Last() > 0.99, $"the light should reach full: {glow.Last():F4}");
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                window.Close();
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
+    }
+
     [Fact]
     public void ReducedMotionPressesWithoutGrowing()
     {

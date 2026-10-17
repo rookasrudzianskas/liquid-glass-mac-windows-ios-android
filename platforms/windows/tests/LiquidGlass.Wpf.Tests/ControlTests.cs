@@ -732,6 +732,61 @@ public class ControlTests
         });
     }
 
+    [Fact]
+    public void UnsetRefractionFollowsTheRestingSize()
+    {
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var button = new GlassButton { Content = "Share", HorizontalAlignment = HorizontalAlignment.Left };
+                var given = new GlassButton { Content = "Edit", Refraction = 18, HorizontalAlignment = HorizontalAlignment.Left };
+                var card = new GlassSurface { Width = 300, Height = 200, HorizontalAlignment = HorizontalAlignment.Left };
+                var tabs = new GlassTabBar { HorizontalAlignment = HorizontalAlignment.Left, Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" } }, SelectedIndex = 0 };
+                var window = Sta.Show(Scene(new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { button, given, card, tabs } }), 480, 400);
+                GlassLens LensOf(GlassButton b) => ((GlassSurface)b.Template.FindName("PART_Surface", b)).Lens!;
+
+                // Unset: min(60, 0.75 × the shorter side), from the resting size; set: as given.
+                Assert.True(double.IsNaN(button.Refraction));
+                Assert.Equal(0.75 * 32, LensOf(button).ResolvedRefraction, 6);
+                Assert.Equal(18, LensOf(given).ResolvedRefraction, 6);
+                Assert.Equal(60, card.Lens!.ResolvedRefraction, 6);
+                var lens = (GlassSurface)tabs.Template.FindName("PART_Lens", tabs);
+                Assert.Equal(GlassRefraction.Default(lens.ActualWidth, lens.ActualHeight), lens.Lens!.ResolvedRefraction, 6);
+                Assert.True(lens.Lens.ResolvedRefraction < 60);
+
+                // A press grows the glass by a transform: the resting size, and so the travel, stay.
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
+                Sta.Wait(0.3);
+                Assert.Equal(0.75 * 32, LensOf(button).ResolvedRefraction, 6);
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                window.Close();
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
+    }
+
+    [Fact]
+    public void TabLensTakesTheBarsMaterial()
+    {
+        Sta.Run(() =>
+        {
+            var regular = new GlassTabBar { Material = GlassMaterial.Regular, Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" } }, SelectedIndex = 0, VerticalAlignment = VerticalAlignment.Top };
+            var clear = new GlassTabBar { Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" } }, SelectedIndex = 0, VerticalAlignment = VerticalAlignment.Bottom };
+            var window = Sta.Show(Scene(regular, clear), 360, 200);
+            // A frosted bar gets a frosted lens, so the selected tab does not show the sharp backdrop through it.
+            var regularLens = (GlassSurface)regular.Template.FindName("PART_Lens", regular);
+            var clearLens = (GlassSurface)clear.Template.FindName("PART_Lens", clear);
+            Assert.Equal(GlassMaterial.Regular, regularLens.Lens!.Material);
+            Assert.Equal(GlassMaterial.Clear, clearLens.Lens!.Material);
+            window.Close();
+        });
+    }
+
     private static IEnumerable<AutomationPeer> Descendants(AutomationPeer peer)
     {
         foreach (var child in peer.GetChildren() ?? new List<AutomationPeer>())
