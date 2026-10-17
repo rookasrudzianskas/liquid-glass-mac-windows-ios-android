@@ -183,9 +183,12 @@ struct GlassBackdropCopy: View {
     var body: some View {
         let target = backdrop.frame
         let space = backdrop.space
+        // The role is set inside the restored environment: the inner
+        // modifier wins, so the copy knows it is one (no input, no AppKit
+        // or UIKit views, no glass of its own).
         backdrop.content
-            .environment(\.self, backdrop.environment)
             .environment(\.glassBackdropRole, .copy)
+            .environment(\.self, backdrop.environment)
             .ignoresSafeArea(.container)
             .frame(width: target.width, height: target.height)
             .allowsHitTesting(false)

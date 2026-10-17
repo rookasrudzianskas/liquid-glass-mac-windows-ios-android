@@ -301,7 +301,6 @@ private struct GlassButtonBody: View {
                     options: style.options,
                     interaction: style.interaction,
                     handlesInput: false,
-                    tintsContent: true,
                     content: label
                 )
                 .overlay {

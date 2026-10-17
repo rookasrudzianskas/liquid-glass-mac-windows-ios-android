@@ -72,8 +72,6 @@ struct GlassOutlineShape: Shape {
 struct GlassForegroundStyle: ViewModifier {
     let options: GlassSurfaceOptions
     var defaultMaterial: GlassMaterial?
-    /// Whether a tint chooses the foreground; otherwise it is the glass's own.
-    var tintsContent = true
 
     @Environment(\.self) private var environment
 
@@ -88,7 +86,7 @@ struct GlassForegroundStyle: ViewModifier {
     }
 
     private func foreground(_ style: GlassRenderStyle) -> Color {
-        if tintsContent, let tint = style.tint {
+        if let tint = style.tint {
             return GlassForeground.onTint(tint, material: style.material)
         }
         return GlassForeground.color(dark: style.dark)
@@ -116,9 +114,6 @@ struct GlassSurfaceCore<Content: View>: View {
     /// Buttons attach them outside SwiftUI's `Button` instead, so the
     /// button's own gesture keeps working.
     var handlesInput = true
-    /// Whether tinted glass draws its content white or dark for contrast
-    /// with the tint (buttons), rather than in the glass foreground.
-    var tintsContent = false
     var content: Content
 
     @State private var ownInteraction = GlassInteraction()
@@ -142,7 +137,7 @@ struct GlassSurfaceCore<Content: View>: View {
         let interactive = options.interactive && environment.isEnabled
         return content
             .environment(\.glassNested, true)
-            .modifier(GlassForegroundStyle(options: options, defaultMaterial: defaultMaterial, tintsContent: tintsContent))
+            .modifier(GlassForegroundStyle(options: options, defaultMaterial: defaultMaterial))
             .clipShape(GlassOutlineShape(rect: outline, radius: style.radius))
             .modifier(GlassPressTransform(model: interactive ? model : nil))
             .background {

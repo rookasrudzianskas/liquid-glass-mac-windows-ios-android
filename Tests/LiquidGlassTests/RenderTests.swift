@@ -401,6 +401,31 @@ final class RenderTests: XCTestCase {
         }
     }
 
+    /// Content on tinted glass (surfaces, buttons, bars) defaults to white or
+    /// #111113, whichever contrasts more with the tinted glass.
+    func testContentOnTintedGlassContrasts() throws {
+        for (tint, dark) in [(Color.yellow, true), (.mint, true), (.blue, false), (.red, false)] {
+            let image = try render(GlassScene(material: .clear, appearance: .light) {
+                GlassContent { Color(white: 0.5) }
+                centered(VStack(spacing: 20) {
+                    GlassSurface(tint: tint) { Rectangle().fill(.foreground).frame(width: 40, height: 40).padding(20) }
+                    GlassButton(tint: tint, action: {}) { Rectangle().fill(.foreground).frame(width: 20, height: 20) }
+                })
+            })
+            // The surface's square, then the button's.
+            let button = Double(GlassControlMetrics.buttonHeight(.regular))
+            let top = (Double(size.height) - (80 + 20 + button)) / 2
+            for (px, py, name) in [(200, Int(top + 40), "surface"), (200, Int(top + 100 + button / 2), "button")] {
+                let pixel = image.pixel(px, py)
+                if dark {
+                    XCTAssertLessThan(pixel.x, 0.1, "\(tint) \(name): dark content")
+                } else {
+                    XCTAssertGreaterThan(pixel.x, 0.95, "\(tint) \(name): white content")
+                }
+            }
+        }
+    }
+
     // MARK: Menus
 
     /// Right to left, the panel opens under its trigger with the trigger's
@@ -496,6 +521,42 @@ final class RenderTests: XCTestCase {
         }
         let rim = (50..<100).flatMap { px in (48..<153).map { image.pixel(px, $0).w } }.max() ?? 0
         XCTAssertGreaterThan(rim, 0.3, "the rim is drawn over the empty backdrop")
+    }
+
+    /// The copies of the backdrop inside glass know they are copies, so they
+    /// take no input and draw no AppKit or UIKit views (which SwiftUI can't
+    /// render into a shader's layer) and no glass of their own.
+    func testBackdropCopiesKnowTheyAreCopies() throws {
+        let image = try render(GlassScene(material: .clear, appearance: .light) {
+            GlassContent { RoleProbe() }
+            centered(GlassSurface(radius: 24) { Color.clear.frame(width: 120, height: 120) })
+        })
+        // Outside the glass the visible backdrop (green), inside it the copy (red).
+        assertClose(image.pixel(20, 20).array, [0, 1, 0, 1], accuracy: tolerance, "the visible backdrop")
+        let face = image.pixel(200, 100)
+        XCTAssertGreaterThan(face.x, 0.6, "the copy under the glass draws as a copy: \(face.array)")
+        XCTAssertLessThan(face.y, 0.2, "the copy under the glass draws as a copy: \(face.array)")
+    }
+
+    /// Regular glass over a `GlassScrollView` frosts the scrolled content
+    /// alone: on macOS the scroll view's AppKit anchor (for wheel events)
+    /// lives only in the visible backdrop, never in the glass's copy, where
+    /// SwiftUI would draw it as a yellow placeholder.
+    func testRegularOverScrollViewFrostsItsContent() throws {
+        let position = GlassScrollPosition()
+        let image = try render(GlassScene(material: .regular, appearance: .light) {
+            GlassContent {
+                // Transparent content over a gray ground, like a list of cards.
+                GlassScrollView(position: position) {
+                    Color.clear.frame(height: 600)
+                }
+                .background(Color(white: 0.6))
+            }
+            centered(GlassSurface(radius: .capsule) { Color.clear.frame(width: 200, height: 64) })
+        })
+        let face = image.pixel(200, 100)
+        let spread = max(face.x, face.y, face.z) - min(face.x, face.y, face.z)
+        XCTAssertLessThan(spread, 0.02, "Regular glass over a gray scroll view is gray: \(face.array)")
     }
 
     /// Empty and degenerate surfaces draw nothing at all.
@@ -692,5 +753,19 @@ struct Bitmap {
         let bottom = pixel(x0, y0 + 1) * (1 - tx) + pixel(x0 + 1, y0 + 1) * tx
         let c = top * (1 - ty) + bottom * ty
         return c.w > 1e-5 ? SIMD4(c.x / c.w, c.y / c.w, c.z / c.w, c.w) : .zero
+    }
+}
+
+/// Green in the visible backdrop, red in the copies inside glass, blue
+/// outside any scene.
+private struct RoleProbe: View {
+    @Environment(\.glassBackdropRole) private var role
+
+    var body: some View {
+        switch role {
+        case .copy: Color(.sRGB, red: 1, green: 0, blue: 0)
+        case .primary: Color(.sRGB, red: 0, green: 1, blue: 0)
+        case .none: Color(.sRGB, red: 0, green: 0, blue: 1)
+        }
     }
 }

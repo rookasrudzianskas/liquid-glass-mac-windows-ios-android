@@ -31,7 +31,9 @@ public struct GlassSurface<Content: View>: View {
     ///   - appearance: Light or dark glass; `nil` inherits.
     ///   - radius: The corner radius, `.capsule` or `.circle`. Default 16.
     ///   - refraction: Optical travel at the rim in points; `nil` inherits (60).
-    ///   - tint: Colors the glass, never the content.
+    ///   - tint: Colors the glass, never the content. The content's default
+    ///     foreground turns white or `#111113`, whichever contrasts more with
+    ///     the tinted glass; a `foregroundStyle` you set inside wins.
     ///   - interactive: Press grow, drag stretch and glow.
     ///   - motion: Overrides the scene's motion level.
     ///   - content: The content drawn on the glass.
