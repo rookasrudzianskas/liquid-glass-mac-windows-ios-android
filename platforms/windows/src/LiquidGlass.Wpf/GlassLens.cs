@@ -258,6 +258,7 @@ public sealed class GlassLens : FrameworkElement
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         GlassShaderLibrary.EnsureBadShaderHandler();
+        GlassSystemSettings.EnsureTierHandler();
         GlassSystemSettings.Changed -= OnSettingsChanged;
         GlassSystemSettings.Changed += OnSettingsChanged;
         GlassSystemSettings.Watch(this);

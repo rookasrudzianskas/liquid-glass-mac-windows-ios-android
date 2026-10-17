@@ -9,9 +9,10 @@ using Microsoft.Win32;
 namespace LiquidGlass.Wpf.Rendering;
 
 /// <summary>
-/// The Windows settings glass follows: app theme (light or dark), transparency effects, contrast themes and
-/// animation effects. Change notifications come from <see cref="SystemParameters"/> and from
-/// <c>WM_SETTINGCHANGE</c>, hooked on every window that shows glass.
+/// The Windows settings glass follows: app theme (light or dark), transparency effects, contrast themes, animation
+/// effects and the render tier. Change notifications come from <see cref="SystemParameters"/>, from
+/// <c>WM_SETTINGCHANGE</c> (hooked on every window that shows glass) and from <see cref="RenderCapability.TierChanged"/>
+/// (on every UI thread that shows glass).
 /// </summary>
 internal static class GlassSystemSettings
 {
@@ -29,10 +30,13 @@ internal static class GlassSystemSettings
     private static readonly object Gate = new();
     private static Snapshot _current = Read();
 
+    // WPF raises RenderCapability.TierChanged per UI thread (from that thread's media context), so each thread that
+    // shows glass subscribes once; SystemParameters.StaticPropertyChanged is process-wide.
+    [ThreadStatic] private static bool _tierHooked;
+
     static GlassSystemSettings()
     {
         SystemParameters.StaticPropertyChanged += OnSystemParameterChanged;
-        RenderCapability.TierChanged += (_, _) => Changed?.Invoke(null, EventArgs.Empty);
     }
 
     /// <summary>Raised on the thread that observed a change; handlers marshal to their own dispatcher.</summary>
@@ -58,6 +62,21 @@ internal static class GlassSystemSettings
 
     /// <summary>Raises <see cref="Changed"/>: something glass depends on changed (for example, the driver rejected the shader).</summary>
     internal static void NotifyChanged() => Changed?.Invoke(null, EventArgs.Empty);
+
+    /// <summary>
+    /// Subscribes to <see cref="RenderCapability.TierChanged"/> on the calling UI thread, once: a Remote Desktop
+    /// connection or a driver reset moves that thread's windows between hardware and software rendering, and its glass
+    /// between the shader and the fallback material.
+    /// </summary>
+    internal static void EnsureTierHandler()
+    {
+        if (_tierHooked) return;
+        _tierHooked = true;
+        RenderCapability.TierChanged += (_, _) => NotifyChanged();
+    }
+
+    /// <summary>Whether the calling thread is subscribed to <see cref="RenderCapability.TierChanged"/> (tests).</summary>
+    internal static bool IsTierHandlerAttached => _tierHooked;
 
     /// <summary>Watches the window that hosts <paramref name="visual"/> for setting changes.</summary>
     public static void Watch(Visual visual)
