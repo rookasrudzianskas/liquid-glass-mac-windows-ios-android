@@ -8,6 +8,7 @@ on:
       - "Sources/**"
       - "Tests/**"
       - "platforms/apple/**"
+      - "examples/swiftui/**"
       - "spec/**"
       - ".github/workflows/apple.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "Sources/**"
       - "Tests/**"
       - "platforms/apple/**"
+      - "examples/swiftui/**"
       - "spec/**"
       - ".github/workflows/apple.yml"
   workflow_dispatch:
@@ -45,6 +47,28 @@ jobs:
           destination="$(platforms/apple/scripts/ci-destination.sh "${{ matrix.platform }}")"
           platforms/apple/scripts/ci-run.sh "Package tests on ${{ matrix.platform }}" \
             xcodebuild test -scheme LiquidGlass -destination "$destination" -derivedDataPath DerivedData
+
+  example:
+    name: Hello, Glass example (${{ matrix.platform }})
+    runs-on: macos-15
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS Simulator
+            destination: generic/platform=iOS Simulator
+          - platform: macOS
+            destination: platform=macOS
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select the newest Xcode
+        run: platforms/apple/scripts/ci-select-xcode.sh
+      - name: Build examples/swiftui/HelloGlass against the package at the repository root
+        run: |
+          platforms/apple/scripts/ci-run.sh "Hello, Glass build for ${{ matrix.platform }}" \
+            xcodebuild build -project examples/swiftui/HelloGlass/HelloGlass.xcodeproj -scheme HelloGlass \
+            -destination "${{ matrix.destination }}" -derivedDataPath DerivedData
 
   studio:
     name: Liquid Glass Studio

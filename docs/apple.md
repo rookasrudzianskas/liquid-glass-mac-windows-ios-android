@@ -440,7 +440,7 @@ platforms/apple/scripts/package-macos.sh DerivedData/Build/Products/Release
 - `BehaviorTests` covers what isn't a picture: the tab lens and switch thumb under drags, right to left and reduced motion, the lens's resting size and how refraction resolves, the press glow spring, menu keyboard navigation, drag intent (sideways drags commit, vertical ones scroll), `GlassScrollPosition` after cancelled drags, keyboard and trackpad momentum, label contrast on tints, control sizes (icon menu circles, hidden-label switches, bars at accessibility sizes and in tall rows) and the initializers.
 - `StudioUITests` drives the demo: navigation, menus (open, outside tap, choose), the stories filter, switches and sliders inside a scroll view, scrolls that start on a glass button, a slider and a tab bar (the value and the selection stay), `GlassScrollView` scrolling and a held press-and-drag.
 
-CI ([`.github/workflows/apple.yml`](../.github/workflows/apple.yml)) runs the package tests on macOS and the iOS Simulator, builds the Studio app for macOS in Release, runs its UI tests and uploads the packaged app.
+CI ([`.github/workflows/apple.yml`](../.github/workflows/apple.yml)) runs the package tests on macOS and the iOS Simulator, builds the [Hello, Glass example](../examples/swiftui/HelloGlass) for both, builds the Studio app for macOS in Release, runs its UI tests and uploads the packaged app.
 
 ## FAQ
 
