@@ -14,18 +14,23 @@ internal static class GlassRenderCapability
     public const int RequiredInstructionSlots = 1024;
 
     /// <summary>
-    /// True when pixel shader 3.0 runs in hardware for <paramref name="visual"/>: a compiled shader exists, the GPU
-    /// supports it, the driver has not rejected it, and neither the process nor the visual's window renders in software.
+    /// True when pixel shader 3.0 runs in hardware for <paramref name="visual"/>: the driver has not rejected the shader,
+    /// neither the process nor the visual's window renders in software, the GPU supports it, and the compiled shader is
+    /// ready.
     /// </summary>
+    /// <remarks>
+    /// The shader is asked for last: where it can never run (software rendering, Remote Desktop without a GPU), glass
+    /// does not load or compile it at all.
+    /// </remarks>
     public static bool CanUseShader(Visual visual)
     {
-        if (GlassShaderLibrary.SurfacePixelShader is null || GlassShaderLibrary.ShaderRejected) return false;
+        if (GlassShaderLibrary.ShaderRejected) return false;
         if (RenderOptions.ProcessRenderMode == RenderMode.SoftwareOnly) return false;
         if (RenderCapability.Tier >> 16 < 2) return false;
         if (!RenderCapability.IsPixelShaderVersionSupported(3, 0)) return false;
         if (RenderCapability.MaxPixelShaderInstructionSlots(3, 0) < RequiredInstructionSlots) return false;
         if (PresentationSource.FromVisual(visual) is HwndSource { CompositionTarget: { } target } && target.RenderMode == RenderMode.SoftwareOnly)
             return false;
-        return true;
+        return GlassShaderLibrary.SurfacePixelShader is not null;
     }
 }

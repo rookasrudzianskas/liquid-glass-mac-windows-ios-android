@@ -88,7 +88,10 @@ public enum GlassShaderSource
     /// <summary>Bytecode compiled by fxc at build time and embedded in the assembly.</summary>
     Precompiled,
 
-    /// <summary>Compiled from the embedded HLSL with D3DCompile when the library loaded.</summary>
+    /// <summary>
+    /// Compiled from the embedded HLSL with D3DCompile at run time, on a background thread; glass draws the fallback
+    /// material until the shader is ready.
+    /// </summary>
     CompiledAtRuntime,
 
     /// <summary>Neither was possible; glass draws the fallback material.</summary>
