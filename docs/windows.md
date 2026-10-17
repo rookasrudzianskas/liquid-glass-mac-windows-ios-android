@@ -547,8 +547,9 @@ tests, compiles the shader with fxc, captures Studio (also under a contrast them
 self-contained Studio builds and smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main
 and every pull request that touches the Windows port; a failed publish, a Studio run that does not exit cleanly or a
 package that lacks its license files, a target or path-mapped sources fails it. Reports of pushes and manual runs land
-on the `ci-windows` branch (with the packages and the framework-dependent zips); every run keeps the full release set
-as the `windows-release` workflow artifact.
+on the `ci-windows` branch (logs, test results, fxc output, screenshots and the release file list with checksums);
+every run keeps the release set itself, the packages and all three Studio zips, as the `windows-release` workflow
+artifact.
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.
