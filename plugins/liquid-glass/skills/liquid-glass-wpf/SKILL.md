@@ -511,3 +511,6 @@ buttons; the glass re-aligns by itself.
 - [references/recipes.md](references/recipes.md): seven complete windows: app shell with a floating tab bar, toolbar
   over a photo, media card with a slider, quick-settings card with switches, glass menu from a button, progressive
   blur over a scrolling list, draggable glass card.
+- [Hello Glass](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/tree/main/examples/wpf/HelloGlass):
+  a whole runnable app (project file, `App.xaml`, one window): a card whose switch turns its frost on and off, a
+  toolbar and a tab bar over a wallpaper, the same screen as the SwiftUI and Compose examples.

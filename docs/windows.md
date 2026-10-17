@@ -105,6 +105,10 @@ everything else goes in the scene's children, laid out like a single-cell `Grid`
 </Window>
 ```
 
+The [Hello Glass example](../examples/wpf/HelloGlass) is a screen like this one as a complete app: a card with a
+tinted button and a switch that turns its frost on and off, a toolbar and a tab bar over the aurora wallpaper. It
+builds against the library in this repository, and its README shows the one change that uses the published package.
+
 A card from C#, in a window's constructor:
 
 ```csharp
@@ -554,6 +558,7 @@ The solution is `platforms/windows/LiquidGlass.sln`: `LiquidGlass.Core`, `Liquid
 cd platforms/windows
 scripts/dotnet.sh build LiquidGlass.sln -c Release      # also on macOS and Linux (EnableWindowsTargeting)
 scripts/dotnet.sh test tests/LiquidGlass.Core.Tests      # anywhere
+scripts/dotnet.sh build ../../examples/wpf/HelloGlass -p:EnableWindowsTargeting=true   # the example, off Windows too
 scripts/package.sh                                       # NuGet packages and Studio zips into artifacts/windows
 ```
 
@@ -564,13 +569,14 @@ the zips.
 `LiquidGlass.Wpf.Tests` needs Windows (WPF, Direct3D 11): it checks the embedded shader bytecode, compiles the shader
 with D3DCompile, evaluates the HLSL library against the golden vectors on WARP within the GPU tolerance, and exercises
 the controls on .NET 10, .NET 8 and .NET Framework 4.8. The [Windows workflow](../.github/workflows/windows.yml) builds,
-tests, compiles the shader with fxc, captures Studio (also under a contrast theme), publishes the x64, Arm64 and
-self-contained Studio builds and smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main
-and every pull request that touches the Windows port; a failed publish, a Studio run that does not exit cleanly or a
-package that lacks its license files, a target or path-mapped sources fails it. Reports of pushes and manual runs land
-on the `ci-windows` branch (logs, test results, fxc output, screenshots and the release file list with checksums);
-every run keeps the release set itself, the packages and all three Studio zips, as the `windows-release` workflow
-artifact.
+tests, compiles the shader with fxc, captures Studio (also under a contrast theme), builds, runs and captures the
+[Hello Glass example](../examples/wpf/HelloGlass), publishes the x64, Arm64 and self-contained Studio builds and
+smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main and every pull request that
+touches the Windows port or the example; a failed publish, a Studio run that does not exit cleanly, a package that lacks
+its license files, a target or path-mapped sources, or an example that does not build, lacks an accessible name or does
+not close cleanly fails it. Reports of pushes and manual runs land on the `ci-windows` branch (logs, test results, fxc
+output, screenshots and the release file list with checksums); every run keeps the release set itself, the packages and
+all three Studio zips, as the `windows-release` workflow artifact.
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.
