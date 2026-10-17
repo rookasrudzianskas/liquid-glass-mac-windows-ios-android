@@ -36,9 +36,9 @@ public class GlassButton : Button
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassButton),
         new FrameworkPropertyMetadata(GlassRadius.Capsule));
 
-    /// <summary>Optical travel at the outline. Default 60.</summary>
+    /// <summary>Optical travel at the outline. Default NaN: min(60, 0.75 × the shorter side), 24 for a 32-unit button.</summary>
     public static readonly DependencyProperty RefractionProperty = GlassSurface.RefractionProperty.AddOwner(typeof(GlassButton),
-        new FrameworkPropertyMetadata(GlassOptics.DefaultRefraction));
+        new FrameworkPropertyMetadata(double.NaN));
 
     /// <summary>Colors the glass, or null.</summary>
     public static readonly DependencyProperty TintProperty = GlassSurface.TintProperty.AddOwner(typeof(GlassButton),

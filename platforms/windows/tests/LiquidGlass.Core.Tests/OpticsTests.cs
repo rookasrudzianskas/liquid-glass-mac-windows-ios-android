@@ -29,6 +29,13 @@ public class OpticsTests
     }
 
     [Fact]
+    public void DefaultRefractionMatchesTheReference()
+    {
+        foreach (var c in Vectors.Cases("defaultRefraction"))
+            Vectors.Near(c.Number("value"), GlassRefraction.Default(c.Number("width"), c.Number("height")), $"default refraction of {c.Number("width")} x {c.Number("height")}");
+    }
+
+    [Fact]
     public void RefractionPointsInwardAndVanishesBeyondTheBevel()
     {
         // The top edge's normal points up; the backdrop is drawn from deeper inside, below the pixel.

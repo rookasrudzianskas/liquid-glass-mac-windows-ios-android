@@ -26,10 +26,13 @@ public sealed class GlassLens : FrameworkElement
     public static readonly DependencyProperty RadiusProperty = DependencyProperty.Register(
         nameof(Radius), typeof(GlassRadius), typeof(GlassLens), new FrameworkPropertyMetadata(GlassRadius.FromValue(16), OnOpticsChanged));
 
-    /// <summary>Optical travel at the outline, in layout units. Default 60.</summary>
+    /// <summary>
+    /// Optical travel at the outline, in layout units. Default <see cref="double.NaN"/>: min(60, 0.75 × the shorter side
+    /// of the lens's resting size).
+    /// </summary>
     public static readonly DependencyProperty RefractionProperty = DependencyProperty.Register(
         nameof(Refraction), typeof(double), typeof(GlassLens),
-        new FrameworkPropertyMetadata(GlassOptics.DefaultRefraction, OnOpticsChanged), v => v is double d && d >= 0 && !double.IsInfinity(d));
+        new FrameworkPropertyMetadata(double.NaN, OnOpticsChanged), GlassSurface.IsRefraction);
 
     /// <summary>Tint color of the glass, or null. The color's alpha is ignored; a transparent color means no tint.</summary>
     public static readonly DependencyProperty TintProperty = DependencyProperty.Register(
@@ -102,7 +105,7 @@ public sealed class GlassLens : FrameworkElement
         set => SetValue(RadiusProperty, value);
     }
 
-    /// <summary>Optical travel at the outline, in layout units.</summary>
+    /// <summary>Optical travel at the outline, in layout units; NaN follows the lens's size.</summary>
     public double Refraction
     {
         get => (double)GetValue(RefractionProperty);
@@ -125,6 +128,13 @@ public sealed class GlassLens : FrameworkElement
 
     /// <summary>How the lens currently draws: the pixel shader, the fallback material or an opaque fill.</summary>
     public GlassLensMode Mode { get; private set; } = GlassLensMode.Fallback;
+
+    /// <summary>
+    /// The travel the lens draws with: <see cref="Refraction"/> as given, or for NaN the size-based default measured on
+    /// the lens's resting size (its layout size; a press scales the glass by a transform and a morph or layout spring
+    /// only reshapes the outline, so neither changes it).
+    /// </summary>
+    internal double ResolvedRefraction => double.IsNaN(Refraction) ? GlassRefraction.Default(RenderSize.Width, RenderSize.Height) : Refraction;
 
     /// <summary>The outline, in the lens's coordinates: its own bounds unless a morph or layout spring moves it.</summary>
     internal Rect ShapeBounds => _shapeOverride ?? new Rect(RenderSize);
@@ -325,7 +335,7 @@ public sealed class GlassLens : FrameworkElement
         {
             case GlassLensMode.Shader:
             {
-                var reach = Math.Max(0, Refraction - Math.Min(shape.Width, shape.Height)) + 2;
+                var reach = Math.Max(0, ResolvedRefraction - Math.Min(shape.Width, shape.Height)) + 2;
                 if (regular) reach += FrostFillKernel.Radius * FrostFillKernel.For(IsDark).Spacing + 1;
                 var margin = GlassResolve.CeilToPixels(Math.Max(reach, RimReach), scale);
                 _lensRect = Inflate(shape, margin);
@@ -417,7 +427,7 @@ public sealed class GlassLens : FrameworkElement
         if (_shader is null || Mode != GlassLensMode.Shader) return;
         var parameters = GlassShape.Parameters(shape.Width, shape.Height, Radius);
         _shader.LensGeometry = new Point4D(_lensRect.Width, _lensRect.Height, shape.Width, shape.Height);
-        _shader.ShapeOptics = new Point4D(parameters.Extent, parameters.Exponent, Refraction, 0);
+        _shader.ShapeOptics = new Point4D(parameters.Extent, parameters.Exponent, ResolvedRefraction, 0);
         _shader.MaterialOptics = new Point4D(Material == GlassMaterial.Regular ? 1 : 0, IsDark ? 1 : 0, _nested ? 1 : 0, IncreaseContrast ? 1 : 0);
         _shader.TintOptics = EffectiveTint is { } tint ? new Point4D(tint.R / 255.0, tint.G / 255.0, tint.B / 255.0, 1) : new Point4D(0, 0, 0, 0);
         var kernel = FrostFillKernel.For(IsDark);

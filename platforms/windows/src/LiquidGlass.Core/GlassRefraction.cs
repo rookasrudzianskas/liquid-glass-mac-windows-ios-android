@@ -13,6 +13,14 @@ public static class GlassRefraction
         return 1 - GlassMath.Sat(Math.Sqrt((2 - depth) * depth));
     }
 
+    /// <summary>
+    /// The refraction a surface uses when it sets none: the full <see cref="GlassOptics.DefaultRefraction"/>, limited
+    /// for small controls to three quarters of their shorter side so they never pull in backdrop from far outside their
+    /// outline. Measured on the resting size, so a press does not change it.
+    /// </summary>
+    public static double Default(double width, double height)
+        => Math.Min(GlassOptics.DefaultRefraction, 0.75 * Math.Max(0, Math.Min(width, height)));
+
     /// <summary>Where a glass pixel samples its backdrop, relative to itself.</summary>
     public static GlassVector Offset(double distance, double normalX, double normalY, double refraction = GlassOptics.DefaultRefraction)
     {

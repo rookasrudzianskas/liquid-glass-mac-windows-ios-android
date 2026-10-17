@@ -7,7 +7,10 @@ public static class GlassOptics
     /// <summary>Depth of the refracting bevel inside the outline, in layout units.</summary>
     public const double Bevel = 20;
 
-    /// <summary>Default optical travel at the outline, in layout units.</summary>
+    /// <summary>
+    /// The full optical travel at the outline, in layout units: what a surface that sets no refraction uses once it is
+    /// at least 80 units on its shorter side (see <see cref="GlassRefraction.Default"/>).
+    /// </summary>
     public const double DefaultRefraction = 60;
 
     /// <summary>Continuous corners reach this far along each edge, relative to the radius.</summary>

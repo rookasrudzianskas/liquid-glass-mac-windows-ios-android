@@ -38,10 +38,14 @@ public class GlassSurface : ContentControl
     public static readonly DependencyProperty RadiusProperty = DependencyProperty.Register(
         nameof(Radius), typeof(GlassRadius), typeof(GlassSurface), new FrameworkPropertyMetadata(GlassRadius.FromValue(16)));
 
-    /// <summary>Optical travel at the outline, in units. Default 60.</summary>
+    /// <summary>
+    /// Optical travel at the outline, in units. Default <see cref="double.NaN"/>: the travel follows the surface's resting
+    /// size, min(60, 0.75 × its shorter side), so small controls never pull in backdrop from far outside their outline.
+    /// A value set here is used as given.
+    /// </summary>
     public static readonly DependencyProperty RefractionProperty = DependencyProperty.Register(
-        nameof(Refraction), typeof(double), typeof(GlassSurface), new FrameworkPropertyMetadata(GlassOptics.DefaultRefraction),
-        v => v is double d && d >= 0 && !double.IsInfinity(d));
+        nameof(Refraction), typeof(double), typeof(GlassSurface), new FrameworkPropertyMetadata(double.NaN),
+        IsRefraction);
 
     /// <summary>Colors the glass (never the content). Null for untinted glass.</summary>
     public static readonly DependencyProperty TintProperty = DependencyProperty.Register(
@@ -123,7 +127,7 @@ public class GlassSurface : ContentControl
         set => SetValue(RadiusProperty, value);
     }
 
-    /// <summary>Optical travel at the outline, in units.</summary>
+    /// <summary>Optical travel at the outline, in units; <see cref="double.NaN"/> (the default) follows the surface's size.</summary>
     public double Refraction
     {
         get => (double)GetValue(RefractionProperty);
@@ -222,6 +226,9 @@ public class GlassSurface : ContentControl
         base.OnPropertyChanged(e);
         if (GlassAppearanceTracker.Affects(e.Property)) _appearance.Update();
     }
+
+    /// <summary>A refraction value: NaN (follow the size) or a finite travel of at least 0.</summary>
+    internal static bool IsRefraction(object value) => value is double d && (double.IsNaN(d) || d >= 0 && !double.IsInfinity(d));
 
     private static void OnTintChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((GlassSurface)d)._appearance.Update();
 

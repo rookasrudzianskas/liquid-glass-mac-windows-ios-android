@@ -49,9 +49,9 @@ public class GlassToolbar : Control
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassToolbar),
         new FrameworkPropertyMetadata(GlassRadius.Capsule, OnClusterOptionChanged));
 
-    /// <summary>Refraction of the clusters. Default 60.</summary>
+    /// <summary>Refraction of the clusters. Default NaN: min(60, 0.75 × a cluster's shorter side), 30 for a 40-unit cluster.</summary>
     public static readonly DependencyProperty RefractionProperty = GlassSurface.RefractionProperty.AddOwner(typeof(GlassToolbar),
-        new FrameworkPropertyMetadata(GlassOptics.DefaultRefraction, OnClusterOptionChanged));
+        new FrameworkPropertyMetadata(double.NaN, OnClusterOptionChanged));
 
     /// <summary>Tint of the clusters, or null.</summary>
     public static readonly DependencyProperty TintProperty = GlassSurface.TintProperty.AddOwner(typeof(GlassToolbar),
