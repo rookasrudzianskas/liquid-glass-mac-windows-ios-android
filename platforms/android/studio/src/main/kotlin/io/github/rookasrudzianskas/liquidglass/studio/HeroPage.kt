@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
@@ -70,7 +72,7 @@ fun BoxScope.HeroPage(settings: StudioSettings) {
                 style = StudioType.Body,
                 color = LocalGlassContentColor.current.copy(alpha = 0.78f),
             )
-            GlassText("Drag me across the waves", style = StudioType.Caption, color = LocalGlassContentColor.current.copy(alpha = 0.6f))
+            GlassText("Drag me across the waves", style = StudioType.Caption, color = LocalGlassContentColor.current.copy(alpha = 0.8f))
         }
     }
 }
@@ -89,7 +91,12 @@ fun StudioToolbar(settings: StudioSettings, modifier: Modifier = Modifier) {
     ) {
         GlassButton(Icons.Filled.Add, "New", onClick = {})
         GlassToolbarSpacer()
-        GlassButton(if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "Favorite", onClick = { favorite = !favorite })
+        GlassButton(
+            if (favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            "Favorite",
+            onClick = { favorite = !favorite },
+            modifier = Modifier.semantics { stateDescription = if (favorite) "Favorited" else "Not favorited" },
+        )
         GlassButton(Icons.Filled.Share, "Share", onClick = {
             val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, PROJECT_URL)
             context.startActivity(Intent.createChooser(send, null))

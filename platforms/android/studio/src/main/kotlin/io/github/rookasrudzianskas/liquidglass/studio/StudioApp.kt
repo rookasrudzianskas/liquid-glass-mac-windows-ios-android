@@ -20,6 +20,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +46,21 @@ class StudioSettings(appearance: GlassAppearance, wallpaper: Wallpaper?, reduceT
     var wallpaper by mutableStateOf(wallpaper)
     var reduceTransparency by mutableStateOf(reduceTransparency)
     var increaseContrast by mutableStateOf(increaseContrast)
+
+    companion object {
+        /** Keeps the choices across rotation, dark mode, font scale and locale changes. */
+        val Saver: Saver<StudioSettings, Any> = listSaver(
+            save = { listOf(it.appearance.name, it.wallpaper?.name, it.reduceTransparency, it.increaseContrast) },
+            restore = {
+                StudioSettings(
+                    appearance = GlassAppearance.valueOf(it[0] as String),
+                    wallpaper = (it[1] as String?)?.let(Wallpaper::valueOf),
+                    reduceTransparency = it[2] as Boolean,
+                    increaseContrast = it[3] as Boolean,
+                )
+            },
+        )
+    }
 }
 
 /**
@@ -54,7 +71,9 @@ class StudioSettings(appearance: GlassAppearance, wallpaper: Wallpaper?, reduceT
 @Composable
 fun StudioApp(launch: StudioLaunch = StudioLaunch()) {
     var page by rememberSaveable { mutableIntStateOf(launch.page.ordinal) }
-    val settings = remember { StudioSettings(launch.appearance, launch.wallpaper, launch.reduceTransparency, launch.increaseContrast) }
+    val settings = rememberSaveable(saver = StudioSettings.Saver) {
+        StudioSettings(launch.appearance, launch.wallpaper, launch.reduceTransparency, launch.increaseContrast)
+    }
     val systemContrast = GlassDefaults.systemIncreaseContrast()
     val increaseContrast = settings.increaseContrast || systemContrast
     val systemDark = isSystemInDarkTheme()

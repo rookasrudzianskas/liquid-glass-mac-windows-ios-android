@@ -3,6 +3,8 @@ package io.github.rookasrudzianskas.liquidglass.studio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,9 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassButton
 import io.github.rookasrudzianskas.liquidglass.GlassButtonSize
+import io.github.rookasrudzianskas.liquidglass.GlassDefaults
 import io.github.rookasrudzianskas.liquidglass.GlassIcon
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
 import io.github.rookasrudzianskas.liquidglass.GlassMenu
@@ -54,6 +62,7 @@ import io.github.rookasrudzianskas.liquidglass.LocalGlassContentColor
 import kotlin.math.roundToInt
 
 /** Controls: buttons in every size, tinted and icon-only, a slider, switches, a tab bar and a menu. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoxScope.ControlsPage() {
     Column(
@@ -67,17 +76,18 @@ fun BoxScope.ControlsPage() {
         GlassText("Controls", Modifier.padding(top = 12.dp), style = StudioType.Title)
 
         SectionLabel("Buttons")
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassButton("Small", onClick = {}, size = GlassButtonSize.Small)
-            GlassButton("Regular", onClick = {})
-            GlassButton("Large", onClick = {}, size = GlassButtonSize.Large)
+        // Rows wrap rather than squeeze their labels at large font sizes.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton("Small", onClick = {}, modifier = Modifier.align(Alignment.CenterVertically), size = GlassButtonSize.Small)
+            GlassButton("Regular", onClick = {}, modifier = Modifier.align(Alignment.CenterVertically))
+            GlassButton("Large", onClick = {}, modifier = Modifier.align(Alignment.CenterVertically), size = GlassButtonSize.Large)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             GlassButton("Play", onClick = {}, icon = Icons.Filled.PlayArrow, tint = StudioColors.Blue)
             GlassButton("Done", onClick = {}, icon = Icons.Filled.Check, tint = StudioColors.Green)
             GlassButton("Delete", onClick = {}, tint = StudioColors.Red)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             GlassButton(Icons.Filled.Add, "Add", onClick = {})
             GlassButton(Icons.Filled.Favorite, "Favorite", onClick = {}, tint = StudioColors.Pink)
             GlassButton(Icons.Filled.Share, "Share", onClick = {})
@@ -88,39 +98,58 @@ fun BoxScope.ControlsPage() {
         SectionLabel("Slider and switch")
         var volume by rememberSaveable { mutableFloatStateOf(0.62f) }
         var steps by rememberSaveable { mutableFloatStateOf(3f) }
-        var motion by rememberSaveable { mutableStateOf(true) }
-        var haptics by rememberSaveable { mutableStateOf(false) }
+        var wifi by rememberSaveable { mutableStateOf(true) }
+        var bluetooth by rememberSaveable { mutableStateOf(false) }
         GlassSurface(Modifier.fillMaxWidth(), shape = GlassShape(28.dp), material = GlassMaterial.Regular) {
             Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ValueRow("Volume", "${(volume * 100).roundToInt()}%")
-                GlassSlider(volume, { volume = it }, tint = StudioColors.Blue)
+                GlassSlider(volume, { volume = it }, tint = StudioColors.Blue, label = "Volume")
                 ValueRow("Detents", steps.roundToInt().toString())
-                GlassSlider(steps, { steps = it }, valueRange = 0f..5f, steps = 4, tint = StudioColors.Orange)
-                SwitchRow("Liquid motion", motion, tint = StudioColors.Green) { motion = it }
-                SwitchRow("Haptics", haptics) { haptics = it }
+                GlassSlider(
+                    steps,
+                    { steps = it },
+                    Modifier.semantics { stateDescription = steps.roundToInt().toString() },
+                    valueRange = 0f..5f,
+                    steps = 4,
+                    tint = StudioColors.Orange,
+                    label = "Detents",
+                )
+                SwitchRow("Wi-Fi", wifi, tint = StudioColors.Green) { wifi = it }
+                SwitchRow("Bluetooth", bluetooth) { bluetooth = it }
             }
         }
 
-        SectionLabel("Tab bar")
-        var range by rememberSaveable { mutableIntStateOf(1) }
-        val ranges = remember { listOf(GlassTab("Day"), GlassTab("Week"), GlassTab("Month"), GlassTab("Year")) }
-        GlassTabBar(ranges, range, { range = it }, Modifier.fillMaxWidth())
+        // Every wallpaper darkens toward the bottom, where these two sections sit: dark glass and
+        // light labels keep them legible there, as with the Studio's own tab bar.
+        CompositionLocalProvider(LocalGlassContentColor provides GlassDefaults.DarkContentColor) {
+            SectionLabel("Tab bar", alpha = 1f)
+            var range by rememberSaveable { mutableIntStateOf(1) }
+            val ranges = remember { listOf(GlassTab("Day"), GlassTab("Week"), GlassTab("Month"), GlassTab("Year")) }
+            GlassTabBar(
+                ranges,
+                range,
+                { range = it },
+                Modifier.fillMaxWidth(),
+                appearance = GlassAppearance.Dark,
+            )
 
-        SectionLabel("Menu")
-        var sortOpen by remember { mutableStateOf(false) }
-        var sort by rememberSaveable { mutableIntStateOf(0) }
-        val sorts = listOf("Name", "Date modified", "Size", "Kind")
-        GlassMenu(
-            expanded = sortOpen,
-            onDismissRequest = { sortOpen = false },
-            trigger = {
-                GlassButton(onClick = { sortOpen = true }) {
-                    GlassText("Sort by ${sorts[sort]}")
-                    GlassIcon(Icons.Filled.KeyboardArrowDown, contentDescription = null)
-                }
-            },
-        ) {
-            sorts.forEachIndexed { index, label -> GlassMenuItem(label, onClick = { sort = index }, checked = index == sort) }
+            SectionLabel("Menu", alpha = 1f)
+            var sortOpen by remember { mutableStateOf(false) }
+            var sort by rememberSaveable { mutableIntStateOf(0) }
+            val sorts = listOf("Name", "Date modified", "Size", "Kind")
+            GlassMenu(
+                expanded = sortOpen,
+                onDismissRequest = { sortOpen = false },
+                appearance = GlassAppearance.Dark,
+                trigger = {
+                    GlassButton(onClick = { sortOpen = true }, appearance = GlassAppearance.Dark) {
+                        GlassText("Sort by ${sorts[sort]}")
+                        GlassIcon(Icons.Filled.KeyboardArrowDown, contentDescription = null)
+                    }
+                },
+            ) {
+                sorts.forEachIndexed { index, label -> GlassMenuItem(label, onClick = { sort = index }, checked = index == sort) }
+            }
         }
 
         Spacer(Modifier.height(TabBarClearance))
@@ -128,26 +157,33 @@ fun BoxScope.ControlsPage() {
     }
 }
 
+/** A section header; light headers over the dark band need full strength to stay legible. */
 @Composable
-private fun SectionLabel(text: String) {
-    GlassText(text.uppercase(), Modifier.padding(top = 10.dp), style = StudioType.Section, color = LocalGlassContentColor.current.copy(alpha = 0.72f))
+private fun SectionLabel(text: String, alpha: Float = 0.72f) {
+    GlassText(text.uppercase(), Modifier.padding(top = 10.dp), style = StudioType.Section, color = LocalGlassContentColor.current.copy(alpha = alpha))
 }
 
+/** A slider's name and value. The slider itself tells TalkBack both, so the row is hidden from it. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ValueRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        GlassText(label, Modifier.weight(1f), style = StudioType.Label)
-        GlassText(value, style = StudioType.Label, color = LocalGlassContentColor.current.copy(alpha = 0.6f))
+    FlowRow(Modifier.fillMaxWidth().padding(top = 4.dp).clearAndSetSemantics {}, horizontalArrangement = Arrangement.SpaceBetween) {
+        GlassText(label, style = StudioType.Label)
+        GlassText(value, style = StudioType.Label, color = LocalGlassContentColor.current.copy(alpha = ValueAlpha))
     }
 }
 
+/** A labeled switch. The switch carries the label for TalkBack, so the text is not read twice. */
 @Composable
 private fun SwitchRow(label: String, checked: Boolean, tint: Color = Color.Unspecified, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        GlassText(label, Modifier.weight(1f), style = StudioType.Label)
-        GlassSwitch(checked, onChange, tint = tint)
+        GlassText(label, Modifier.weight(1f).clearAndSetSemantics {}, style = StudioType.Label)
+        GlassSwitch(checked, onChange, tint = tint, label = label)
     }
 }
+
+/** Opacity of secondary values beside a label: as faint as stays legible (4.5:1) on the Studio's glass. */
+const val ValueAlpha = 0.75f
 
 /** Space the floating tab bar covers at the bottom of scrolling pages. */
 val TabBarClearance = 96.dp
