@@ -21,6 +21,10 @@ updates:
     groups:
       website:
         update-types: [minor, patch]
+    ignore:
+      # The Node types follow the Node major that CI and the toolchain use (22); bump them together with it.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gradle
     directory: /platforms/android
