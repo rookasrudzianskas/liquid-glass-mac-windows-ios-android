@@ -44,7 +44,7 @@ Optional APIs that one port adds for its platform. They are not part of the shar
 | `material` | `clear`, `regular` | `clear` (menus: `regular`) | Inherited from the scene. |
 | `appearance` | `automatic`, `light`, `dark` | `automatic` (follows the system) | Inherited. Foreground color follows it. |
 | `shape` / `radius` | number, `capsule`, `circle` | surface 16, button `capsule` (icon-only `circle`), toolbar and tab bar `capsule`, menu 28 | Continuous corners. |
-| `refraction` | ≥ 0 | 60 | Optical travel at the rim. |
+| `refraction` | ≥ 0 | `min(60, 0.75 × shorter side)` | Optical travel at the rim. Unset, it follows the surface's resting size ([OPTICS §2](OPTICS.md#2-refraction)); an explicit value is used as given. |
 | `tint` | color or none | none | Colors the glass, never the content. On slider and switch it colors the fill/track (default: platform accent). |
 | `interactive` | bool | `true` for buttons, toolbars, tab bars | Press grow, drag stretch, glow. |
 | `motion` | `full`, `reduced`, `none` | `full` | System reduce-motion always applies. |

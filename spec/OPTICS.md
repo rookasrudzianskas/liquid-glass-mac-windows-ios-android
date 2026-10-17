@@ -48,8 +48,10 @@ The outline bends light through a 20-unit bevel:
 ```
 depth  = sat(−distance / 20)
 edge   = 1 − sat(sqrt((2 − depth) · depth))     // 1 at the outline, 0 at 20 inside
-offset = −normal · edge · refraction             // refraction defaults to 60
+offset = −normal · edge · refraction
 ```
+
+**Default refraction.** A surface that does not set `refraction` uses `min(60, 0.75 · min(width, height))`, measured on its resting size. Large surfaces get the full 60; a control shorter than 80 travels at most three quarters of its own height, so it never pulls in backdrop from far outside its outline (a 34-tall button uses 25.5, a 52-tall toolbar 39, a 62-tall tab bar 46.5). An explicit value, including the slider and switch thumbs' 5 and 7.75, is used as given.
 
 A glass pixel at `p` shows the backdrop at `p + offset`: content near the rim is drawn from deeper inside, the way a thick convex lens magnifies toward its edge. Small controls never reach full depth, so they refract across their whole face.
 

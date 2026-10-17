@@ -122,6 +122,13 @@ export function edgeProfile(distance, bevel = BEVEL) {
   return 1 - sat(Math.sqrt((2 - depth) * depth));
 }
 
+/** Refraction a surface uses when it sets none: the full default travel, limited for small
+ * controls to three quarters of their shorter side so they never pull in backdrop from far
+ * outside their outline. Measured on the resting size, so a press does not change it. */
+export function defaultRefraction(width, height) {
+  return Math.min(DEFAULT_REFRACTION, 0.75 * Math.max(0, Math.min(width, height)));
+}
+
 /** Where a glass pixel samples its backdrop, relative to itself. */
 export function refractionOffset(distance, nx, ny, refraction = DEFAULT_REFRACTION) {
   const e = edgeProfile(distance);
