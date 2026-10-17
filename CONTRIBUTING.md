@@ -98,10 +98,12 @@ By contributing you agree that your contributions are licensed under the [MIT Li
 
 ## Releasing
 
-For maintainers. A release is a semver tag without a `v` prefix (`1.0.0`): Swift Package Manager resolves versions from tags, and JitPack serves the tag name as the version.
+For maintainers. A release is a semver tag without a `v` prefix (`1.0.0`): Swift Package Manager resolves versions from tags, and JitPack serves the tag name as the version. The release checks of `website/scripts/deploy.sh --strict` look for that tag on GitHub, so the tag is pushed before the website is deployed:
 
-1. Every workflow is green on the release commit on `main`, and `CHANGELOG.md` has the release date.
-2. Build the release artifacts into `artifacts/` and deploy the website from that commit with `website/scripts/deploy.sh --strict`. Check that `https://liquid-glass-engineering.vercel.app/downloads/manifest.json` reports that `commit` with `modified: false`, and that every required download is available.
-3. Tag and push: `git tag -a 1.0.0 -m "Liquid Glass Engineering 1.0.0"` and `git push origin 1.0.0`.
+1. `CHANGELOG.md` has the release date (`## [1.0.0] - YYYY-MM-DD`), committed and pushed to `main`, and the latest run of every workflow on `main` is green.
+2. Tag that commit and push the tag: `git tag -a 1.0.0 -m "Liquid Glass Engineering 1.0.0"` and `git push origin 1.0.0`.
+3. With the tagged commit checked out and a clean working tree, build the release artifacts into `artifacts/` and deploy the website with `website/scripts/deploy.sh --strict`. Check that `https://liquid-glass-engineering.vercel.app/downloads/manifest.json` reports the tagged `commit` with `modified: false`, and that every required download is available.
 4. Publish a GitHub release from the tag with the `CHANGELOG.md` notes and the Studio, AAR and NuGet artifacts.
 5. Request `https://jitpack.io/com/github/rookasrudzianskas/liquid-glass-mac-windows-ios-android/1.0.0/` and wait until the build log shows the library published. Then check that a scratch Swift package with `from: "1.0.0"` resolves.
+
+Never move a pushed tag: Swift Package Manager and JitPack keep what it first pointed to. A code fix after step 2 ships as the next patch version; artifacts and the website can be rebuilt and redeployed from the same tag.
