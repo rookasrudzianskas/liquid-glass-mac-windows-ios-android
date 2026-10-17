@@ -112,7 +112,7 @@ GlassScene(material: .regular, appearance: .dark) {
 - A scene fills the space it is offered, like `GeometryReader`, and lays its foreground over the backdrop like a `ZStack`.
 - `GlassContent` must be the **first** element. The scene builder takes a fixed list of views; put `if` or `ForEach` inside a container (`ZStack`, `Group`, `VStack`).
 - `GlassContent { … }.ignoresSafeArea(_:)` extends the backdrop under the safe area while the foreground keeps respecting it.
-- Scene parameters (`material`, `appearance`, `refraction`, `motion`) become the defaults of every glass element inside. `nil` inherits from the environment.
+- Scene parameters (`material`, `appearance`, `refraction`, `motion`) become the defaults of every glass element inside. `nil` inherits from the environment. A scene's `refraction` applies at every size; leave it `nil` and each surface's travel follows its own size (see [Refraction](#options-and-theming)).
 
 ### What can go in GlassContent
 
@@ -143,7 +143,7 @@ Label("Now Playing", systemImage: "music.note")
 | `material` | scene's (`.clear`) | `.clear` or `.regular` |
 | `appearance` | scene's (`.automatic`) | `.automatic`, `.light`, `.dark` |
 | `radius` | `16` | points, `.capsule` or `.circle` |
-| `refraction` | scene's (`60`) | optical travel at the rim, points |
+| `refraction` | scene's, else by size: `min(60, 0.75 × shorter side)` | optical travel at the rim, points |
 | `tint` | none | colors the glass; the content's default foreground turns white or `#111113`, whichever contrasts more |
 | `interactive` | `false` | press grow, drag stretch, glow |
 | `motion` | scene's (`.full`) | `.full`, `.reduced`, `.none` |
@@ -164,7 +164,7 @@ GlassButton(icon: "xmark", label: name) { close() }               // a String la
 GlassButton(radius: 12, action: { }) { Text("Custom label") }     // any label, any outline
 ```
 
-Every initializer takes `role`, `material`, `appearance`, `refraction`, `tint`, `prominent`, `interactive` (default `true`) and `motion`; `nil` inherits from the scene.
+Every initializer takes `role`, `material`, `appearance`, `refraction`, `tint`, `prominent`, `interactive` (default `true`) and `motion`; `nil` inherits from the scene. Unset everywhere, the refraction follows the button's size: 33 points for a regular 44 pt iOS button, 21 for a 28 pt macOS one.
 
 Sizes follow `controlSize`:
 
@@ -251,7 +251,7 @@ GlassMenu("Appearance", systemImage: "circle.lefthalf.filled") {
 
 ![A Regular glass menu grown out of its trigger](images/apple/ios-menu.png)
 
-The trigger is a `GlassButton` (an icon-only trigger is the 44 pt circle on iOS, 28 pt on macOS); `appearance` and `tint` apply to the trigger and the panel. Items with `checked:` reserve a leading column and draw a checkmark when `true` (VoiceOver reads them as selected); disabled items dim and the arrow keys skip them. Opening morphs the trigger's glass into a Regular glass panel (radius 28) on the morph spring while the items condense out of a blur; closing reverses it. The panel opens below the trigger with trailing edges aligned, flips above when there is no room and stays inside the scene. Items highlight with the foreground color at 8%. Tap outside, press Escape, or choose an item to dismiss; the up and down arrows and Return navigate. The panel draws in the scene's overlay, above the rest of the foreground. Outside a `GlassScene`, `GlassMenu` falls back to the system `Menu` with the same items.
+The trigger is a `GlassButton` (an icon-only trigger is the 44 pt circle on iOS, 28 pt on macOS); `appearance` and `tint` apply to the trigger and the panel. Items with `checked:` reserve a leading column and draw a checkmark when `true` (VoiceOver reads them as selected); disabled items dim and the arrow keys skip them. Opening morphs the trigger's glass into a Regular glass panel (radius 28) on the morph spring while the items condense out of a blur (an unset refraction is the open panel's throughout); closing reverses it. The panel opens below the trigger with trailing edges aligned, flips above when there is no room and stays inside the scene. Items highlight with the foreground color at 8%. Tap outside, press Escape, or choose an item to dismiss; the up and down arrows and Return navigate. The panel draws in the scene's overlay, above the rest of the foreground. Outside a `GlassScene`, `GlassMenu` falls back to the system `Menu` with the same items.
 
 ### GlassProgressiveBlur
 
@@ -307,7 +307,8 @@ The optical model is public, for custom renderers, layout and tests:
 ```swift
 let params = GlassOptics.shapeParameters(width: 200, height: 64, radius: .capsule)
 let field = GlassOptics.shapeField(x: 90, y: 0, width: 200, height: 64, extent: params.extent, exponent: params.exponent)
-let offset = GlassOptics.refractionOffset(distance: field.distance, nx: field.nx, ny: field.ny)
+let travel = GlassOptics.defaultRefraction(width: 200, height: 64)  // 48: what the surface uses unset
+let offset = GlassOptics.refractionOffset(distance: field.distance, nx: field.nx, ny: field.ny, refraction: travel)
 
 var state = GlassSpring.State(value: 0, target: 1)
 state = GlassSpring.release.step(state, dt: 1 / 60)     // closed form, frame-rate independent
@@ -328,7 +329,7 @@ VStack { … }
 - **Material.** `.clear` refracts sharply with a light tone curve. `.regular` frosts the backdrop (a σ 7.33 blur brightened, or deepened in dark appearance, by a wide fill blur) and keeps text legible over anything. Menus default to `.regular`.
 - **Appearance.** `.automatic` follows the color scheme. `.light` and `.dark` force the tone curves and rim strength, and set the content's color scheme, so `.primary` and `.secondary` adapt.
 - **Radius.** Numbers are continuous-corner radii; `.capsule` and `.circle` round fully.
-- **Refraction.** Points of optical travel at the rim; 0 turns refraction off. Small controls (shorter than the 20 pt bevel) refract across their whole face.
+- **Refraction.** Points of optical travel at the rim; 0 turns refraction off. Unset on the surface, the scene and the environment, it follows the surface's resting size, `min(60, 0.75 × shorter side)` (`GlassOptics.defaultRefraction(width:height:)`, [`spec/OPTICS.md` §2](../spec/OPTICS.md#2-refraction)): cards and panels get the full 60, while a 44 pt button travels 33, a 52 pt toolbar 39 and a 62 pt tab bar 46.5, so small controls never pull in backdrop from far outside their outline. It is measured before press and stretch, so a press doesn't change it, and the tab lens takes the size of the tab it rests at. A value you set, on the surface, with `GlassScene(refraction:)` or with `.glassRefraction(_:)`, is used as given at every size; `.glassRefraction(nil)` restores the size-based default. The slider and switch lenses use 5 and 7.75. Small controls (shorter than the 20 pt bevel) refract across their whole face.
 - **Tint.** Colored glass transmits the backdrop's luminance through the pigment. Text and icons on tinted glass (surfaces, buttons, bars, menus) default to white or `#111113`, whichever has the higher contrast with the tinted glass. On sliders and switches, `tint` colors the fill and track.
 - **Motion.** `.full`, `.reduced` (no grow, stretch or overshoot; the light still fades, and the tab lens, the switch thumb and the thumb's lift into glass move as critically damped transitions) and `.none` (no transitions). The system Reduce Motion setting always applies on top.
 - **Foreground.** Text and icons on glass default to `#111113` (light) and white (dark); a forced `.light` or `.dark` appearance also sets their color scheme. Set your own `foregroundStyle` inside a surface to override.
@@ -431,10 +432,10 @@ xcodebuild build -project platforms/apple/Studio/LiquidGlassStudio.xcodeproj -sc
 platforms/apple/scripts/package-macos.sh DerivedData/Build/Products/Release
 ```
 
-- `OpticsVectorTests` checks the Swift port against every category of [`spec/vectors.json`](../spec/vectors.json) at 1e-4: shape parameters, all 640 field samples, the outline, edge profile, refraction offset, tone curves, material color, tint, frost, all 328 rim samples, all 57 composited glass pixels, the six springs, rubber band, stretch limit, press scale, glow and progressive weights.
+- `OpticsVectorTests` checks the Swift port against every category of [`spec/vectors.json`](../spec/vectors.json) at 1e-4: shape parameters, all 640 field samples, the outline, edge profile, default refraction, refraction offset, tone curves, material color, tint, frost, all 328 rim samples, all 57 composited glass pixels, the six springs, rubber band, stretch limit, press scale, glow and progressive weights.
 - `ShaderVectorTests` runs the Metal functions the glass shader uses (`LiquidGlassCore.h`) on the GPU in a compute kernel and checks the same vectors at the GPU tolerance, 2e-3.
-- `RenderTests` renders real `GlassScene`s through SwiftUI and compares every pixel of a surface (and two around it) with the model: Clear and Regular, light and dark, tinted, at 1x and 2x, off center left to right and right to left, over layered, text, narrow and empty backdrops, under an ancestor's clip, the Reduce Transparency and no-scene fallbacks and degenerate sizes. It also checks that Regular glass frosts text smoothly (also over a `GlassScrollView`), that backdrop copies render as copies, that labels follow forced appearances and tints, and that bars, menus and progressive blurs mirror right to left.
-- `BehaviorTests` covers what isn't a picture: the tab lens and switch thumb under drags, right to left and reduced motion, the press glow spring, menu keyboard navigation, drag intent (sideways drags commit, vertical ones scroll), `GlassScrollPosition` after cancelled drags, keyboard and trackpad momentum, label contrast on tints, control sizes (icon menu circles, hidden-label switches, bars at accessibility sizes and in tall rows) and the initializers.
+- `RenderTests` renders real `GlassScene`s through SwiftUI and compares every pixel of a surface (and two around it) with the model: Clear and Regular, light and dark, tinted, at 1x and 2x, off center left to right and right to left, over layered, text, narrow and empty backdrops, under an ancestor's clip, the Reduce Transparency and no-scene fallbacks and degenerate sizes, and the refraction by size and its precedence (surface, environment, scene). It also checks that Regular glass frosts text smoothly (also over a `GlassScrollView`), that backdrop copies render as copies, that labels follow forced appearances and tints, and that bars, menus and progressive blurs mirror right to left.
+- `BehaviorTests` covers what isn't a picture: the tab lens and switch thumb under drags, right to left and reduced motion, the lens's resting size and how refraction resolves, the press glow spring, menu keyboard navigation, drag intent (sideways drags commit, vertical ones scroll), `GlassScrollPosition` after cancelled drags, keyboard and trackpad momentum, label contrast on tints, control sizes (icon menu circles, hidden-label switches, bars at accessibility sizes and in tall rows) and the initializers.
 - `StudioUITests` drives the demo: navigation, menus (open, outside tap, choose), the stories filter, switches and sliders inside a scroll view, scrolls that start on a glass button, a slider and a tab bar (the value and the selection stay), `GlassScrollView` scrolling and a held press-and-drag.
 
 CI ([`.github/workflows/apple.yml`](../.github/workflows/apple.yml)) runs the package tests on macOS and the iOS Simulator, builds the Studio app for macOS in Release, runs its UI tests and uploads the packaged app.

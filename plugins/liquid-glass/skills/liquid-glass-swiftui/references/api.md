@@ -3,7 +3,8 @@
 Every public declaration of the `LiquidGlass` module (the package's `Sources/LiquidGlass` folder), copied from the
 source with its parameter defaults. Units are points. In every component, an optional option left `nil` inherits
 from the enclosing `GlassScene` or from the environment (`.glassMaterial(_:)` and friends); the root defaults are
-material `.clear`, appearance `.automatic`, refraction `60` and motion `.full`.
+material `.clear`, appearance `.automatic`, refraction by size (`GlassOptics.defaultRefraction(width:height:)`,
+`min(60, 0.75 × shorter side)` of the resting size) and motion `.full`.
 
 ```swift
 import LiquidGlass   // module and product name; the package is liquid-glass-mac-windows-ios-android
@@ -139,14 +140,14 @@ refraction:motion:)` sets the same values for its whole tree.
 extension EnvironmentValues {
     public var glassMaterial: GlassMaterial { get set }      // default .clear (menus use .regular regardless)
     public var glassAppearance: GlassAppearance { get set }  // default .automatic
-    public var glassRefraction: Double { get set }           // default GlassOptics.defaultRefraction (60)
+    public var glassRefraction: Double? { get set }          // default nil: each surface's size decides
     public var glassMotion: GlassMotion { get set }          // default .full; Reduce Motion always applies
 }
 
 extension View {
     public func glassMaterial(_ material: GlassMaterial) -> some View
     public func glassAppearance(_ appearance: GlassAppearance) -> some View
-    public func glassRefraction(_ refraction: Double) -> some View   // clamped to >= 0
+    public func glassRefraction(_ refraction: Double?) -> some View  // clamped to >= 0; nil restores by-size
     public func glassMotion(_ motion: GlassMotion) -> some View
 }
 ```
@@ -163,7 +164,8 @@ struct Badge: View {
 ```
 
 A component's own non-`nil` parameter beats the environment. A surface's `material` does not change the environment,
-so controls inside a Regular card keep the scene's material.
+so controls inside a Regular card keep the scene's material. A refraction set in the environment (or on the scene)
+applies at every size, small controls included; leave it `nil` for the size-based default.
 
 ## GlassScene and GlassContent
 
@@ -182,7 +184,8 @@ do not fall back reliably: attach them to the scene itself and give the presente
 public struct GlassScene<Backdrop: View, Foreground: View>: View {
     /// - material: The default material inside the scene, or `nil` to inherit.
     /// - appearance: The default appearance inside the scene, or `nil` to inherit.
-    /// - refraction: The default optical travel at the rim, or `nil` to inherit.
+    /// - refraction: The optical travel at the rim of glass inside that sets none, at every size, or `nil` to
+    ///   inherit. Unset everywhere, each surface's resting size decides (`GlassOptics.defaultRefraction(width:height:)`).
     /// - motion: The default motion level, or `nil` to inherit.
     /// - content: A `GlassContent` followed by the foreground.
     public init(
@@ -262,7 +265,8 @@ public struct GlassSurface<Content: View>: View {
     /// - material: Clear or Regular glass; `nil` inherits the scene's material.
     /// - appearance: Light or dark glass; `nil` inherits.
     /// - radius: The corner radius, `.capsule` or `.circle`. Default 16.
-    /// - refraction: Optical travel at the rim in points; `nil` inherits (60).
+    /// - refraction: Optical travel at the rim in points; `nil` inherits the scene's or, when none is set, follows
+    ///   the surface's resting size: 60, or three quarters of the shorter side below 80 points.
     /// - tint: Colors the glass, never the content. The content's default foreground turns white or `#111113`,
     ///   whichever contrasts more with the tinted glass; a `foregroundStyle` you set inside wins.
     /// - interactive: Press grow, drag stretch and glow.
@@ -299,7 +303,7 @@ extension View {
 | `material` | `nil` (scene's, `.clear`) | Increase Contrast forces `.regular` |
 | `appearance` | `nil` (scene's, `.automatic`) | explicit values also set the content's `colorScheme` |
 | `radius` | `16` | points, `.capsule`, `.circle` |
-| `refraction` | `nil` (scene's, `60`) | 0 turns refraction off; surfaces shorter than the 20 pt bevel refract across their whole face |
+| `refraction` | `nil` (scene's, else `min(60, 0.75 × shorter side)` of the resting size) | a press or stretch doesn't change it; 0 turns refraction off; surfaces shorter than the 20 pt bevel refract across their whole face |
 | `tint` | `nil` | colored glass transmits the backdrop's luminance; clamped to sRGB; the content defaults to white or `#111113`, whichever has the higher WCAG contrast with the tinted glass (white on blue, red, purple; dark on yellow, mint, green, orange); a `foregroundStyle` set inside wins |
 | `interactive` | `false` | grows under a press, stretches toward a drag, settles with overshoot, glows under the finger (and hovering pointer, level 0.35); ignored while `.disabled` |
 | `motion` | `nil` (scene's, `.full`) | use `GlassMotion.none`, not `.none` |
@@ -366,7 +370,8 @@ public struct GlassButton<Label: View>: View {
     /// - radius: The outline; `nil` is a capsule.
     /// - material: Clear or Regular glass; `nil` inherits the scene's.
     /// - appearance: Light or dark glass; `nil` inherits.
-    /// - refraction: Optical travel at the rim in points; `nil` inherits.
+    /// - refraction: Optical travel at the rim in points; `nil` inherits the scene's or, when none is set, follows
+    ///   the button's resting size (33 points for a 44-point button).
     /// - tint: Colors the glass. The label turns white or dark, whichever contrasts more with the tinted glass.
     /// - prominent: Tints the glass with the accent color when `tint` is `nil`.
     /// - interactive: Press grow, drag stretch and glow. Default `true`.
@@ -955,7 +960,7 @@ unpremultiplied, `0...1`; coordinates inside a surface are measured from its cen
 ```swift
 public enum GlassOptics {
     public static let bevel = 20.0                  // Depth of the refracting bevel inside the outline.
-    public static let defaultRefraction = 60.0      // Default optical travel at the outline.
+    public static let defaultRefraction = 60.0      // Unset travel of surfaces whose shorter side is >= 80.
     public static let continuousExtent = 1.528      // Corner reach along each edge, relative to the radius.
     public static let continuousExponent = 3.26     // Superellipse exponent of a continuous corner.
     public static let luma = SIMD3<Double>(0.213, 0.715, 0.072)   // SVG saturate luma weights.
@@ -973,6 +978,7 @@ public enum GlassOptics {
     public static func shapeOutline(width: Double, height: Double, radius: GlassRadius, segments: Int = 24) -> [CGPoint]
 
     // Refraction
+    public static func defaultRefraction(width: Double, height: Double) -> Double   // min(60, 0.75 · min(w, h))
     public static func edgeProfile(distance: Double, bevel: Double = GlassOptics.bevel) -> Double
     public static func refractionOffset(distance: Double, nx: Double, ny: Double, refraction: Double = defaultRefraction) -> CGVector
     public static func coverage(distance: Double, pixel: Double) -> Double
@@ -1018,7 +1024,8 @@ public enum GlassOptics {
 ```swift
 let params = GlassOptics.shapeParameters(width: 200, height: 64, radius: .capsule)
 let field = GlassOptics.shapeField(x: 90, y: 0, width: 200, height: 64, extent: params.extent, exponent: params.exponent)
-let offset = GlassOptics.refractionOffset(distance: field.distance, nx: field.nx, ny: field.ny)
+let travel = GlassOptics.defaultRefraction(width: 200, height: 64)  // 48: what the surface uses unset
+let offset = GlassOptics.refractionOffset(distance: field.distance, nx: field.nx, ny: field.ny, refraction: travel)
 let outline = GlassOptics.shapeOutline(width: 200, height: 64, radius: 24)    // polygon, clockwise from the top edge
 ```
 
@@ -1032,6 +1039,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassButton` horizontal padding small / regular / large | 12 / 16 / 22 | 8 / 10 / 12 |
 | `GlassToolbar` height, inset, item spacing | 52, 4, 4 (height scales with Dynamic Type up to `.xxxLarge`) | 34, 3, 4 |
 | `GlassTabBar` height regular / small | 62 / 40 (height scales with Dynamic Type up to `.xxxLarge`) | 28 / 24 |
+| Unset refraction: button small / regular / large, toolbar, tab bar (follows their size) | 25.5 / 33 / 39, 39, 46.5 | 16.5 / 21 / 25.5, 25.5, 21 |
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |

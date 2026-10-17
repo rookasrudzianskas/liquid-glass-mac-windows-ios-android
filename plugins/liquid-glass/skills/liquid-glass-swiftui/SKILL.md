@@ -138,7 +138,8 @@ struct ContentView: View {
 ## Components
 
 Every signature, default and enum case: [references/api.md](references/api.md). `nil` means "inherit from the scene
-or environment" (defaults: material `.clear`, appearance `.automatic`, refraction `60`, motion `.full`).
+or environment" (defaults: material `.clear`, appearance `.automatic`, refraction by size,
+`min(60, 0.75 × shorter side)`, motion `.full`).
 
 | Component | Purpose | Key parameters (default) |
 | --- | --- | --- |
@@ -301,7 +302,7 @@ GlassScene {
 
 **Materials, appearance, tint and shape**
 
-- Defaults: material `.clear`, appearance `.automatic`, refraction 60, motion `.full`. Menu panels are Regular
+- Defaults: material `.clear`, appearance `.automatic`, refraction by size, motion `.full`. Menu panels are Regular
   unless you pass a material.
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
@@ -329,7 +330,12 @@ GlassScene {
   `GlassShape(radius: 20)`; `GlassShape(radius: 34).inset(by: 14)` draws the same outline in the card's own frame.
   (The `liquid-glass` design guide also gives `R − i/1.528`, about 25 here, as the edge-exact value.) Clip images
   and draw borders with `GlassShape`, not `RoundedRectangle`, so they line up with the glass.
-- Keep `refraction` at 60 for surfaces; 0 turns it off and very high values make the backdrop unrecognizable.
+- Leave `refraction` unset. It then follows each surface's resting size, `min(60, 0.75 × shorter side)`
+  (`GlassOptics.defaultRefraction(width:height:)`): 60 for cards and panels, 33 for a 44 pt button, 39 for a 52 pt
+  toolbar, 46.5 for a 62 pt tab bar, unchanged by presses. A value set on a surface, `GlassScene(refraction:)` or
+  `.glassRefraction(_:)` applies at every size, so `GlassScene(refraction: 60)` makes small controls smear backdrop
+  in from outside their outline; `.glassRefraction(nil)` restores the default. 0 turns it off; very high values make
+  the backdrop unrecognizable.
 - `motion:` parameters are `GlassMotion?`, so `motion: .none` means `nil` (inherit) and only warns. Write
   `motion: GlassMotion.none`; the `.glassMotion(.none)` modifier takes a non-optional value and is fine.
 - A `Double` or `CGFloat` variable or an expression is not a `GlassRadius`: write `radius: .points(value)` or
