@@ -118,9 +118,9 @@ public class GlassProgressiveBlur : FrameworkElement
     }
 
     /// <summary>
-    /// Nests a level's passes inside one another instead of chaining them through brushes (tests compare the two). On
-    /// screen WPF realizes a nested effect only as far as the clip around the level reaches, so the inner passes lose
-    /// what lies beyond the band and the edge shows a weaker blur; through a brush each pass sees all of its input.
+    /// Nests a level's passes inside one another instead of chaining them through brushes (tests compare the two). The
+    /// chain is what the library draws: each pass reads the whole of the one before, beyond the band's clip, and the
+    /// tests check its σ on screen and in <see cref="System.Windows.Media.Imaging.RenderTargetBitmap"/>.
     /// </summary>
     internal bool NestPasses
     {
