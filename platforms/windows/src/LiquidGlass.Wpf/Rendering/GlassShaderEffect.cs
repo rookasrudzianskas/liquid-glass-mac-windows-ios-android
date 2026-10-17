@@ -98,6 +98,13 @@ internal sealed class GlassShaderEffect : ShaderEffect
         set => SetIfChanged(FillOpticsProperty, value);
     }
 
+    /// <summary>
+    /// Lets go of the shared shader. WPF subscribes every effect to its shader's bytecode-changed event, so while an
+    /// effect holds the process-wide shader, that shader (a static) keeps the effect, its input brush and the window
+    /// the brush copies alive.
+    /// </summary>
+    public void Release() => PixelShader = null;
+
     protected override Freezable CreateInstanceCore() => new GlassShaderEffect(PixelShader);
 
     private void SetIfChanged(DependencyProperty property, Point4D value)

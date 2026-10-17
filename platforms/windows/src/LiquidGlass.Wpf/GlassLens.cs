@@ -279,6 +279,19 @@ public sealed class GlassLens : FrameworkElement
         _scene?.Unregister(this);
         _scene = null;
         ClearSources();
+        ReleaseShader();
+    }
+
+    /// <summary>
+    /// Drops the shader effect: the shared pixel shader would otherwise keep it (and through its input brush, the
+    /// window) alive after the lens left the tree. Loading again creates a new effect.
+    /// </summary>
+    private void ReleaseShader()
+    {
+        if (_shader is null) return;
+        _effectHost.Effect = null;
+        _shader.Release();
+        _shader = null;
     }
 
     private void OnSettingsChanged(object? sender, EventArgs e)
