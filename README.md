@@ -36,6 +36,7 @@ Each port draws the glass itself on the GPU, with Metal, AGSL or an HLSL pixel s
 - [Accessibility and fallbacks](#accessibility-and-fallbacks)
 - [Limitations](#limitations)
 - [Liquid Glass Studio](#liquid-glass-studio)
+- [Examples](#examples)
 - [Agent skills](#agent-skills)
 - [Repository layout](#repository-layout)
 - [Building from source](#building-from-source)
@@ -276,6 +277,18 @@ Prebuilt apps are on the [downloads page](https://liquid-glass-engineering.verce
 
 On iPhone and iPad, run it from Xcode: open `platforms/apple/Studio/LiquidGlassStudio.xcodeproj` and pick the *LiquidGlassStudio* scheme. The sources are in [`platforms/apple/Studio`](platforms/apple/Studio), [`platforms/android/studio`](platforms/android/studio) and [`platforms/windows/src/LiquidGlass.Studio`](platforms/windows/src/LiquidGlass.Studio).
 
+## Examples
+
+[`examples/`](examples) holds **Hello Glass**, the smallest complete app on each platform: a Regular glass card with a title and two buttons, a switch that turns it from Regular into Clear glass, a toolbar and a floating tab bar, all over the aurora wallpaper. The three versions build the same screen in about a hundred lines each:
+
+| Example | Platform |
+| --- | --- |
+| [`examples/swiftui/HelloGlass`](examples/swiftui/HelloGlass) | SwiftUI, iOS 17+ and macOS 14+ |
+| [`examples/compose/HelloGlass`](examples/compose/HelloGlass) | Jetpack Compose, Android 7+ |
+| [`examples/wpf/HelloGlass`](examples/wpf/HelloGlass) | WPF, Windows 10 1809+ |
+
+Each builds against the source in this repository, and its README shows how to switch to the published package. CI builds all three.
+
 ## Agent skills
 
 The repository is also a plugin marketplace. Its `liquid-glass` plugin carries agent skills that design and build with these libraries:
@@ -305,6 +318,7 @@ Tests/LiquidGlassTests/               its unit, GPU and render tests
 platforms/apple/                      Liquid Glass Studio for iOS and macOS, CI scripts
 platforms/android/                    Gradle project: liquidglass (the library) and studio (the demo)
 platforms/windows/                    LiquidGlass.sln: Core, Wpf, Studio, tests and CI tools
+examples/                             Hello Glass for SwiftUI, Jetpack Compose and WPF
 spec/                                 optical model, component contract, reference, shader, golden vectors
 assets/wallpapers/                    the generated wallpapers every Studio uses
 docs/                                 developer guides, also published on the website
