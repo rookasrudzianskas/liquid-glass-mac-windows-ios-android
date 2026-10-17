@@ -107,10 +107,19 @@ internal static class BlurProbe
         window.Show();
         Wait(1.5);
 
+        // Without a GPU, WPF draws these blurs in software, and a large window's first frame can take seconds to reach
+        // the screen (the capture is black until then): wait for the gray margin around the rows to show.
         var hwnd = new WindowInteropHelper(window).Handle;
-        var shot = WindowCapture.Capture(hwnd);
         var origin = root.PointToScreen(default);
-        var screen = new Image(shot.Pixels, shot.Width, shot.Height, (int)Math.Round(origin.X) - shot.Left, (int)Math.Round(origin.Y) - shot.Top);
+        Image screen;
+        var deadline = DateTime.UtcNow.AddSeconds(20);
+        while (true)
+        {
+            var shot = WindowCapture.Capture(hwnd);
+            screen = new Image(shot.Pixels, shot.Width, shot.Height, (int)Math.Round(origin.X) - shot.Left, (int)Math.Round(origin.Y) - shot.Top);
+            if (screen.Green(10, 10) is > 100 and < 160 || DateTime.UtcNow > deadline) break;
+            Wait(0.5);
+        }
         WindowCapture.SavePng(hwnd, Path.Combine(outDirectory, $"blur-{scale.ToString(CultureInfo.InvariantCulture)}x.png"));
 
         var width = (int)Math.Ceiling(root.ActualWidth);
@@ -162,6 +171,13 @@ internal static class BlurProbe
             _height = height;
             _originX = originX;
             _originY = originY;
+        }
+
+        /// <summary>The green channel at (<paramref name="x"/>, <paramref name="y"/>) from the origin, or -1 outside the image.</summary>
+        public int Green(int x, int y)
+        {
+            int px = _originX + x, py = _originY + y;
+            return px < 0 || py < 0 || px >= _width || py >= _height ? -1 : _pixels[(py * _width + px) * 4 + 1];
         }
 
         /// <summary>σ of the edge at layout pixel (<paramref name="x"/>, <paramref name="y"/>), from its 10%–90% width.</summary>

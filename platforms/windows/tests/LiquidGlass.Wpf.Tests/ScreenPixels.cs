@@ -59,6 +59,23 @@ internal sealed class ScreenPixels
         }
     }
 
+    /// <summary>
+    /// Captures <paramref name="window"/> once <paramref name="drawn"/> holds for the capture, waiting up to
+    /// <paramref name="seconds"/>: on a runner without a GPU, WPF draws heavy effects in software and the first frames
+    /// of a large window can take seconds to reach the screen (until then the capture is black). Null if it never does.
+    /// </summary>
+    public static ScreenPixels? CaptureWhen(Window window, UIElement origin, Func<ScreenPixels, bool> drawn, double seconds)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(seconds);
+        while (true)
+        {
+            var capture = Capture(window, origin);
+            if (drawn(capture)) return capture;
+            if (DateTime.UtcNow > deadline) return null;
+            Sta.Wait(0.5);
+        }
+    }
+
     /// <summary>The green channel at device pixel (<paramref name="x"/>, <paramref name="y"/>) from the origin.</summary>
     public double Green(int x, int y)
     {

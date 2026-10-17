@@ -98,6 +98,10 @@ public class RenderingTests
             // A lens outside a scene draws the opaque material with the rasterized rim light.
             var lens = new GlassLens { Radius = GlassRadius.Capsule };
             var root = new Grid { Width = 200, Height = 64, Children = { lens } };
+            // Start from a known scale. Before the process has created any window, WPF's table of DPI values is empty
+            // and the first SetRootDpi would enter the new scale as the system one, so old and new would compare equal
+            // and no element would be told of the change.
+            VisualTreeHelper.SetRootDpi(root, new DpiScale(1, 1));
             root.Measure(new Size(200, 64));
             root.Arrange(new Rect(0, 0, 200, 64));
             // Size changes reach the lens (OnRenderSizeChanged) only when the layout manager runs its queue.
@@ -106,7 +110,8 @@ public class RenderingTests
             Assert.NotNull(lens.Overlay.RimBitmap);
 
             // WPF notifies the lens of the new DPI before its children: the rim must be rasterized at the new scale anyway.
-            var target = Math.Abs(GlassResolve.Scale(lens) - 1.5) < 1e-6 ? 2.0 : 1.5;
+            Assert.Equal(96, lens.Overlay.RimBitmap!.DpiX, 3);
+            const double target = 1.5;
             VisualTreeHelper.SetRootDpi(root, new DpiScale(target, target));
             var rim = lens.Overlay.RimBitmap;
             Assert.NotNull(rim);
@@ -178,7 +183,9 @@ public class RenderingTests
             Assert.Equal(GlassProgressive.Levels, blur.LevelRadii.Count);
             if (scale > 1) Assert.True(blur.LevelRadii[GlassProgressive.Levels - 1].Count > 1, "the strongest level should need more than one pass");
 
-            var screen = ScreenPixels.Capture(window, root);
+            // Above the band the source is sharp: black on the left, white on the right once the frame is on screen.
+            var screen = ScreenPixels.CaptureWhen(window, root,
+                s => s.Green((int)(280 * scale), (int)(20 * scale)) - s.Green((int)(20 * scale), (int)(20 * scale)) > 200, 20);
             var bitmap = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(root);
             var pixels = new byte[px * px * 4];
@@ -203,20 +210,30 @@ public class RenderingTests
                 }
                 return (Cross(0.9) - Cross(0.1)) / 2.5631 / scale;
             }
-            double OnScreen(int x, int y) => screen.Green(x, y);
             double InBitmap(int x, int y) => pixels[(y * px + x) * 4 + 1];
 
             // At the edge only the strongest level shows; where level 5 has all the weight, only it does.
             var level5 = SolveEase(5.0 / 6);
             var expected6 = GlassProgressive.LevelBlur(6, edgeBlur);
             var expected5 = GlassProgressive.LevelBlur(5, edgeBlur);
-            var sigma6 = Sigma(OnScreen, 239);
-            var sigma5 = Sigma(OnScreen, 160 + level5 * 80);
+            var screen6 = screen is null ? double.NaN : Sigma((x, y) => screen.Green(x, y), 239);
+            var screen5 = screen is null ? double.NaN : Sigma((x, y) => screen.Green(x, y), 160 + level5 * 80);
+            var bitmap6 = Sigma(InBitmap, 239);
+            var bitmap5 = Sigma(InBitmap, 160 + level5 * 80);
             var passes = string.Join("; ", blur.LevelRadii.Select(level => string.Join(" + ", level.Select(r => (r * scale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)))));
-            var detail = $"on screen σ {sigma6:F2} (level 6) and {sigma5:F2} (level 5); RenderTargetBitmap σ {Sigma(InBitmap, 239):F2} and {Sigma(InBitmap, 160 + level5 * 80):F2}; passes in device pixels: {passes}";
-            Assert.True(Math.Abs(sigma6 - expected6) < 1.5, $"level 6 at {scale}×: σ {sigma6:F2} instead of {expected6:F2} ({detail})");
-            Assert.True(Math.Abs(sigma5 - expected5) < 1.2, $"level 5 at {scale}×: σ {sigma5:F2} instead of {expected5:F2} ({detail})");
-            Assert.True(sigma6 > sigma5 + 3, $"the edge ({sigma6:F2}) should be blurred more than level 5 ({sigma5:F2}) ({detail})");
+            var detail = $"on screen σ {screen6:F2} (level 6) and {screen5:F2} (level 5){(screen is null ? ", the frame never reached the screen" : "")}; " +
+                         $"RenderTargetBitmap σ {bitmap6:F2} and {bitmap5:F2}; passes in device pixels: {passes}";
+            // WPF's software renderer (RenderTargetBitmap) and its hardware pipeline draw BlurEffect alike (the CI blur
+            // probe measures both); both must render the plan. A runner whose screen never shows the frame leaves only
+            // the bitmap to check.
+            foreach (var (where, sigma6, sigma5) in new[] { ("in the bitmap", bitmap6, bitmap5), ("on screen", screen6, screen5) })
+            {
+                if (where == "on screen" && screen is null) continue;
+                Assert.True(Math.Abs(sigma6 - expected6) < 1.5, $"level 6 at {scale}× {where}: σ {sigma6:F2} instead of {expected6:F2} ({detail})");
+                Assert.True(Math.Abs(sigma5 - expected5) < 1.2, $"level 5 at {scale}× {where}: σ {sigma5:F2} instead of {expected5:F2} ({detail})");
+                Assert.True(sigma6 > sigma5 + 3, $"the edge ({sigma6:F2}) should be blurred more than level 5 ({sigma5:F2}) {where} ({detail})");
+            }
+            if (scale <= 1) Assert.True(screen is not null, $"the window never reached the screen at {scale}× ({detail})");
             window.Close();
         });
     }
