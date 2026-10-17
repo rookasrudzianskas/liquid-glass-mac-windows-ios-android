@@ -1168,7 +1168,7 @@ async function buildLlms(docs, skills, packages) {
     "",
     `- Swift Package Manager (iOS 17+, macOS 14+; builds with Xcode 16 or later): \`.package(url: "${REPO_URL}", from: "${version}")\`, product \`LiquidGlass\``,
     `- Gradle (Jetpack Compose, Android 7+, glass on 13+): repository \`maven("${SITE_URL}/maven")\` in settings.gradle.kts, then \`implementation("io.github.rookasrudzianskas:liquid-glass-compose:${version}")\``,
-    `- Gradle from JitPack instead: repository \`maven("https://jitpack.io")\`, then \`implementation("com.github.${repoSlug.replace("/", ":")}:${version}")\``,
+    `- Gradle from JitPack, the secondary route (JitPack builds the library on the first request after the ${version} release tag is published, so that first resolve is slow; the Maven repository above is the primary path): repository \`maven("https://jitpack.io")\`, then \`implementation("com.github.${repoSlug.replace("/", ":")}:${version}")\``,
     `- NuGet (WPF on .NET Framework 4.8, .NET 8 and .NET 10): the package ${nugetId} ${version} is on the project feed, not nuget.org: \`dotnet nuget add source ${SITE_URL}/nuget/index.json -n liquid-glass\`, then \`dotnet add package ${nugetId} --version ${version}\``,
     "",
     ...(skills.skills.length

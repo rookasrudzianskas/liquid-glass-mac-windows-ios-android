@@ -37,7 +37,7 @@ const OPTICS = [
   },
   {
     title: "Refraction",
-    body: "A glass pixel shows the backdrop from deeper inside the shape, the way a thick convex lens magnifies toward its edge.",
+    body: "A glass pixel shows the backdrop from deeper inside the shape, like a thick convex lens. Unset, the travel is min(60, 0.75 × shorter side), measured at rest.",
     Diagram: RefractionDiagram,
   },
   {

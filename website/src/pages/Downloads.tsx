@@ -110,7 +110,9 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        Prefer JitPack? Add <code>maven(&quot;https://jitpack.io&quot;)</code> and depend on <code>com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{packages.version}</code>.
+        The Maven repository above is the primary install path. JitPack is a secondary route: add <code>maven(&quot;https://jitpack.io&quot;)</code> and depend on{" "}
+        <code>com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{packages.version}</code>. JitPack builds the library on the first request after the {packages.version} release tag is
+        published, so that first resolve is slow.
       </>
     ),
   },
