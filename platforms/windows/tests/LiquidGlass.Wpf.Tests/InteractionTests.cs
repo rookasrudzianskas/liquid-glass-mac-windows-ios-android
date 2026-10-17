@@ -192,19 +192,25 @@ public class InteractionTests
                 var stretches = new List<double>();
                 var offsets = new List<double>();
                 var widths = new List<double>();
-                EventHandler sample = (_, _) =>
+                // Each transition is watched on its own, so the first-time work of one (the menu's panel) cannot
+                // stall the frames another is sampled on.
+                void Watch(Action change, EventHandler sample)
+                {
+                    CompositionTarget.Rendering += sample;
+                    change();
+                    Wait(1.2);
+                    CompositionTarget.Rendering -= sample;
+                }
+                Watch(() => tabs.SelectedIndex = 2, (_, _) =>
                 {
                     lefts.Add(Canvas.GetLeft(lens));
                     stretches.Add(((ScaleTransform)lens.RenderTransform).ScaleX);
-                    offsets.Add(((TranslateTransform)thumb.RenderTransform).X);
+                });
+                Watch(() => toggle.IsChecked = true, (_, _) => offsets.Add(((TranslateTransform)thumb.RenderTransform).X));
+                Watch(() => menu.IsOpen = true, (_, _) =>
+                {
                     if (menu.Panel?.Lens is { } panelLens) widths.Add(panelLens.ShapeBounds.Width);
-                };
-                CompositionTarget.Rendering += sample;
-                tabs.SelectedIndex = 2;
-                toggle.IsChecked = true;
-                menu.IsOpen = true;
-                Wait(1.2);
-                CompositionTarget.Rendering -= sample;
+                });
 
                 Assert.True(lefts.Count(l => l > start + 1 && l < target - 1) >= 2, "the tab lens should slide through intermediate positions");
                 Assert.True(lefts.Max() <= target + 0.05, $"the tab lens overshot: {lefts.Max():F2} past {target:F2}");
