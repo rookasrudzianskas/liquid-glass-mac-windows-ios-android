@@ -1,0 +1,20 @@
+# The same Android Gradle Plugin, Kotlin and Compose versions as platforms/android: a composite
+# build uses one Android Gradle Plugin version for both builds.
+[versions]
+agp = "8.7.3"
+kotlin = "2.0.21"
+composeBom = "2024.12.01"
+activityCompose = "1.9.3"
+liquidGlass = "1.0.0"
+
+[libraries]
+liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-compose", version.ref = "liquidGlass" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-icons = { module = "androidx.compose.material:material-icons-core" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

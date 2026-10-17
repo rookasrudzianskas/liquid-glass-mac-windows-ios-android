@@ -125,6 +125,8 @@ Three rules cover almost everything:
 2. **One `GlassContent`** inside it, first, holds what the glass refracts: its content, and anything its modifier draws (`GlassContent(Modifier.fillMaxSize().background(gradient)) {}` works too).
 3. **Glass goes anywhere else in the scene**: `GlassSurface`, `Modifier.liquidGlass()` and every `Glass*` control, at any depth, moving, scrolling, scaling or animating.
 
+[`examples/compose/HelloGlass`](../examples/compose/HelloGlass) is a complete one-screen app built this way: a Regular glass card with a tinted and a plain button and a Frosted switch, a toolbar and a tab bar over the Aurora wallpaper, in one Kotlin file. It depends on `io.github.rookasrudzianskas:liquid-glass-compose:1.0.0`, resolved from this repository's source; its README shows how to take the published package instead.
+
 ## How it works
 
 `GlassContent` records its content into a GPU layer. Every glass surface in the scene registers with the scene and, each frame, reports where it is (its bounds in the content layer, after its own press scale and its ancestors' translation and scale), its shape, material, appearance, tint, refraction, opacity and pointer glow. On Android 13 and newer the content layer then gets a `RenderEffect` built from an AGSL translation of [`spec/shaders/liquid-glass.glsl`](../spec/shaders/liquid-glass.glsl):
@@ -423,6 +425,13 @@ cd platforms/android
 ```
 
 Outputs go to `artifacts/android/`: `liquid-glass-compose-1.0.0.aar` and a Maven repository in `maven/`. A release build of the Studio is signed with the key named in `platforms/android/local-signing.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; never committed), or with the debug key when that file is absent. CI ([`.github/workflows/android.yml`](../.github/workflows/android.yml)) runs the unit tests, lint, the library and APK builds, and the device tests on Android 14 (the GPU glass), Android 12 (the fallback over the platform blur) and Android 9 (the fallback without blur) emulators.
+
+The Hello Glass example is a Gradle build of its own that includes this one, so it builds the library from source:
+
+```sh
+cd examples/compose/HelloGlass
+./gradlew :app:assembleDebug
+```
 
 ## FAQ
 

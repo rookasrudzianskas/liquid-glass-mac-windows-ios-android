@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The wallpaper's darkest tone, shown before the first frame. -->
+    <color name="hello_background">#FF1A1B3F</color>
+</resources>
