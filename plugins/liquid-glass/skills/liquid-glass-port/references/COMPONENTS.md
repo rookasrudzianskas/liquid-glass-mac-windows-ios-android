@@ -36,6 +36,10 @@ Optional APIs that one port adds for its platform. They are not part of the shar
 | Jetpack Compose | `GlassDefaults` | The default constants (refraction, radii, content colors, surfaces per scene). |
 | WPF | `GlassDiagnostics` | Render tier, pixel shader support and shader status, for logs and about boxes. |
 | WPF | `GlassOptics` and the rest of `LiquidGlassEngineering.Core` | The optical model on the CPU (`netstandard2.0`). |
+| WPF | `GlassLens`, `GlassValueThumb` | The glass and value-thumb elements, named template parts (`PART_…`) for restyling controls. |
+| WPF | `GlassRenderMode`, `GlassShaderSource`, `GlassLensMode` | Choose shader or fallback rendering, see where the shader came from, and read which mode a lens actually rendered (`RenderedMode`). |
+| WPF | `GlassMenuPlacement`, `GlassSpacerSizing` | Where a menu panel opens, and fixed or flexible toolbar spacers. |
+| WPF | `GlassSurfaceAutomationPeer`, `GlassToolbarAutomationPeer`, `GlassTabBarAutomationPeer`, `GlassTabBarItemAutomationPeer`, `GlassMenuAutomationPeer`, `GlassMenuItemAutomationPeer`, `GlassSwitchAutomationPeer` | UI Automation peers, public so apps can subclass them for custom controls. |
 
 ## Shared options
 
