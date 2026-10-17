@@ -10,7 +10,7 @@ import { AndroidIcon, ArrowRightIcon, LaptopIcon, PhoneIcon, WindowIcon } from "
 
 type PlatformId = "apple" | "android" | "windows";
 
-const fromDocs = snippets as Partial<Record<PlatformId, Highlighted & { source: string | null }>>;
+const fromDocs = snippets as Partial<Record<PlatformId, Highlighted & { source: string | null; file?: string }>>;
 const samples = code as Record<string, Highlighted>;
 
 const PLATFORMS: {
@@ -22,6 +22,7 @@ const PLATFORMS: {
   install: string;
   installTitle: string;
   fallback: string;
+  /** The file name shown over the fallback sample (a docs snippet brings its own). */
   file: string;
   summary: string;
   icon: ReactNode;
@@ -30,7 +31,7 @@ const PLATFORMS: {
     id: "apple",
     tab: "SwiftUI",
     title: "SwiftUI for iOS and macOS",
-    targets: ["iOS 17+", "macOS 14+"],
+    targets: ["iOS 17+", "macOS 14+", "Xcode 16+"],
     gpu: "Metal",
     install: "spm",
     installTitle: "Swift Package Manager",
@@ -50,10 +51,11 @@ const PLATFORMS: {
     title: "Jetpack Compose for Android",
     targets: ["Android 7+", "Glass on Android 13+"],
     gpu: "AGSL",
-    install: "gradleDep",
+    // The library is on the project's Maven repository, not Maven Central: the repository line is part of the setup.
+    install: "gradleSetup",
     installTitle: "Gradle",
     fallback: "fallbackAndroid",
-    file: "Hero.kt",
+    file: "Hero.kt", // fallbackAndroid declares fun Hero()
     summary: "Composables and Modifier.liquidGlass() on RuntimeShader. Below Android 13 the same API draws the fallback material.",
     icon: (
       <span className="platform-icons" aria-hidden="true">
@@ -161,7 +163,7 @@ export function Platforms() {
               {snippet ? (
                 <CodeBlock
                   sample={snippet}
-                  title={p.file}
+                  title={fromDocs[p.id]?.file ?? p.file}
                   className="platform__code"
                   caption={fromDocs[p.id]?.source ? <>From {fromDocs[p.id]?.source}</> : undefined}
                 />

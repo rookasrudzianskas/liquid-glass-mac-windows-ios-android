@@ -11,6 +11,10 @@
     "lang": "kotlin",
     "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
   },
+  "gradleSetup": {
+    "lang": "kotlin",
+    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"{{SITE_URL}}/maven\")\n    }\n}\n\n// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
+  },
   "jitpack": {
     "lang": "kotlin",
     "code": "// settings.gradle.kts: repositories { maven(\"https://jitpack.io\") }\nimplementation(\"com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{{VERSION}}\")"
@@ -33,11 +37,11 @@
   },
   "skillsManual": {
     "lang": "shellscript",
-    "code": "curl -LO {{SITE_URL}}/downloads/liquid-glass-skills.zip\nunzip liquid-glass-skills.zip -d ~/.claude/skills    # Claude Code\nunzip liquid-glass-skills.zip -d ~/.agents/skills    # Codex and other Agent Skills tools"
+    "code": "curl -LO {{SITE_URL}}/downloads/liquid-glass-skills.zip\n\n# Claude Code\nunzip liquid-glass-skills.zip -d ~/.claude/skills\n# Codex and other Agent Skills tools\nunzip liquid-glass-skills.zip -d ~/.agents/skills"
   },
   "verify": {
     "lang": "shellscript",
-    "code": "curl -LO {{SITE_URL}}/downloads/SHA256SUMS   # into the folder with your downloads\nshasum -a 256 -c SHA256SUMS --ignore-missing    # macOS\nsha256sum -c SHA256SUMS --ignore-missing        # Linux\nGet-FileHash .\\LiquidGlassStudio-win-x64.zip     # Windows PowerShell (SHA-256 by default)"
+    "code": "# In the folder with your downloads\ncurl -LO {{SITE_URL}}/downloads/SHA256SUMS\n\n# macOS\nshasum -a 256 -c SHA256SUMS --ignore-missing\n# Linux\nsha256sum -c SHA256SUMS --ignore-missing\n# Windows PowerShell (SHA-256 by default)\nGet-FileHash .\\LiquidGlassStudio-win-x64.zip"
   },
   "fallbackApple": {
     "lang": "swift",

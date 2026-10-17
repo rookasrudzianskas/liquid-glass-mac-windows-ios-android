@@ -434,6 +434,13 @@
   color: var(--fg-3);
 }
 
+/* Keyboard hints mean nothing on a touch screen without a keyboard. */
+@media (hover: none) and (pointer: coarse) {
+  .search__hint {
+    display: none;
+  }
+}
+
 .theme-icon--dark,
 [data-theme="dark"] .theme-icon--light {
   display: none;

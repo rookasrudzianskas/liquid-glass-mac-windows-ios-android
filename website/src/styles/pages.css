@@ -229,7 +229,7 @@
 
 .dl-verify {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: 28px;
   align-items: center;
   padding: clamp(20px, 3vw, 32px);
@@ -332,8 +332,8 @@
 }
 
 .skill {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 24px;
   border-radius: 26px;
@@ -367,9 +367,54 @@
   color: var(--fg-2);
 }
 
+/* The SKILL.md description (written for agents, with its trigger words), on request. */
+.skill__trigger summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.skill__trigger summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill__trigger summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.skill__trigger[open] summary::after {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+.skill__trigger summary:hover {
+  color: var(--fg);
+}
+
+.skill__trigger p {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
 .skill__foot {
   display: flex;
   flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 4px;
   gap: 8px 18px;
   font-size: 14px;
   font-weight: 600;

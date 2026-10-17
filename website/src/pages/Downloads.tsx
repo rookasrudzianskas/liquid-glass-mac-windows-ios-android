@@ -7,6 +7,7 @@ import { Link, REPO_URL, SITE_URL } from "../router";
 import type { Head } from "../router";
 import { docHref } from "../docs";
 import { AndroidIcon, ArrowRightIcon, DownloadIcon, LaptopIcon, PackageIcon, ShieldIcon, TerminalIcon, WindowIcon } from "../components/Icons";
+import { SKILL_SUMMARIES } from "../lib/skills";
 
 interface Item {
   id: string;
@@ -28,6 +29,8 @@ interface Item {
 
 const manifest = downloads as { version: string; generatedAt: string | null; items: Item[]; notes?: Record<string, string> };
 const samples = code as unknown as Record<string, Highlighted>;
+// The WPF package depends on the Core package: a local package source needs both.
+const nugetCore = manifest.items.find((i) => i.packageId && /\.core$/i.test(i.packageId))?.packageId ?? "LiquidGlassEngineering.Core";
 
 /** Decimal (SI) units, as Finder, Windows Explorer and most download pages show sizes: 1 MB = 1,000,000 bytes. */
 export function formatBytes(bytes: number | null) {
@@ -56,7 +59,8 @@ function DownloadRow({ item }: { item: Item }) {
           {size ? <span>{size}</span> : null}
           <span>v{item.version}</span>
         </p>
-        <p className="dl__req">{item.requirements}</p>
+        {/* A skill row says what the skill is for; the requirement is stated once, for the section. */}
+        <p className="dl__req">{(item.kind === "skill" && SKILL_SUMMARIES[item.id.replace(/^skill-/, "")]) || item.requirements}</p>
         {manifest.notes?.[item.id] && item.available ? <p className="dl__note">{manifest.notes[item.id]}</p> : null}
         {item.available && item.sha256 ? (
           <p className="dl__sha">
@@ -86,7 +90,7 @@ const PLATFORMS = [
   {
     id: "apple",
     title: "Apple",
-    subtitle: "SwiftUI for iOS 17+ and macOS 14+",
+    subtitle: "SwiftUI for iOS 17+ and macOS 14+, built with Xcode 16 or later",
     Icon: LaptopIcon,
     install: [{ key: "spm", title: "Package.swift" }],
     note: (
@@ -121,7 +125,7 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        Or download the <code>.nupkg</code> below and add its folder as a local package source.
+        Or download both <code>.nupkg</code> files below (the WPF package depends on <code>{nugetCore}</code>) into one folder and add that folder as a local package source.
       </>
     ),
   },
@@ -196,7 +200,7 @@ export default function Downloads() {
               <h2 id="dl-all" className="dl-platform__title">
                 Source and agent skills
               </h2>
-              <p className="dl-platform__subtitle">The whole repository, and the Claude Code skills as zips</p>
+              <p className="dl-platform__subtitle">The whole repository, and the agent skills as zips for Claude Code or any tool that reads Agent Skills</p>
             </div>
             <Link href="/skills" className="text-link dl-platform__docs">
               About skills <ArrowRightIcon size={14} />

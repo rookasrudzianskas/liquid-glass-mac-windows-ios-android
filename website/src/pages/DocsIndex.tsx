@@ -5,7 +5,7 @@ import { DocsSidebar } from "./Doc";
 import { ArrowRightIcon, BookIcon, LaptopIcon, AndroidIcon, WindowIcon, TerminalIcon } from "../components/Icons";
 
 const PLATFORM_CARDS = [
-  { slug: "apple", title: "SwiftUI", detail: "iOS 17+ and macOS 14+, Metal", Icon: LaptopIcon },
+  { slug: "apple", title: "SwiftUI", detail: "iOS 17+ and macOS 14+, Xcode 16+, Metal", Icon: LaptopIcon },
   { slug: "android", title: "Jetpack Compose", detail: "Android 7+, glass on 13+, AGSL", Icon: AndroidIcon },
   { slug: "windows", title: "WPF", detail: ".NET 8+ or .NET Framework 4.8, Windows 10+, HLSL", Icon: WindowIcon },
 ];

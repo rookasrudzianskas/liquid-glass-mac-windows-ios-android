@@ -8,7 +8,6 @@
   },
   "scripts": {
     "content": "node scripts/content.mjs",
-    "assets": "node scripts/assets.mjs",
     "dev": "node scripts/content.mjs && vite",
     "typecheck": "node scripts/content.mjs && tsc -p tsconfig.json --noEmit",
     "lint": "oxlint src scripts --deny-warnings",

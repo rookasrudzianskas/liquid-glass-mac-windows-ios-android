@@ -9,6 +9,8 @@ interface Entry {
   anchor: string;
   heading: string;
   text: string;
+  /** The section without its code blocks and tables, for snippets (absent when the same as text). */
+  prose?: string;
 }
 
 interface Result extends Entry {
@@ -41,9 +43,15 @@ function search(index: Entry[], query: string): Result[] {
     }
     if (!ok) continue;
     if (!e.anchor) score += 1;
-    const first = terms.map((t) => text.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
+    // The snippet comes from the prose when it holds a term (or the match is only in the heading
+    // or title); a match only inside code shows the code around it.
+    const prose = e.prose ? { raw: e.prose, norm: norm(e.prose) } : null;
+    const useProse = prose !== null && (terms.some((t) => prose.norm.includes(t)) || !terms.some((t) => text.includes(t)));
+    const source = useProse ? prose.raw : e.text;
+    const haystack = useProse ? prose.norm : text;
+    const first = terms.map((t) => haystack.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
     const start = Math.max(0, first - 50);
-    const snippet = `${start > 0 ? "…" : ""}${e.text.slice(start, start + 160)}${start + 160 < e.text.length ? "…" : ""}`;
+    const snippet = `${start > 0 ? "…" : ""}${source.slice(start, start + 160)}${start + 160 < source.length ? "…" : ""}`;
     out.push({ ...e, score, snippet });
   }
   return out.sort((a, b) => b.score - a.score).slice(0, 12);

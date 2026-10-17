@@ -7,6 +7,7 @@ import { REPO_URL } from "../router";
 import type { Head } from "../router";
 import { formatBytes } from "./Downloads";
 import { BookIcon, DownloadIcon, GitHubIcon, SparkleIcon, TerminalIcon } from "../components/Icons";
+import { SKILL_ROLES, SKILL_SUMMARIES } from "../lib/skills";
 
 interface Skill {
   name: string;
@@ -28,14 +29,6 @@ interface Item {
 const data = skillsData as { plugin: { name: string; version: string; description: string } | null; marketplace: { name: string } | null; hasAgentsMd: boolean; skills: Skill[] };
 const items = (downloads as { items: Item[] }).items;
 const samples = code as unknown as Record<string, Highlighted>;
-
-const ROLES: Record<string, string> = {
-  "liquid-glass": "Design and platform choice",
-  "liquid-glass-swiftui": "SwiftUI on iOS and macOS",
-  "liquid-glass-compose": "Jetpack Compose on Android",
-  "liquid-glass-wpf": "WPF on Windows",
-  "liquid-glass-port": "Port the optical model",
-};
 
 export default function Skills() {
   const all = items.find((i) => i.id === "skills");
@@ -108,9 +101,15 @@ export default function Skills() {
                 <li key={s.name} className="skill">
                   <div className="skill__head">
                     <code className="skill__name">{s.name}</code>
-                    <span className="skill__role">{ROLES[s.name] ?? s.title}</span>
+                    <span className="skill__role">{SKILL_ROLES[s.name] ?? s.title}</span>
                   </div>
-                  <p className="skill__desc">{s.description}</p>
+                  <p className="skill__desc">{SKILL_SUMMARIES[s.name] ?? s.description}</p>
+                  {SKILL_SUMMARIES[s.name] && s.description ? (
+                    <details className="skill__trigger">
+                      <summary>When agents use it</summary>
+                      <p>{s.description}</p>
+                    </details>
+                  ) : null}
                   <div className="skill__foot">
                     <span className="skill__files">
                       {s.files} {s.files === 1 ? "file" : "files"}

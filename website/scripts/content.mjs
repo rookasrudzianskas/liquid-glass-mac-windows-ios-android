@@ -227,6 +227,31 @@ function parseFrontmatter(src) {
   return { data: typeof data === "object" && data ? data : {}, body: src.slice(m[0].length) };
 }
 
+/** Every file this run writes below public/media; the rest is stale and removed at the end. */
+const mediaOutputs = new Set();
+
+async function pruneMedia() {
+  const root = path.join(pub, "media");
+  const removed = [];
+  const sweep = async (dir) => {
+    let empty = true;
+    for (const name of await readdir(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, name.name);
+      if (name.isDirectory()) {
+        if (await sweep(abs)) await rm(abs, { recursive: true, force: true });
+        else empty = false;
+      } else if (mediaOutputs.has(abs)) empty = false;
+      else {
+        await rm(abs, { force: true });
+        removed.push(toPosix(path.relative(pub, abs)));
+      }
+    }
+    return empty;
+  };
+  if (exists(root)) await sweep(root);
+  if (removed.length) log(`media: removed ${removed.length} stale file(s): ${removed.join(", ")}`);
+}
+
 async function copyMedia(rel) {
   // rel is repo-relative. Raster images become WebP (max 1600 px wide) in
   // public/media; anything else is copied as is.
@@ -235,6 +260,7 @@ async function copyMedia(rel) {
   if (/\.(png|jpe?g)$/i.test(rel)) {
     const outRel = rel.replace(/\.(png|jpe?g)$/i, ".webp");
     const to = path.join(pub, "media", outRel);
+    mediaOutputs.add(to);
     const input = await readFile(from);
     const info = await cached(`media-${outRel.replace(/[^\w.-]+/g, "_")}`, sha(input), [to], async () => {
       const s = await sharp();
@@ -246,6 +272,7 @@ async function copyMedia(rel) {
     return { src: `/media/${toPosix(outRel)}`, width: info.width, height: info.height };
   }
   const to = path.join(pub, "media", rel);
+  mediaOutputs.add(to);
   await mkdir(path.dirname(to), { recursive: true });
   const [a, b] = await Promise.all([stat(from), exists(to) ? stat(to) : null]);
   if (!b || b.size !== a.size || b.mtimeMs < a.mtimeMs) await copyFile(from, to);
@@ -385,11 +412,26 @@ async function renderDoc(entry, slugByFile) {
     if (!cells.some((c) => !stripTags(c[2] ?? "").trim())) return whole;
     const cornerEmpty = !stripTags(cells[0]?.[2] ?? "").trim();
     const headHtml = cells
-      .map((c, i) => (stripTags(c[2] ?? "").trim() || (i === 0 && cornerEmpty) ? `<th${c[1]}>${c[2]}</th>` : `<th${c[1]}><span class="sr-only">Details</span></th>`))
+      // An empty corner is a data cell: an empty header cell names nothing.
+      .map((c, i) => (stripTags(c[2] ?? "").trim() ? `<th${c[1]}>${c[2]}</th>` : i === 0 && cornerEmpty ? "<td></td>" : `<th${c[1]}><span class="sr-only">Details</span></th>`))
       .join("");
     const rows = cornerEmpty && firstColumnIsHeader(rest) ? toRowHeaders(rest) : rest;
     return `<table><thead><tr>${headHtml}</tr></thead>${rows}</table>`;
   });
+
+  // A contents list written in the body (a "Contents" section, or a list of
+  // links to the page's own headings) becomes one consistent block that shows
+  // only where the "On this page" column is hidden (docs.css).
+  html = html.replace(
+    /(?:<h2 id="(?:contents|table-of-contents|on-this-page)">[\s\S]*?<\/h2>\s*)?<(ul|ol)>\s*((?:<li><a href="#[^"]+">[\s\S]*?<\/a><\/li>\s*){3,})<\/\1>/,
+    (_m, _tag, items) => {
+      for (const id of ["contents", "table-of-contents", "on-this-page"]) {
+        const at = headings.findIndex((h) => h.id === id);
+        if (at >= 0) headings.splice(at, 1);
+      }
+      return `<nav class="prose-toc" aria-label="On this page"><p class="prose-toc__title">On this page</p><ul role="list">${items.trim()}</ul></nav>\n`;
+    },
+  );
 
   html = html
     .replace(/<table( class="[^"]*")?>/g, '<div class="table-wrap"><table$1>')
@@ -405,6 +447,7 @@ async function renderDoc(entry, slugByFile) {
     const text = stripTags(
       part
         .replace(/<a class="anchor"[^>]*>#<\/a>/g, "")
+        .replace(/<nav class="prose-toc"[\s\S]*?<\/nav>/g, " ")
         // A code block's bar (language label and copy button) is chrome, not content.
         .replace(/<div class="code__bar">[\s\S]*?<\/div>/g, " ")
         .replace(/<button[^>]*>[\s\S]*?<\/button>/g, "")
@@ -415,7 +458,20 @@ async function renderDoc(entry, slugByFile) {
       .trim();
     if (!text) continue;
     const heading = m ? sections.find((s) => s.id === m[1])?.heading ?? "" : "";
-    plain.push({ anchor: m?.[1] ?? "", heading, text: heading && text.startsWith(heading) ? text.slice(heading.length).trim() : text });
+    const trim = (t) => (heading && t.startsWith(heading) ? t.slice(heading.length).trim() : t);
+    // Result snippets read better as prose: the same text without code blocks and tables.
+    const prose = stripTags(
+      part
+        .replace(/<h[2-4] id="[^"]+">[\s\S]*?<\/h[2-4]>/, " ")
+        .replace(/<nav class="prose-toc"[\s\S]*?<\/nav>/g, " ")
+        .replace(/<div class="code"[\s\S]*?<\/pre><\/div>/g, " ")
+        .replace(/<pre[\s\S]*?<\/pre>/g, " ")
+        .replace(/<table[\s\S]*?<\/table>/g, " ")
+        .replace(/<\/(?:p|li|dt|dd|div|blockquote|figcaption)>|<br\s*\/?>/g, " "),
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    plain.push({ anchor: m?.[1] ?? "", heading, text: trim(text), prose });
   }
 
   const firstPara = /<p>([\s\S]*?)<\/p>/.exec(html);
@@ -614,7 +670,12 @@ async function buildDocs() {
     json(docs.map(({ slug, title, nav, group, order, description, source, updated }) => ({ slug, title, nav, group, order, description, source, updated }))),
   );
   const search = [];
-  for (const d of docs) for (const s of d.sections) search.push({ slug: d.slug, title: d.title, anchor: s.anchor, heading: s.heading, text: s.text.slice(0, 900) });
+  for (const d of docs) {
+    for (const s of d.sections) {
+      const prose = s.prose && s.prose !== s.text ? s.prose.slice(0, 400) : undefined;
+      search.push({ slug: d.slug, title: d.title, anchor: s.anchor, heading: s.heading, text: s.text.slice(0, 900), ...(prose ? { prose } : null) });
+    }
+  }
   await writeIfChanged(path.join(gen, "search.json"), json(search));
   log(`docs: ${docs.map((d) => d.slug).join(", ") || "(none)"}`);
   return docs;
@@ -720,6 +781,13 @@ function pickSnippet(markdown, langs) {
   return candidates[0] ?? null;
 }
 
+/** A file name for a snippet, from what it declares (struct ContentView -> ContentView.swift). */
+function snippetFile(platform, code) {
+  if (platform === "apple") return `${/\bstruct\s+(\w+)\s*:\s*View\b/.exec(code)?.[1] ?? "ContentView"}.swift`;
+  if (platform === "android") return `${/\bfun\s+([A-Z]\w*)\s*\(/.exec(code)?.[1] ?? "MainActivity"}.kt`;
+  return `${/x:Class="(?:[\w.]+\.)?(\w+)"/.exec(code)?.[1] ?? "MainWindow"}.xaml`;
+}
+
 async function buildSnippets(docs) {
   const out = {};
   for (const [platform, langs] of Object.entries(SNIPPET_LANGS)) {
@@ -727,7 +795,7 @@ async function buildSnippets(docs) {
     const pick = pickSnippet(doc?.markdown, langs);
     if (pick) {
       const h = await highlight(pick.code, pick.lang);
-      out[platform] = { code: pick.code, html: h.html, lang: h.lang, source: doc?.source ?? null };
+      out[platform] = { code: pick.code, html: h.html, lang: h.lang, source: doc?.source ?? null, file: snippetFile(platform, pick.code) };
     }
   }
   await writeIfChanged(path.join(gen, "snippets.json"), json(out));
@@ -774,7 +842,160 @@ async function cached(key, inputs, outputs, work) {
 }
 
 const WALLPAPER_SIZES = [640, 1024, 1536, 2048, 3072];
-const WALLPAPER_FOCUS = { aurora: [0.5, 0.42], dunes: [0.5, 0.4], ocean: [0.5, 0.4], midnight: [0.5, 0.42] };
+// Aurora frames its lower bands: behind the hero copy, its bright mint band beside a dark sky
+// leaves no text color legible on both (heroLegibility checks every wallpaper).
+const WALLPAPER_FOCUS = { aurora: [0.5, 0.64], dunes: [0.5, 0.4], ocean: [0.5, 0.4], midnight: [0.5, 0.42] };
+
+// ---------------------------------------------------------------------------
+// Hero legibility. The hero copy sits straight on the wallpaper, so for each
+// wallpaper the build picks the text tone (dark text on a light wallpaper or
+// white text on a dark one) and the strength of the soft wash under the copy
+// (.hero__copy::before in home.css), from the pixels that are actually behind
+// the text after cover-fitting at common screen sizes. It fails when no wash up
+// to MAX_SCRIM keeps the lead and the buttons at 4.5:1 and the title at 3:1
+// (WCAG 2 contrast, with the text alphas home.css uses).
+
+/** Text boxes of the hero copy in CSS pixels, measured in the built page at each size ([left, top, right, bottom]). */
+const HERO_LAYOUTS = [
+  // A 16:10 laptop, a 1280x720 laptop and a phone (re-measure when the hero copy or its CSS changes).
+  { size: [1440, 900], copy: [296, 142, 1144, 539], eyebrow: [[596, 144, 844, 162]], title: [[499, 174, 941, 274], [296, 255, 1144, 355]], lead: [[442, 371, 998, 396], [441, 401, 999, 427], [499, 432, 941, 457]], glass: [[722, 491, 881, 539]] },
+  { size: [1280, 720], copy: [301, 84, 979, 427], eyebrow: [[516, 86, 764, 104]], title: [[463, 113, 817, 193], [301, 178, 979, 258]], lead: [[334, 272, 946, 295], [331, 300, 949, 323], [530, 328, 750, 352]], glass: [[642, 379, 801, 427]] },
+  { size: [390, 844], copy: [16, 86, 374, 447], eyebrow: [[71, 89, 319, 107]], title: [[83, 121, 307, 172], [61, 162, 329, 213], [118, 204, 272, 254]], lead: [[28, 274, 362, 294], [28, 298, 362, 319], [17, 323, 373, 343], [67, 348, 323, 368]], glass: [[197, 399, 356, 447]] },
+];
+/** Widths up to this use the phone wash (the max-width: 820px rule in home.css). */
+const HERO_NARROW = 820;
+const HERO_FG = { light: [17, 17, 19], dark: [255, 255, 255] }; // --hero-fg
+const HERO_FG2_ALPHA = 0.9; // --hero-fg-2 (eyebrow and lead)
+const HERO_GLASS_FILL = { light: [255, 255, 255, 0.36], dark: [255, 255, 255, 0.1] }; // .hero .button--glass
+const HERO_SCRIM_RGB = { light: [255, 255, 255], dark: [0, 0, 0] }; // --hero-scrim-rgb
+// The wash: a radial gradient over the copy box grown by these fractions per side, with these stops.
+const SCRIM_GROW = [0.14, 0.16];
+const SCRIM_STOPS = [[0, 1], [0.45, 0.96], [0.62, 0.82], [0.76, 0.55], [0.89, 0.24], [1, 0]];
+const MAX_SCRIM = 0.6;
+// A tone forced for a wallpaper; empty while the measured choice is right for all of them.
+const TONE_OVERRIDE = {};
+
+const srgbToLinear = (c) => {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+};
+const luminance = ([r, g, b]) => 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+/** Source-over in sRGB, as browsers composite. */
+const over = (top, alpha, under) => under.map((u, i) => (top[i] ?? 0) * alpha + u * (1 - alpha));
+
+function scrimAt(x, y, copy) {
+  const [l, t, r, b] = copy;
+  const rx = ((r - l) * (1 + 2 * SCRIM_GROW[0])) / 2;
+  const ry = ((b - t) * (1 + 2 * SCRIM_GROW[1])) / 2;
+  const d = Math.hypot((x - (l + r) / 2) / rx, (y - (t + b) / 2) / ry);
+  for (let i = 1; i < SCRIM_STOPS.length; i++) {
+    const [p0, a0] = SCRIM_STOPS[i - 1];
+    const [p1, a1] = SCRIM_STOPS[i];
+    if (d <= p1) return a0 + ((a1 - a0) * (d - p0)) / (p1 - p0);
+  }
+  return 0;
+}
+
+async function heroLegibility(name, input, focus) {
+  const s = await sharp();
+  const N = 384;
+  const { data } = await s(input).resize(N, N, { fit: "fill", kernel: "lanczos3" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const pixel = (ix, iy) => {
+    const i = (Math.min(N - 1, Math.max(0, iy)) * N + Math.min(N - 1, Math.max(0, ix))) * 3;
+    return [data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0];
+  };
+  // The wallpaper pixels under every text box, with the wash weight at each one, for wide
+  // screens and for phones (home.css gives each its own wash; the tone is shared).
+  const groupsFor = (layouts) => {
+    const groups = { title: [], body: [], glass: [] };
+    for (const layout of layouts) {
+      const [w, h] = layout.size;
+      // Cover-fit keeping the focal point in view, as the renderer does.
+      const scale = Math.max(w / N, h / N);
+      const dw = N * scale;
+      const dh = N * scale;
+      const x0 = Math.min(0, Math.max(w - dw, w / 2 - focus[0] * dw));
+      const y0 = Math.min(0, Math.max(h - dh, h / 2 - focus[1] * dh));
+      const sample = (box) => {
+        const out = [];
+        for (let y = box[1]; y < box[3]; y += 3) {
+          for (let x = box[0]; x < box[2]; x += 3) out.push({ rgb: pixel(Math.floor((x - x0) / scale), Math.floor((y - y0) / scale)), wash: scrimAt(x, y, layout.copy) });
+        }
+        return out;
+      };
+      for (const box of layout.title) groups.title.push(...sample(box));
+      for (const box of [...layout.eyebrow, ...layout.lead]) groups.body.push(...sample(box));
+      // A glass button blurs what is under it: its mean color is what its label sits on.
+      for (const box of layout.glass) groups.glass.push(sample(box));
+    }
+    return groups;
+  };
+  const sets = {
+    wide: groupsFor(HERO_LAYOUTS.filter((l) => l.size[0] > HERO_NARROW)),
+    narrow: groupsFor(HERO_LAYOUTS.filter((l) => l.size[0] <= HERO_NARROW)),
+  };
+  // The contrast nearly all of the text has (the 2nd percentile, so a hairline wave edge does not decide).
+  const low = (values) => values.sort((a, b) => a - b)[Math.floor(values.length * 0.02)] ?? 0;
+  const measure = (groups, tone, peak) => {
+    const fg = HERO_FG[tone];
+    const wash = HERO_SCRIM_RGB[tone];
+    const under = (p) => over(wash, p.wash * peak, p.rgb);
+    const title = low(groups.title.map((p) => contrast(fg, under(p))));
+    const body = low(
+      groups.body.map((p) => {
+        const bg = under(p);
+        return contrast(over(fg, HERO_FG2_ALPHA, bg), bg);
+      }),
+    );
+    const [fr, fg2, fb, fa] = HERO_GLASS_FILL[tone];
+    const glass = Math.min(
+      ...groups.glass.map((list) => {
+        const mean = [0, 1, 2].map((c) => list.reduce((sum, p) => sum + (under(p)[c] ?? 0), 0) / list.length);
+        return contrast(fg, over([fr, fg2, fb], fa, mean));
+      }),
+    );
+    return { title, body, glass, ok: title >= 3 && body >= 4.5 && glass >= 4.5 };
+  };
+  const required = (groups, tone) => {
+    if (!groups.title.length) return { peak: 0 };
+    for (let step = 0; step <= Math.round(MAX_SCRIM * 100); step++) {
+      const peak = step / 100;
+      if (measure(groups, tone, peak).ok) return { peak };
+    }
+    return null;
+  };
+  const option = (tone) => {
+    const wide = required(sets.wide, tone);
+    const narrow = required(sets.narrow, tone);
+    return wide && narrow ? { wide: wide.peak, narrow: narrow.peak, worst: Math.max(wide.peak, narrow.peak) } : null;
+  };
+  const options = { light: option("light"), dark: option("dark") };
+  const forced = TONE_OVERRIDE[name];
+  const tone = forced ?? (!options.dark || (options.light && options.light.worst <= options.dark.worst) ? "light" : "dark");
+  const best = options[tone];
+  if (!best) {
+    const failing = Object.entries(sets)
+      .map(([kind, groups]) => {
+        const m = measure(groups, tone, MAX_SCRIM);
+        return m.ok ? null : `${kind} screens: title ${m.title.toFixed(2)}:1 (needs 3), eyebrow and lead ${m.body.toFixed(2)}:1, glass button ${m.glass.toFixed(2)}:1 (need 4.5)`;
+      })
+      .filter(Boolean);
+    throw new Error(`hero copy on the ${name} wallpaper stays below WCAG contrast in ${tone} tone with the strongest wash (${MAX_SCRIM}): ${failing.join("; ")}. Adjust its focus, tone or the hero colors.`);
+  }
+  // A little headroom over the minimum, for rounding and the antialiased edges of the gradient.
+  const headroom = (peak) => Math.min(MAX_SCRIM, Math.round((peak + 0.04) * 100) / 100);
+  const scrim = headroom(best.wide);
+  const scrimNarrow = headroom(best.narrow);
+  const report = (kind, peak) => {
+    const m = measure(sets[kind], tone, peak);
+    return `${kind} wash ${peak}: title ${m.title.toFixed(1)}:1, lead ${m.body.toFixed(1)}:1, glass button ${m.glass.toFixed(1)}:1`;
+  };
+  return { tone, scrim, scrimNarrow, report: `${report("wide", scrim)}; ${report("narrow", scrimNarrow)}` };
+}
 
 async function buildWallpapers() {
   const dir = path.join(repo, "assets/wallpapers");
@@ -808,25 +1029,23 @@ async function buildWallpapers() {
         await base.clone().webp({ quality: 82, effort: 5 }).toFile(path.join(outDir, `${name}-${size}.webp`));
         await base.clone().jpeg({ quality: 84, mozjpeg: true, progressive: true }).toFile(path.join(outDir, `${name}-${size}.jpg`));
       }
-      // Average color and the brightness of the top third (where hero copy sits).
+      // Average color (the placeholder shown while the image loads).
       const { data } = await s(input).resize(48, 48, { fit: "fill" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-      let r = 0, g = 0, b = 0, top = 0;
+      let r = 0, g = 0, b = 0;
       for (let i = 0; i < 48 * 48; i++) {
-        const R = data[i * 3] ?? 0, G = data[i * 3 + 1] ?? 0, B = data[i * 3 + 2] ?? 0;
-        r += R; g += G; b += B;
-        if (i < 48 * 16) top += 0.2126 * R + 0.7152 * G + 0.0722 * B;
+        r += data[i * 3] ?? 0;
+        g += data[i * 3 + 1] ?? 0;
+        b += data[i * 3 + 2] ?? 0;
       }
       const n = 48 * 48;
       const hex = (v) => Math.round(v / n).toString(16).padStart(2, "0");
-      const topLuma = top / (48 * 16) / 255;
-      return {
-        width: meta.width ?? src.size,
-        height: meta.height ?? src.size,
-        color: `#${hex(r)}${hex(g)}${hex(b)}`,
-        tone: topLuma > 0.55 ? "light" : "dark",
-        focus: WALLPAPER_FOCUS[name] ?? [0.5, 0.5],
-      };
+      return { width: meta.width ?? src.size, height: meta.height ?? src.size, color: `#${hex(r)}${hex(g)}${hex(b)}` };
     });
+    // Hero tone and wash, measured behind the copy (cheap, so it runs on every build).
+    const focus = WALLPAPER_FOCUS[name] ?? [0.5, 0.5];
+    const legibility = await heroLegibility(name, input, focus);
+    items[name] = { ...items[name], focus, tone: legibility.tone, scrim: legibility.scrim, scrimNarrow: legibility.scrimNarrow };
+    log(`hero on ${name}: ${legibility.tone} tone; ${legibility.report}`);
   }
   const sizes = WALLPAPER_SIZES.filter((s) => Object.values(items).every((it) => it.width >= s));
   await writeIfChanged(path.join(gen, "wallpapers.json"), json({ sizes: sizes.length ? sizes : [1024], formats: ["avif", "webp", "jpg"], items }));
@@ -855,6 +1074,7 @@ async function buildScreens() {
         const input = await readFile(path.join(dir, f));
         const base = f.replace(/\.[^.]+$/, "");
         const target = path.join(pub, "media/screens", platform, `${base}.webp`);
+        mediaOutputs.add(target);
         const info = await cached(`screen-${platform}-${base}`, sha(input), [target], async () => {
           const s = await sharp();
           const meta = await s(input).metadata();
@@ -915,7 +1135,7 @@ async function buildDownloads() {
     // Since macOS 15, Control-click › Open no longer overrides Gatekeeper for an app that is not notarized.
     if (/not notarized/i.test(readme)) {
       notes["macos-studio"] =
-        'Not notarized, so macOS blocks the first launch: open System Settings › Privacy & Security and click Open Anyway (on macOS 14, Control-click › Open also works), or run xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app".';
+        'Not notarized, so macOS blocks the first launch. Move Liquid Glass Studio to Applications and open it; when macOS refuses, click Open Anyway in System Settings › Privacy & Security (on macOS 14, Control-click › Open also works). Or, once it is in Applications, run xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app".';
     }
   } catch {
     /* no notes */
@@ -941,24 +1161,29 @@ async function buildLlms(docs, skills, packages) {
     "",
     "> Native Liquid Glass for iOS, macOS, Android and Windows: refraction, Clear and Regular materials, rim light and elastic interaction, with one optical model shared by SwiftUI (Metal), Jetpack Compose (AGSL) and WPF (HLSL). Open source, MIT.",
     "",
-    `- Website: ${SITE_URL}`,
-    `- Source: ${REPO_URL}`,
+    // Free-form details go before the first H2 (llms.txt format); every H2 section below is a list of links.
+    `Website: ${SITE_URL}. Source: ${REPO_URL}.`,
     "",
-    "## Install",
+    "Install:",
     "",
-    `- Swift Package Manager (iOS 17+, macOS 14+): \`.package(url: "${REPO_URL}", from: "${version}")\`, product \`LiquidGlass\``,
+    `- Swift Package Manager (iOS 17+, macOS 14+; builds with Xcode 16 or later): \`.package(url: "${REPO_URL}", from: "${version}")\`, product \`LiquidGlass\``,
     `- Gradle (Jetpack Compose, Android 7+, glass on 13+): repository \`maven("${SITE_URL}/maven")\` in settings.gradle.kts, then \`implementation("io.github.rookasrudzianskas:liquid-glass-compose:${version}")\``,
     `- Gradle from JitPack instead: repository \`maven("https://jitpack.io")\`, then \`implementation("com.github.${repoSlug.replace("/", ":")}:${version}")\``,
     `- NuGet (WPF on .NET Framework 4.8, .NET 8 and .NET 10): the package ${nugetId} ${version} is on the project feed, not nuget.org: \`dotnet nuget add source ${SITE_URL}/nuget/index.json -n liquid-glass\`, then \`dotnet add package ${nugetId} --version ${version}\``,
     "",
+    ...(skills.skills.length
+      ? [
+          `Agent skills: in Claude Code, \`/plugin marketplace add ${repoSlug}\` then \`/plugin install ${skills.plugin?.name ?? "liquid-glass"}@${skills.marketplace?.name ?? "liquid-glass-engineering"}\`. Or unzip ${SITE_URL}/downloads/liquid-glass-skills.zip into ~/.claude/skills (Claude Code) or ~/.agents/skills (other Agent Skills tools).`,
+          "",
+        ]
+      : []),
     "## Docs",
     "",
     ...docs.map((d) => `- [${d.title}](${SITE_URL}/docs/${d.slug}.md): ${d.description || d.nav}`),
     "",
   ];
   if (skills.skills.length) {
-    const plugin = `${skills.plugin?.name ?? "liquid-glass"}@${skills.marketplace?.name ?? "liquid-glass-engineering"}`;
-    lines.push("## Agent skills", "", `Install in Claude Code: \`/plugin marketplace add ${repoSlug}\` then \`/plugin install ${plugin}\`. Or unzip ${SITE_URL}/downloads/liquid-glass-skills.zip into ~/.claude/skills (Claude Code) or ~/.agents/skills (other Agent Skills tools).`, "");
+    lines.push("## Agent skills", "");
     for (const s of skills.skills) lines.push(`- [${s.name}](${REPO_URL}/blob/main/${s.source}): ${s.description}`);
     lines.push("");
   }
@@ -999,6 +1224,7 @@ async function main() {
   await buildIcons();
   await buildWallpapers();
   await buildScreens();
+  await pruneMedia();
   log(`done in ${Date.now() - started} ms`);
 }
 
