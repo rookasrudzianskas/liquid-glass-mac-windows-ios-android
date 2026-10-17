@@ -14,7 +14,7 @@ Thanks for helping. Liquid Glass Engineering is one optical model in four places
 
 | Part | Toolchain |
 | --- | --- |
-| Apple (`Package.swift`, `Sources/`, `Tests/`, `platforms/apple/`) | Xcode 15 or later. When Xcode is not the selected developer directory, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. `swift build` alone does not compile the Metal shaders; use `xcodebuild`. |
+| Apple (`Package.swift`, `Sources/`, `Tests/`, `platforms/apple/`) | Xcode 16 or later (iOS 18 / macOS 15 SDK; the deployment targets stay iOS 17 and macOS 14). When Xcode is not the selected developer directory, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. `swift build` alone does not compile the Metal shaders; use `xcodebuild`. |
 | Android (`platforms/android/`) | JDK 17. The Gradle wrapper is checked in. |
 | Windows (`platforms/windows/`) | .NET 10 SDK (`global.json`). `scripts/dotnet.sh` builds on macOS and Linux too; the WPF tests and the Studio need Windows. |
 | Website and scripts (`website/`, `scripts/`, `spec/`) | Node 22 (20.19 or later). The scripts use only Node built-ins. |

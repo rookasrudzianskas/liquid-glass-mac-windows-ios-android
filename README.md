@@ -49,7 +49,7 @@ Each port draws the glass itself on the GPU, with Metal, AGSL or an HLSL pixel s
 | UI framework | SwiftUI | Jetpack Compose | WPF |
 | Glass renderer | Metal | AGSL `RenderEffect` | HLSL pixel shader 3.0 |
 | Package | Swift package, product `LiquidGlass` | `io.github.rookasrudzianskas:liquid-glass-compose` | NuGet `LiquidGlassEngineering.Wpf` |
-| Requirements | iOS 17+, macOS 14+; Xcode 15+ (Swift 5.9) | minSdk 24 (Android 7); GPU glass on API 33 (Android 13)+ | Windows 10 1809+ or Windows 11; `net48`, `net8.0-windows`, `net10.0-windows` |
+| Requirements | iOS 17+, macOS 14+; Xcode 16+ (iOS 18 / macOS 15 SDK) | minSdk 24 (Android 7); GPU glass on API 33 (Android 13)+ | Windows 10 1809+ or Windows 11; `net48`, `net8.0-windows`, `net10.0-windows` |
 | GPU glass | Every supported device | Android 13 and later | Pixel shader 3.0 (every DirectX 10-class GPU, and WARP) |
 | Guide | [docs/apple.md](docs/apple.md) | [docs/android.md](docs/android.md) | [docs/windows.md](docs/windows.md) |
 
@@ -253,7 +253,7 @@ Prebuilt apps are on the [downloads page](https://liquid-glass-engineering.verce
 
 | Platform | Download | Notes |
 | --- | --- | --- |
-| macOS 14+ | `liquid-glass-studio-macos.zip` | Ad-hoc signed: right-click › Open the first time. |
+| macOS 14+ | `liquid-glass-studio-macos.zip` | Ad-hoc signed, not notarized: allow it once in System Settings › Privacy & Security › Open Anyway (Control-click › Open on macOS 14). |
 | Android 7+ | `liquid-glass-studio-android.apk` | `adb install liquid-glass-studio-android.apk` |
 | Windows 10 1809+ (x64) | `LiquidGlassStudio-win-x64.zip` | Needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |
 | Windows 10 1809+ (x64) | `LiquidGlassStudio-win-x64-self-contained.zip` | No .NET install needed. |
@@ -303,7 +303,7 @@ jitpack.yml                           JitPack build of the Android library
 
 | Part | Toolchain | Build and test |
 | --- | --- | --- |
-| Apple | Xcode 15 or later | `xcodebuild test -scheme LiquidGlass -destination 'platform=macOS'` |
+| Apple | Xcode 16 or later | `xcodebuild test -scheme LiquidGlass -destination 'platform=macOS'` |
 | Android | JDK 17 (the Gradle wrapper is included) | `cd platforms/android && ./gradlew :liquidglass:testDebugUnitTest` |
 | Windows | .NET 10 SDK (builds on macOS and Linux; the WPF tests need Windows) | `cd platforms/windows && scripts/dotnet.sh test tests/LiquidGlass.Core.Tests` |
 | Website | Node 22 (20.19 or later) | `cd website && npm ci && npm run build` |
