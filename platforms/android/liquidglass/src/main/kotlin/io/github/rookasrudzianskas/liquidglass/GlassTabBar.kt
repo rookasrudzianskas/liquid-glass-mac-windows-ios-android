@@ -54,7 +54,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.FrameAnimator
 import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassHaptics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
 import io.github.rookasrudzianskas.liquidglass.optics.SpringValue
@@ -121,7 +121,7 @@ public fun GlassTabBar(
     motion: GlassMotion? = null,
 ) {
     require(tabs.isNotEmpty()) { "GlassTabBar needs at least one tab" }
-    val style = LocalGlassStyle.current
+    val style = currentGlassStyle()
     val density = LocalDensity.current.density
     val view = LocalView.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl

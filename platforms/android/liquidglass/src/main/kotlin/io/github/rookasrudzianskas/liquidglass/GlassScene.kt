@@ -21,6 +21,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassOverlayLevel
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.OVERLAY_LEVEL
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.rememberSystemReduceMotion
 
 /**
@@ -101,7 +102,12 @@ public fun GlassScene(
 /**
  * The backdrop layer of the enclosing [GlassScene]: everything glass in the
  * scene refracts. Any Compose UI works, including `LazyColumn` and other
- * scrolling content, video or animation; the glass follows it every frame.
+ * scrolling content, animation, and video or camera previews drawn into a
+ * `TextureView`; the glass follows it every frame. A `SurfaceView` (the default
+ * of Media3's `PlayerView`, CameraX's `PreviewView` in PERFORMANCE mode and
+ * `MapView`) is composited by the system outside the view hierarchy, so glass
+ * cannot refract it: use `app:surface_type="texture_view"` or
+ * `PreviewView.ImplementationMode.COMPATIBLE`.
  *
  * Use one per scene, below the glass (first in the scene's content). Glass
  * placed inside the content itself cannot refract the layer it belongs to and
@@ -146,7 +152,8 @@ private fun BoxScope.GlassOverlayHost(scene: GlassSceneState) {
 internal fun GlassLocalScene(modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
     val parent = LocalGlassScene.current
     val scene = remember(parent) { GlassSceneState(parent) }
-    CompositionLocalProvider(LocalGlassScene provides scene) {
+    // Outside any scene the control resolves the system style once, for its own composables and nodes alike.
+    CompositionLocalProvider(LocalGlassScene provides scene, LocalGlassStyle provides currentGlassStyle()) {
         Box(modifier, contentAlignment = AbsoluteAlignment.TopLeft, content = content)
     }
 }

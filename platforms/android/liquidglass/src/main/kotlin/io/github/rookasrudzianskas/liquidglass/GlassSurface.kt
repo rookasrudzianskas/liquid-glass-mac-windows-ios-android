@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
 
 /**
@@ -207,7 +207,7 @@ public fun GlassIcon(
 /** Provides the foreground color for glass of this appearance and tint. */
 @Composable
 internal fun ProvideGlassContentColor(appearance: GlassAppearance?, tint: Color, content: @Composable () -> Unit) {
-    val dark = LocalGlassStyle.current.isDark(appearance)
+    val dark = currentGlassStyle().isDark(appearance)
     val color = when {
         tint.isSpecified -> if (tint.luminance() > 0.6f) GlassDefaults.LightContentColor else GlassDefaults.DarkContentColor
         else -> GlassDefaults.contentColor(dark)

@@ -24,7 +24,7 @@ import io.github.rookasrudzianskas.liquidglass.optics.shapeParams
  * sharp  = glass shader (Clear and solid glass) on the content
  * frost  = glass shader (Regular glass only) on
  *          mix(blur σ7.33, max|min(blur σ7.33, blur σ23|21.8), fillOpacity)
- * result = frost source-over sharp
+ * result = sharp + frost               (each pass leaves out what the other passes' glass hides)
  * ```
  *
  * The frost is exact: Skia blurs and blends in the working color space, which
@@ -62,12 +62,13 @@ internal class GlassEffectBuilder {
             if (s.regular) if (s.dark) hasDark = true else hasLight = true
         }
         val shader = SharedGlassShader.shader
+        // Each pass already leaves out what the others' glass hides, so they add up to the z-ordered composite.
         var effect = RenderEffect.createRuntimeShaderEffect(configure(shader, ShaderPass.SHARP, count, size, density), "content")
         if (hasLight) {
-            effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_LIGHT, dark = false, count, size, density), BlendMode.SRC_OVER)
+            effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_LIGHT, dark = false, count, size, density), BlendMode.PLUS)
         }
         if (hasDark) {
-            effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_DARK, dark = true, count, size, density), BlendMode.SRC_OVER)
+            effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_DARK, dark = true, count, size, density), BlendMode.PLUS)
         }
         return effect
     }

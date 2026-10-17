@@ -5,7 +5,7 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -59,6 +59,7 @@ import io.github.rookasrudzianskas.liquidglass.optics.glow
 import io.github.rookasrudzianskas.liquidglass.optics.pressScale
 import io.github.rookasrudzianskas.liquidglass.optics.rubberBand
 import io.github.rookasrudzianskas.liquidglass.optics.stretchLimit
+import kotlin.math.min
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -108,10 +109,10 @@ internal class GlassPointerHandle {
 }
 
 /** Multiplies the opacity of all glass below it in the composition (a menu's trigger fades as the menu takes over). */
-internal val LocalGlassFade = staticCompositionLocalOf<(() -> Float)?> { null }
+internal val LocalGlassFade = compositionLocalOf<(() -> Float)?> { null }
 
 /** Raises surfaces composed in a scene overlay (menus) above everything else. */
-internal val LocalGlassOverlayLevel = staticCompositionLocalOf { 0 }
+internal val LocalGlassOverlayLevel = compositionLocalOf { 0 }
 
 internal const val OVERLAY_LEVEL: Int = 1000
 
@@ -175,6 +176,10 @@ internal class GlassSurfaceNode(
 
     private var coordinates: LayoutCoordinates? = null
     private var lastRootBounds = Rect.Zero
+
+    /** The box (unclipped and clipped) in the content layer that the last frame drew. */
+    private var lastBox = Rect.Zero
+    private var lastClipped = Rect.Zero
 
     // Springs, advanced on frames only while something moves.
     private val press = SpringValue()
@@ -252,6 +257,8 @@ internal class GlassSurfaceNode(
         notifyDescendants()
         coordinates = null
         lastRootBounds = Rect.Zero
+        lastBox = Rect.Zero
+        lastClipped = Rect.Zero
         offLayer = false
         trackedPointer = null
         pressed = false
@@ -310,7 +317,7 @@ internal class GlassSurfaceNode(
     private fun readLocals() {
         observeReads {
             scene = currentValueOf(LocalGlassScene)
-            style = currentValueOf(LocalGlassStyle)
+            style = resolveGlassStyle()
             overlayLevel = currentValueOf(LocalGlassOverlayLevel)
             fade = currentValueOf(LocalGlassFade)
         }
@@ -368,13 +375,17 @@ internal class GlassSurfaceNode(
         }
         val box = content.localBoundingBoxOf(coordinates, clipBounds = false)
         val clipped = content.localBoundingBoxOf(coordinates, clipBounds = true)
-        if (clipped.isEmpty) {
-            // Clipped away by an ancestor: invisible, nothing to draw.
+        lastBox = box
+        lastClipped = clipped
+        if (clipped.isEmpty || opacity() <= 0f) {
+            // Clipped away by an ancestor, or faded out (a tab bar's resting lens): nothing to draw, no GPU slot used.
             setOffLayer(false)
             return null
         }
+        // Ancestor scale (layout, graphicsLayer, an animated scaleIn).
         val kx = box.width / size.width
         val ky = box.height / size.height
+        val k = min(kx, ky)
         val local = dynamics?.bounds?.invoke(size) ?: Rect(Offset.Zero, size)
         val sx = scaleX.floatValue
         val sy = scaleY.floatValue
@@ -399,25 +410,34 @@ internal class GlassSurfaceNode(
             bottom = if (clipped.bottom < box.bottom - CLIP_EPSILON) clipped.bottom else UNBOUNDED,
         )
         val dark = style.isDark(params.appearance)
-        val widthDp = local.width / density
-        val heightDp = local.height / density
+        val widthDp = local.width * kx / density
+        val heightDp = local.height * ky / density
         val glowAt = Offset(box.left + glowX.floatValue * kx, box.top + glowY.floatValue * ky)
+        // Under an ancestor scale the glass is a scaled copy: its corners, refraction and glow scale too.
         return SurfaceFrame(
             bounds = bounds,
             clip = clip,
-            radius = radiusDp(),
+            radius = radiusDp()?.times(k),
             material = materialCode(),
             dark = dark,
             nested = nested,
             opacity = opacity(),
             contrast = style.increaseContrast,
             tint = params.tint.inSrgb(),
-            refraction = if (params.refraction == Dp.Unspecified) style.refraction else params.refraction.value,
+            refraction = (if (params.refraction == Dp.Unspecified) style.refraction else params.refraction.value) * k,
             glowX = (glowAt.x - center.x) / density,
             glowY = (glowAt.y - center.y) / density,
             glowRadius = glow(widthDp, heightDp, dark).radius,
             glowAmount = glowAmount.floatValue,
         )
+    }
+
+    override fun moved(content: LayoutCoordinates): Boolean {
+        if (!renderedByScene || !content.isAttached) return false
+        val coordinates = coordinates?.takeIf { it.isAttached } ?: return false
+        if (coordinates.size.width <= 0 || coordinates.size.height <= 0) return false
+        return content.localBoundingBoxOf(coordinates, clipBounds = false) != lastBox ||
+            content.localBoundingBoxOf(coordinates, clipBounds = true) != lastClipped
     }
 
     private fun opacity(): Float =
@@ -448,8 +468,12 @@ internal class GlassSurfaceNode(
         val opacity = opacity()
         if (opacity <= 0f) return
         val dark = style.isDark(params.appearance)
-        translate(offsetX.floatValue * density, offsetY.floatValue * density) {
-            scale(scaleX.floatValue, scaleY.floatValue, pivot = local.center) {
+        val offset = Offset(offsetX.floatValue * density, offsetY.floatValue * density)
+        val sx = scaleX.floatValue
+        val sy = scaleY.floatValue
+        val glowCenter = fallbackGlowCenter(Offset(glowX.floatValue, glowY.floatValue), local, offset, sx, sy)
+        translate(offset.x, offset.y) {
+            scale(sx, sy, pivot = local.center) {
                 translate(local.left, local.top) {
                     drawFallbackGlass(
                         size = local.size,
@@ -459,7 +483,7 @@ internal class GlassSurfaceNode(
                         tint = params.tint.inSrgb(),
                         opacity = opacity,
                         contrast = style.increaseContrast,
-                        glowCenter = Offset(glowX.floatValue - local.left, glowY.floatValue - local.top),
+                        glowCenter = glowCenter,
                         glow = glow(local.width / density, local.height / density, dark),
                         glowAmount = glowAmount.floatValue,
                         blurredBackdrop = null,
@@ -477,6 +501,8 @@ internal class GlassSurfaceNode(
         val source = params.interactionSource ?: return
         interactions = coroutineScope.launch {
             source.interactions.collect { interaction ->
+                // Non-interactive glass stays still; the source still drives its owner's clicks.
+                if (!params.interactive) return@collect
                 when (interaction) {
                     is PressInteraction.Press -> {
                         moveGlow(interaction.pressPosition)
@@ -617,6 +643,17 @@ internal class GlassSurfaceNode(
         const val CLIP_EPSILON = 0.5f
     }
 }
+
+/**
+ * Where the own fallback draws the pointer glow: the pointer ([pointer], node
+ * pixels) mapped into the space the glass is drawn in, inside the drag
+ * [offset], the press scale ([sx], [sy]) about [local]'s center and [local]'s
+ * inset, so the glow stays under the finger while the surface grows or stretches.
+ */
+internal fun fallbackGlowCenter(pointer: Offset, local: Rect, offset: Offset, sx: Float, sy: Float): Offset = Offset(
+    local.center.x + (pointer.x - offset.x - local.center.x) / sx - local.left,
+    local.center.y + (pointer.y - offset.y - local.center.y) / sy - local.top,
+)
 
 /** The surface modifier: a layer for press scale and drag, plus the glass node. */
 internal fun Modifier.glassSurface(params: GlassSurfaceParams, dynamics: GlassDynamics? = null): Modifier =

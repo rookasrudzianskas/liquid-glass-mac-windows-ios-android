@@ -48,7 +48,7 @@ public enum class GlassEdge { Top, Bottom, Start, End }
 | --- | --- | --- |
 | `GlassMaterial` | `Clear` | Transparent glass: the backdrop stays sharp and is only toned and refracted. The scene default. |
 | | `Regular` | Frosted glass: the backdrop is blurred (σ 7.33 dp mixed with σ 23 dp light / 21.8 dp dark), brightened (light) or deepened (dark), then refracted. The `GlassMenu` default. |
-| `GlassAppearance` | `Automatic` | Follows `isSystemInDarkTheme()` inside a `GlassScene`. The scene default. Outside any scene it (and null) resolves to Light, so pass `Light`/`Dark` to out-of-scene sliders, switches, menus and fallback glass: `if (isSystemInDarkTheme()) GlassAppearance.Dark else GlassAppearance.Light`. |
+| `GlassAppearance` | `Automatic` | Follows `isSystemInDarkTheme()`, inside a `GlassScene` and outside any (sliders, switches, menu popups and fallback glass there follow the system too). The scene default. |
 | | `Light` | Light glass, foreground `#111113`. |
 | | `Dark` | Dark glass, foreground white. |
 | `GlassMotion` | `Full` | Press grow, drag stretch, gel overshoot and glow. The system "Remove animations" setting (animator duration scale 0) always lowers it to `Reduced`. |
@@ -172,7 +172,7 @@ public fun GlassScene(
 | --- | --- | --- |
 | `modifier` | `Modifier` | Modifier of the scene's `Box`; usually `Modifier.fillMaxSize()`. |
 | `material` | `Clear` | Default material of surfaces in the scene. |
-| `appearance` | `Automatic` | Light or dark glass; `Automatic` follows `isSystemInDarkTheme()` (not your Material theme). Outside any scene there is no system lookup: `Automatic` is Light. |
+| `appearance` | `Automatic` | Light or dark glass; `Automatic` follows `isSystemInDarkTheme()` (not your Material theme). Outside any scene glass also follows it. Every option may change at runtime: glass already on screen follows in the same frame. |
 | `refraction` | 60.dp | Default optical travel at the rim. |
 | `motion` | `Full` | How much glass animates; the system "Remove animations" setting always lowers `Full` to `Reduced`. |
 | `reduceTransparency` | false | Replaces every material with an opaque fill (`#F2F2F7` light / `#1C1C1E` dark at 94%), keeping the rim light. Android has no system setting for it: expose it in your app. |
@@ -236,14 +236,14 @@ public fun Modifier.liquidGlass(
 | `appearance` | null (scene's) | Light or dark. |
 | `tint` | `Color.Unspecified` | Colors the glass, never the content. Any specified color tints fully (its alpha is ignored), so use `Color.Unspecified`, never `Color.Transparent`, for "no tint". Converted to sRGB first. |
 | `refraction` | `Dp.Unspecified` (scene's, 60 dp) | Optical travel at the rim. |
-| `interactive` | false | Press grow (by `min(16%, 8 dp / size)`), drag stretch toward the finger, glow under the pointer (35% on mouse hover). With an `interactionSource`, false removes only the drag stretch: press grow and glow still follow the source. |
+| `interactive` | false | Press grow (by `min(16%, 8 dp / size)`), drag stretch toward the finger, glow under the pointer (35% on mouse hover). False keeps the glass fully static, also with an `interactionSource`. |
 | `motion` | null (scene's) | Overrides the scene's motion; the system setting still applies. |
 | `opacity` | 1f | Multiplies the glass, for fading it. Alpha on a layer between the scene and the surface (`AnimatedVisibility` fades, `Crossfade`, `AnimatedContent`, `NavHost` transitions) fades only the children, never the glass; alpha on a layer around the whole `GlassScene` fades everything. |
-| `interactionSource` | null | When given, its `PressInteraction`s drive the press instead of raw pointer input (so a scroll that cancels the click cancels the press), and its hover interactions drive the hover glow, whatever `interactive` says. For static glass on a clickable element, leave it null and `interactive = false`. |
+| `interactionSource` | null | When given and `interactive` is true, its `PressInteraction`s drive the press instead of raw pointer input (so a scroll that cancels the click cancels the press), and its hover interactions drive the hover glow. With `interactive = false` it is ignored. |
 
-Order it like a background: after the modifiers that size and place the element, before `clickable` and inner `padding`. Glass follows translation and scale of any ancestor (layout, `offset`, `graphicsLayer`, scrolling); rotation is not supported. The modifier only observes pointer input, so `clickable`, `draggable` and `pointerInput` keep working. It does not provide `LocalGlassContentColor`; use `GlassSurface` when the content must follow a per-surface appearance or tint. Do not add `background`, `blur` or `shadow` modifiers to the element to strengthen the glass: they cover or smear it.
+Order it like a background: after the modifiers that size and place the element, before `clickable` and inner `padding`. Glass follows translation and scale of any ancestor (layout, `offset`, `graphicsLayer` in lambda or parameter form, `Modifier.scale`, scrolling), and under a scale it is a scaled copy (corners, refraction and glow scale too); rotation is not supported. The modifier only observes pointer input, so `clickable`, `draggable` and `pointerInput` keep working. It does not provide `LocalGlassContentColor`; use `GlassSurface` when the content must follow a per-surface appearance or tint. Do not add `background`, `blur` or `shadow` modifiers to the element to strengthen the glass: they cover or smear it.
 
-Color: the shader converts every sample to gamma-encoded, unpremultiplied sRGB for the tone math and back, so wide-gamut windows render correctly; tints given in other color spaces are converted to sRGB.
+Color: the shader converts every sample to gamma-encoded, unpremultiplied sRGB for the tone math and back: the optics run on the sRGB gamut, so on a wide-gamut window the glass shows sRGB colors while pixels no glass term reaches pass through unconverted. Tints given in other color spaces are converted to sRGB.
 
 ```kotlin
 val source = remember { MutableInteractionSource() }
@@ -386,7 +386,7 @@ The constructor is private: use the three presets. Read `size.textStyle` / `size
 
 ## GlassButton
 
-An interactive glass capsule that grows under the finger, stretches toward a drag and lights up where it is touched. Plays a `VIRTUAL_KEY` haptic on press, has the Button role and a 2 dp focus ring (`#0A84FF`) for keyboard focus; disabled content is drawn at 40% alpha. Inside a `GlassToolbar` it becomes a plain toolbar item: no glass of its own, 44 dp tall, 12 dp horizontal padding, and its `tint`, `material`, `appearance`, `shape`, `refraction`, `interactive`, `motion` and `size` height are ignored; it keeps the toolbar's foreground color. To tint a toolbar action, place a standalone `GlassButton` beside the toolbar. Content is laid out in a `Row` with 6 dp spacing, centered.
+An interactive glass capsule that grows under the finger, stretches toward a drag and lights up where it is touched. Plays a `VIRTUAL_KEY` haptic on press, has the Button role and a 2 dp focus ring (`#0A84FF`) for keyboard focus; a disabled button, glass and content, is drawn at 45%. Inside a `GlassToolbar` it becomes a plain toolbar item: no glass of its own, 44 dp tall, 12 dp horizontal padding, and its `tint`, `material`, `appearance`, `shape`, `refraction`, `interactive`, `motion` and `size` height are ignored; it keeps the toolbar's foreground color. To tint a toolbar action, place a standalone `GlassButton` beside the toolbar. Content is laid out in a `Row` with 6 dp spacing, centered.
 
 ### Content overload
 
@@ -448,13 +448,13 @@ public fun GlassButton(
 | Parameter | Default | Meaning |
 | --- | --- | --- |
 | `onClick` | | Called on click. |
-| `enabled` | true | Disabled buttons do not respond, do not animate, and dim their content. |
+| `enabled` | true | Disabled buttons do not respond, do not animate, and dim to 45% (glass and content). |
 | `size` | `GlassButtonSize.Regular` | 34 / 44 / 52 dp. |
 | `shape` (content overload) | `GlassShape.Capsule` | The icon overload always uses `GlassShape.Circle`. |
 | `material`, `appearance` | null (scene's) | |
 | `tint` | `Color.Unspecified` | Makes a prominent button: the glass takes the color, the label turns white or `#111113`, whichever reads better. |
 | `refraction` (content overload) | `Dp.Unspecified` | |
-| `interactive` (content overload) | true | Grow, stretch and glow under the finger. The button always passes an interaction source to its glass, so `false` removes only the drag stretch: press grow and glow (and hover glow) still follow the press. For static glass on a clickable element, use `Modifier.liquidGlass` without the clickable's source. |
+| `interactive` (content overload) | true | Grow, stretch and glow under the finger. `false` gives a static glass button that still clicks. |
 | `motion` (content overload) | null | |
 | `interactionSource` | null | Source of the button's interactions; its press drives the glass. |
 | `icon` (text overload) | null | Leading icon, drawn at `size.iconSize` with no content description. |
@@ -513,7 +513,7 @@ GlassToolbar(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(hor
 
 ## GlassTab and GlassTabBar
 
-A 62 dp glass capsule of equal-width tabs with a glass lens marking the selection. The lens slides to a newly selected tab on the track spring, lifting into Clear glass and stretching with its speed; dragging across the bar moves the lens and selects on release (haptic tick per tab crossed). At rest the lens is a soft fill (foreground at 9% light / 14% dark). Arrow keys move the selection; tabs draw no focus indicator. The bar is a selectable group of `Role.Tab` items.
+A 62 dp glass capsule of equal-width tabs with a glass lens marking the selection. The lens slides to a newly selected tab on the track spring, lifting into Clear glass and stretching with its speed; dragging across the bar moves the lens and selects on release (haptic tick per tab crossed). At rest the lens is a soft fill (foreground at 9% light / 14% dark). Arrow keys move the selection; the focused tab shows a 2 dp focus ring. The bar is a selectable group of `Role.Tab` items.
 
 ```kotlin
 @Immutable
@@ -533,6 +533,7 @@ public fun GlassTabBar(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     selectedContentColor: Color = Color.Unspecified,
+    unselectedContentColor: Color = Color.Unspecified,
     interactive: Boolean = true,
     motion: GlassMotion? = null,
 )
@@ -546,7 +547,8 @@ public fun GlassTabBar(
 | `modifier` | `Modifier` | The bar spans the width it is given (use `fillMaxWidth()` with side padding, or `width(…)` for a compact bar); height is at least 62 dp. |
 | `material`, `appearance` | null (scene's) | Regular over text and busy content; `appearance = GlassAppearance.Dark` over dark imagery. |
 | `tint` | `Color.Unspecified` | Colors the bar's glass. |
-| `selectedContentColor` | `Color.Unspecified` | Icon and label color of the selected tab; unspecified uses the glass foreground. Unselected tabs use the foreground at 62% alpha. |
+| `selectedContentColor` | `Color.Unspecified` | Icon and label color of the selected tab; unspecified uses the glass foreground. |
+| `unselectedContentColor` | `Color.Unspecified` | Icon and label color of the other tabs; unspecified uses the foreground at 85%, legible over mid-tone backdrops. |
 | `interactive` | true | Whether the bar's glass grows and lights up under the finger. |
 | `motion` | null | |
 
@@ -581,6 +583,7 @@ public fun GlassSlider(
     tint: Color = Color.Unspecified,
     appearance: GlassAppearance? = null,
     motion: GlassMotion? = null,
+    label: String? = null,
 )
 ```
 
@@ -588,21 +591,22 @@ public fun GlassSlider(
 | --- | --- | --- |
 | `value` | | Current value, within `valueRange`. Controlled: update it in `onValueChange`. |
 | `onValueChange` | | Called with each new value while dragging (snapped to steps). |
-| `modifier` | `Modifier` | `fillMaxWidth()` and `height(44.dp)` are applied after it; constrain the width with `width(…)` or a parent. Add `semantics { contentDescription = "…" }` to label it for TalkBack. |
-| `enabled` | true | |
+| `modifier` | `Modifier` | `fillMaxWidth()` and `height(44.dp)` are applied after it; constrain the width with `width(…)` or a parent. TalkBack reads the value as a percentage of the range: when it means something else, add `semantics { stateDescription = "60 dp" }`. |
+| `enabled` | true | A disabled slider (track, fill and thumb) is dimmed to 45%. |
 | `valueRange` | `0f..1f` | Must not be empty (`require`). |
 | `steps` | 0 | Discrete values between the ends (0 = continuous); each is a haptic detent. Must be ≥ 0 (`require`). `valueRange = 0f..5f, steps = 4` gives 0, 1, 2, 3, 4, 5. |
 | `onValueChangeFinished` | null | Called when a drag, tap, key press or accessibility action ends. |
 | `tint` | `Color.Unspecified` | Color of the filled track; unspecified uses the platform accent (Material You `system_accent1_600` light / `_200` dark on Android 12+, `#007AFF` / `#0A84FF` before). |
 | `appearance` | null | Light or dark glass for the thumb. |
 | `motion` | null | |
+| `label` | null | What the slider sets, read by TalkBack. Give every slider one. |
 
-The thumb lives in a scene private to the slider, so it works on a glass card, outside any scene, and does not count toward the scene's surface budget. It takes the enclosing scene's style: outside any scene `Automatic` resolves to Light (thumb and default accent), so pass `appearance` there.
+The thumb lives in a scene private to the slider, so it works on a glass card, outside any scene, and does not count toward the scene's surface budget. It takes the enclosing scene's style, and outside any scene the system's (dark theme, "Remove animations", contrast).
 
 ```kotlin
 var volume by rememberSaveable { mutableFloatStateOf(0.6f) }
-GlassSlider(volume, { volume = it }, Modifier.semantics { contentDescription = "Volume" }, tint = Color(0xFF0A84FF))
-GlassSlider(level, { level = it }, valueRange = 0f..5f, steps = 4)
+GlassSlider(volume, { volume = it }, tint = Color(0xFF0A84FF), label = "Volume")
+GlassSlider(level, { level = it }, Modifier.semantics { stateDescription = "Level ${level.roundToInt()}" }, valueRange = 0f..5f, steps = 4, label = "Level")
 ```
 
 ## GlassSwitch
@@ -619,6 +623,7 @@ public fun GlassSwitch(
     tint: Color = Color.Unspecified,
     appearance: GlassAppearance? = null,
     motion: GlassMotion? = null,
+    label: String? = null,
 )
 ```
 
@@ -626,27 +631,28 @@ public fun GlassSwitch(
 | --- | --- | --- |
 | `checked` | | Controlled: the thumb returns to `checked` unless you update it, so a rejected change snaps back. |
 | `onCheckedChange` | | Called with the new state. |
-| `modifier` | `Modifier` | `size(54.dp, 44.dp)` is applied after it. Add `semantics { contentDescription = "…" }` for the label. |
-| `enabled` | true | |
+| `modifier` | `Modifier` | `size(54.dp, 44.dp)` is applied after it. |
+| `enabled` | true | A disabled switch (track and thumb) is dimmed to 45%. |
 | `tint` | `Color.Unspecified` | Track color when on; unspecified uses the platform accent. The off track is gray (`#787880` at 32% light / 40% dark). |
 | `appearance` | null | Light or dark glass for the thumb. |
 | `motion` | null | |
+| `label` | null | What the switch controls, read by TalkBack with its state ("Wi-Fi, switch, on"). Hide a visible label beside it with `clearAndSetSemantics {}`. |
 
-A vertical scroll that claims the finger cancels the press instead of toggling, so switches work inside scrolling lists. Like the slider, the thumb has its own private scene, and outside any scene it is light unless you pass `appearance`.
+A vertical scroll that claims the finger cancels the press instead of toggling, so switches work inside scrolling lists. Like the slider, the thumb has its own private scene, and outside any scene it follows the system's dark theme.
 
 ```kotlin
 var wifi by rememberSaveable { mutableStateOf(true) }
 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     GlassText("Wi-Fi", Modifier.weight(1f).clearAndSetSemantics {}, style = TextStyle(fontSize = 17.sp))
-    GlassSwitch(wifi, { wifi = it }, Modifier.semantics { contentDescription = "Wi-Fi" }, tint = Color(0xFF30D158))
+    GlassSwitch(wifi, { wifi = it }, tint = Color(0xFF30D158), label = "Wi-Fi")
 }
 ```
 
 ## GlassMenu, GlassMenuItem and GlassMenuDivider
 
-A menu that grows out of its trigger: a Regular glass panel morphing from the trigger's outline on the morph spring (0.42 s, bounce 0.18), covering it, and collapsing back into it when dismissed. The trigger fades out as the panel grows. Tapping outside, Back and Escape dismiss it; choosing an item runs its action and dismisses it. The panel is a pane titled "Menu" for TalkBack, takes focus when it opens and returns focus to the trigger for keyboard users when it closes.
+A menu that grows out of its trigger: a Regular glass panel morphing from the trigger's outline on the morph spring (0.42 s, bounce 0.18), covering it, and collapsing back into it when dismissed. The trigger fades out as the panel grows. Opened from a `GlassToolbar` item, the panel grows out of and covers the item's whole cluster. Tapping outside, Back and Escape dismiss it; choosing an item runs its action and dismisses it. The panel is a pane titled "Menu" for TalkBack, takes focus when it opens and returns focus to the trigger for keyboard users when it closes.
 
-Inside a `GlassScene` the panel is drawn in the **outermost** scene's overlay, above every nested scene's glass, and refracts that scene. It is placed over the trigger (aligned to the trigger's top, or bottom when there is no room, and to its nearer side) and kept inside the safe drawing insets plus an 8 dp margin. Outside a scene it opens in a `Popup` with the fallback material, light unless you pass `appearance` (`Automatic` resolves to Light there).
+Inside a `GlassScene` the panel is drawn in the **outermost** scene's overlay, above every nested scene's glass, and refracts that scene. It is placed over the trigger (aligned to the trigger's top, or bottom when there is no room, and to its nearer side) and kept inside the safe drawing insets plus an 8 dp margin. Outside a scene it opens in a `Popup` with the fallback material, following the system's dark theme unless you pass `appearance`.
 
 ```kotlin
 @Composable
@@ -683,21 +689,21 @@ public fun GlassMenuDivider()
 | `expanded` | | Whether the menu is open. Keep it in `remember`, not `rememberSaveable`. |
 | `onDismissRequest` | | Called on outside tap, Back, Escape, TalkBack "collapse" and after an item is chosen. Set `expanded = false` here. |
 | `trigger` | | The control that opens the menu, usually a `GlassButton` whose `onClick` sets `expanded = true`. The panel grows out of its bounds. |
-| `modifier` | `Modifier` | Modifier of the **panel**, not the trigger. The panel is 250 dp wide (`Modifier.width(280.dp)` overrides it) with a 6 dp inset. To place the trigger, wrap the `GlassMenu` in a `Box(Modifier.align(…))` or put it in a `Row` / `GlassToolbar`. |
+| `modifier` | `Modifier` | Modifier of the **panel**, not the trigger. The panel is as wide as its widest item, at least 220 dp and at most the safe area's width minus 8 dp margins (`Modifier.width(280.dp)` fixes it), with a 6 dp inset; taller than the safe area, it scrolls. To place the trigger, wrap the `GlassMenu` in a `Box(Modifier.align(…))` or put it in a `Row` / `GlassToolbar`. |
 | `material` | `GlassMaterial.Regular` | The panel's material. |
 | `appearance` | null | |
 | `tint` | `Color.Unspecified` | Colors the panel's glass. |
 | `shape` | `GlassShape(28.dp)` | The panel's outline. |
 | `motion` | null | `None` opens and closes instantly. |
 | `content` | | `ColumnScope`: `GlassMenuItem`, `GlassMenuDivider` or any composable. `LocalGlassContentColor` is the panel's foreground. |
-| `text` (item) | | Label, 17 sp regular, one line. |
+| `text` (item) | | Label, 17 sp regular; long labels and large fonts wrap. |
 | `onClick` (item) | | The action; the menu then dismisses itself. |
 | `icon` (item) | null | Leading 20 dp icon. |
 | `enabled` (item) | true | Disabled items are drawn at 40% alpha and cannot be chosen. |
 | `destructive` (item) | false | Draws the item in red (`#FF3B30`), for actions like Delete. |
 | `checked` (item) | null | null for an action (`Role.Button`); `true` / `false` makes it a choice (`Role.Checkbox` with toggle state) and shows a check mark when true. |
 
-Items are at least 44 dp tall (more with large fonts), 14 dp horizontal padding, highlighted with the foreground at 8% while pressed (no keyboard focus indicator), in 22 dp corners (concentric with the 28 dp panel and 6 dp inset). `GlassMenuDivider` is a 1 dp line in the foreground at 12%, padded 14 dp horizontally and 4 dp vertically.
+Items are at least 44 dp tall (more with large fonts), 14 dp horizontal padding, highlighted with the foreground at 8% while pressed or focused (plus a 2 dp focus ring for keyboard focus), in 22 dp corners (concentric with the 28 dp panel and 6 dp inset). `GlassMenuDivider` is a 1 dp line in the foreground at 12%, padded 14 dp horizontally and 4 dp vertically.
 
 ```kotlin
 var open by remember { mutableStateOf(false) }
@@ -731,7 +737,7 @@ public fun GlassProgressiveBlur(
 | --- | --- | --- |
 | `edge` | | The edge blurred most. |
 | `modifier` | `Modifier` | Place it along the matching edge of the scene: `Modifier.align(Alignment.TopCenter)` for `Top`, `BottomCenter` for `Bottom`, `CenterStart` / `CenterEnd` for `Start` / `End`. |
-| `size` | 80.dp | Depth of the band from the edge. The band spans the full length of the edge (`fillMaxWidth` or `fillMaxHeight`) unless the modifier sizes it. Include the system bar inset: `size = topInset + 96.dp`. |
+| `size` | 80.dp | Depth of the band from the edge (its height at the top or bottom, its width at the start or end). The band spans the full length of the edge (`fillMaxWidth` or `fillMaxHeight`) unless the modifier sizes it. Include the system bar inset: `size = topInset + 96.dp`. |
 | `blur` | 20.dp | Gaussian σ at the edge. |
 
 Put it in the scene (a sibling of the glass), not in `GlassContent`. Needs Android 12 for the platform blur; Android 7 to 11 fade the band toward the edge (white at 60% light, black at 45% dark) instead.
@@ -751,12 +757,12 @@ Internal constants that shape layout (not configurable; plan around them).
 
 | Component | Metric |
 | --- | --- |
-| `GlassButton` | Heights 34 / 44 / 52 dp (min; grows with font scale), min width = height, horizontal padding 14 / 18 / 22 dp, icon 18 / 22 / 24 dp, content spacing 6 dp, disabled alpha 0.4, focus ring 2 dp `#0A84FF` |
+| `GlassButton` | Heights 34 / 44 / 52 dp (min; grows with font scale), min width = height, horizontal padding 14 / 18 / 22 dp, icon 18 / 22 / 24 dp, content spacing 6 dp, disabled alpha 0.45 (glass and content), focus ring 2 dp `#0A84FF` |
 | `GlassToolbar` | Height 52 dp (or tallest item + 8 dp), cluster inset 4 dp, items 44 dp tall with 12 dp horizontal padding (labeled) |
-| `GlassTabBar` | Height ≥ 62 dp, inset 4 dp, icon 24 dp, label 10 sp semibold (15 sp label-only), spacing 2 dp, unselected alpha 0.62 |
+| `GlassTabBar` | Height ≥ 62 dp, inset 4 dp, 4 dp horizontal padding per tab, icon 24 dp, label 10 sp semibold (15 sp label-only, one line), spacing 2 dp, unselected alpha 0.85 |
 | `GlassSlider` | Height 44 dp, track 6 dp (`#808080` at 30%), thumb 20 × 16 dp, grab radius 22 dp |
 | `GlassSwitch` | Box 54 × 44 dp, track 54 × 24 dp, thumb 32 × 20 dp, 2 dp inset |
-| `GlassMenu` | Panel 250 dp wide, 28 dp radius, 6 dp inset; item ≥ 44 dp, 22 dp corners, 17 sp text, 20 dp icon, 18 dp check mark |
+| `GlassMenu` | Panel 220 dp to the safe width (fits its widest item), 28 dp radius, 6 dp inset; item ≥ 44 dp, 22 dp corners, 17 sp text (wraps), 20 dp icon, 18 dp check mark |
 | `GlassText` / `GlassIcon` | 17 sp semibold / 22 dp |
 
 ## Surface budget
@@ -768,10 +774,10 @@ A scene refracts up to `GlassDefaults.MaxSurfacesPerScene` (16) surfaces on the 
 | `GlassSurface`, `Modifier.liquidGlass`, standalone `GlassButton` | 1 each |
 | `GlassButton` inside a `GlassToolbar` | 0 (the cluster is the glass) |
 | `GlassToolbar` | 1 per cluster |
-| `GlassTabBar` | 2 (bar and lens) |
+| `GlassTabBar` | 1 (the bar), 2 while the lens is lifted (pressed or sliding) |
 | `GlassMenu` while open or closing | 1, in the outermost scene |
 | `GlassSlider`, `GlassSwitch` | 0 (their thumbs live in a private scene) |
-| Surfaces off the content layer or fully clipped away (scrolled out of a list) | 0 |
+| Surfaces off the content layer (they draw the fallback material), fully clipped away (scrolled out of a list) or faded out (`opacity` 0) | 0 |
 
 Surfaces are counted in z-order: shallower first, then the order they were attached. Beyond the limit the rest draw the fallback material (Regular ones over a platform blur, Clear ones a translucent fill). Tab-bar lenses (one level deeper than their bar) and open menus (overlay depth) come last, so they are the first to fall back: keep the outermost scene at 15 or fewer surfaces so a menu always gets the GPU path. Nest scenes to go further.
 

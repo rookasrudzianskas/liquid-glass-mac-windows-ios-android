@@ -3,7 +3,7 @@ package io.github.rookasrudzianskas.liquidglass.internal
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -57,6 +57,13 @@ internal class BlurFrame(
 internal interface SceneParticipant {
     /** Told when the scene gains or loses its content layer (participants draw their own fallback without one). */
     fun onSceneRenderingChanged()
+
+    /**
+     * Whether the participant now sits elsewhere in [content] than the last frame drew it. An
+     * ancestor's layer (`Modifier.scale`, `graphicsLayer(translationX = …)`) can move it without a
+     * relayout, so no positioning callback reports it.
+     */
+    fun moved(content: LayoutCoordinates): Boolean
 }
 
 /** A surface that the content layer renders. */
@@ -189,10 +196,17 @@ internal class GlassSceneState(
 
     fun blurs(): List<SceneBlur> = blurList
 
+    /** Whether anything the content layer draws moved since its last frame (checked before each window draw). */
+    fun moved(content: LayoutCoordinates): Boolean = surfaceList.any { it.moved(content) } || blurList.any { it.moved(content) }
+
+    /** Whether the content layer has anything to render. */
+    val hasParticipants: Boolean get() = surfaceList.isNotEmpty() || blurList.isNotEmpty()
+
     /** Asks the content layer to redraw (geometry changed without a snapshot write). */
     fun invalidate() {
         content?.invalidateGlass()
     }
 }
 
-internal val LocalGlassScene = staticCompositionLocalOf<GlassSceneState?> { null }
+/** The nearest scene. Dynamic, so glass on screen re-registers when it moves to another scene. */
+internal val LocalGlassScene = compositionLocalOf<GlassSceneState?> { null }

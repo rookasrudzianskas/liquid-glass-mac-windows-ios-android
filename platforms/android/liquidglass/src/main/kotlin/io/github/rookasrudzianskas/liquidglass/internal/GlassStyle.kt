@@ -2,20 +2,25 @@ package io.github.rookasrudzianskas.liquidglass.internal
 
 import android.app.UiModeManager
 import android.content.Context
+import android.content.res.Configuration
 import android.database.ContentObserver
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
@@ -25,6 +30,8 @@ import io.github.rookasrudzianskas.liquidglass.optics.DEFAULT_REFRACTION
 /**
  * Glass defaults in effect at a point of the composition: set by the nearest
  * [io.github.rookasrudzianskas.liquidglass.GlassScene] and read by every surface.
+ * Outside any scene, the defaults with the system's dark theme, motion and
+ * contrast settings apply ([currentGlassStyle], [resolveGlassStyle]).
  */
 @Immutable
 internal data class GlassStyle(
@@ -56,7 +63,39 @@ internal data class GlassStyle(
         if (increaseContrast) GlassMaterial.Regular else override ?: material
 }
 
-internal val LocalGlassStyle = staticCompositionLocalOf { GlassStyle() }
+/**
+ * The nearest scene's style, or null outside any scene. Dynamic, so glass
+ * already on screen (whose nodes read it inside observeReads) follows a scene
+ * option that changes. Read it with [currentGlassStyle] or [resolveGlassStyle].
+ */
+internal val LocalGlassStyle = compositionLocalOf<GlassStyle?> { null }
+
+/** The style in effect here: the enclosing scene's, or outside any scene the system's. */
+@Composable
+internal fun currentGlassStyle(): GlassStyle = LocalGlassStyle.current ?: systemGlassStyle()
+
+/** Glass outside any scene: the scene defaults, following the system dark theme, "Remove animations" and contrast. */
+@Composable
+private fun systemGlassStyle(): GlassStyle = GlassStyle(
+    systemDark = isSystemInDarkTheme(),
+    systemReduceMotion = rememberSystemReduceMotion(),
+    increaseContrast = rememberSystemIncreaseContrast(),
+)
+
+/**
+ * [currentGlassStyle] for a modifier node: call it inside observeReads, so a
+ * scene option or (outside a scene) the dark theme changing is observed.
+ */
+internal fun CompositionLocalConsumerModifierNode.resolveGlassStyle(): GlassStyle {
+    currentValueOf(LocalGlassStyle)?.let { return it }
+    val context = currentValueOf(LocalContext)
+    val night = currentValueOf(LocalConfiguration).uiMode and Configuration.UI_MODE_NIGHT_MASK
+    return GlassStyle(
+        systemDark = night == Configuration.UI_MODE_NIGHT_YES,
+        systemReduceMotion = readAnimatorScale(context) == 0f,
+        increaseContrast = readIncreaseContrast(context),
+    )
+}
 
 /** True while the system "Remove animations" setting is on (animator duration scale 0). */
 @Composable

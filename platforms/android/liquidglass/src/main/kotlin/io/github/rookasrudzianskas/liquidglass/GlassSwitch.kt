@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.internal.ControlThumb
 import io.github.rookasrudzianskas.liquidglass.internal.FrameAnimator
 import io.github.rookasrudzianskas.liquidglass.internal.GlassHaptics
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.ThumbState
 import io.github.rookasrudzianskas.liquidglass.internal.platformAccent
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
@@ -77,7 +78,7 @@ import kotlin.math.abs
  * @param checked whether the switch is on.
  * @param onCheckedChange called with the new state when the user toggles it.
  * @param modifier modifier for the switch.
- * @param enabled whether the switch responds.
+ * @param enabled whether the switch responds; a disabled switch is dimmed to 45%.
  * @param tint color of the track when on; unspecified uses the platform accent.
  * @param appearance light or dark glass for the thumb; null inherits the scene's.
  * @param motion overrides the scene's motion.
@@ -94,7 +95,7 @@ public fun GlassSwitch(
     motion: GlassMotion? = null,
     label: String? = null,
 ) {
-    val style = LocalGlassStyle.current
+    val style = currentGlassStyle()
     val dark = style.isDark(appearance)
     val onColor = if (tint.isSpecified) tint else platformAccent(dark)
     val density = LocalDensity.current.density
@@ -200,6 +201,8 @@ public fun GlassSwitch(
         GlassLocalScene(
             Modifier
                 .matchParentSize()
+                // A disabled switch fades as a whole: track and thumb (its glass is drawn inside).
+                .alpha(if (enabled) 1f else DisabledAlpha)
                 .layout { measurable, constraints ->
                     // The scene reaches past the track so the grown thumb stays inside it.
                     val pad = SwitchOverhang.roundToPx()

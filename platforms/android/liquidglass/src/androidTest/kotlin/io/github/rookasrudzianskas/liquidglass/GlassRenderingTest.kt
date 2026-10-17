@@ -1,6 +1,7 @@
 package io.github.rookasrudzianskas.liquidglass
 
 import android.graphics.Bitmap
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,8 @@ import android.view.PixelCopy
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,14 +33,17 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -45,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
@@ -166,8 +173,10 @@ class GlassRenderingTest {
 
     /**
      * Null when every sampled pixel of a surface (width × height at left, top,
-     * with [Radius] corners) is within [Tolerance] of the reference, else where
-     * it is worst. [backdropAt] gives the backdrop relative to the surface center.
+     * with [radius] corners, null for a capsule) is within [Tolerance] of the
+     * reference, else where it is worst. [backdropAt] gives the backdrop the glass
+     * refracts and [baseAt] what lies beneath it (the backdrop, or lower glass),
+     * both relative to the surface center.
      */
     private fun differenceFromReference(
         pixels: Bitmap,
@@ -178,7 +187,11 @@ class GlassRenderingTest {
         top: Int = Top,
         width: Int = Width,
         height: Int = Height,
+        radius: Float? = Radius.toFloat(),
+        refraction: Float = 60f,
+        nested: Boolean = false,
         backdropAt: (Float, Float) -> FloatArray = uniformBackdrop,
+        baseAt: (Float, Float) -> FloatArray = backdropAt,
     ): String? {
         var worst = 0f
         var where = ""
@@ -198,9 +211,9 @@ class GlassRenderingTest {
             val x = px + 0.5f - (left + width / 2f)
             val y = py + 0.5f - (top + height / 2f)
             val expected = glassPixel(
-                x = x, y = y, width = width.toFloat(), height = height.toFloat(), radius = Radius.toFloat(),
-                regular = regular, dark = dark, refraction = 60f, pixel = 1f, tint = tint,
-                base = backdropAt(x, y), sample = { dx, dy -> backdropAt(x + dx, y + dy) },
+                x = x, y = y, width = width.toFloat(), height = height.toFloat(), radius = radius,
+                regular = regular, dark = dark, refraction = refraction, pixel = 1f, tint = tint, nested = nested,
+                base = baseAt(x, y), sample = { dx, dy -> backdropAt(x + dx, y + dy) },
             )
             val actual = pixels.color(px, py)
             val channels = floatArrayOf(actual.red, actual.green, actual.blue)
@@ -481,6 +494,238 @@ class GlassRenderingTest {
             when {
                 !parent.differsFrom(backdropColor, by = 0.02f) -> "the parent's glass never appeared"
                 child.red < child.green + 0.3f || child.red < child.blue + 0.3f -> "the child is covered by its parent's glass: $child"
+                else -> null
+            }
+        }
+    }
+
+    @Test
+    fun sceneAppearanceChangeReachesGlassOnScreen() {
+        // The scene turns dark after the glass has drawn light: the glass on screen must follow.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            var appearance by remember { mutableStateOf(GlassAppearance.Light) }
+            LaunchedEffect(Unit) {
+                repeat(4) { withFrameNanos { } }
+                appearance = GlassAppearance.Dark
+            }
+            GlassScene(appearance = appearance, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).liquidGlass(GlassShape(Radius.dp), material = GlassMaterial.Regular))
+            }
+        }
+        assertRendered(scene) { differenceFromReference(it, regular = true, dark = true, tint = null) }
+    }
+
+    @Test
+    fun reduceTransparencyChangeReachesGlassOnScreen() {
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            var reduce by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                repeat(4) { withFrameNanos { } }
+                reduce = true
+            }
+            GlassScene(appearance = GlassAppearance.Light, reduceTransparency = reduce, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).liquidGlass(GlassShape(Radius.dp)))
+            }
+        }
+        assertRendered(scene) { image ->
+            // The opaque fill #F2F2F7 at 94% over the backdrop.
+            val expected = floatArrayOf(0.94902f, 0.94902f, 0.96863f).mapIndexed { i, c -> c * 0.94f + backdrop[i] * 0.06f }
+            val center = image.color(Left + Width / 2, Top + Height / 2)
+            val error = maxOf(abs(center.red - expected[0]), abs(center.green - expected[1]), abs(center.blue - expected[2]))
+            if (error > Tolerance) "reduce transparency did not reach the glass: off by ${error * 255}/255" else null
+        }
+    }
+
+    @Test
+    fun increaseContrastChangeReachesGlassOnScreen() {
+        // Increase contrast turns Clear glass Regular and adds the inner border.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            var contrast by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                repeat(4) { withFrameNanos { } }
+                contrast = true
+            }
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = contrast) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).liquidGlass(GlassShape(Radius.dp)))
+            }
+        }
+        assertRendered(scene) { image ->
+            val expected = glassPixel(
+                x = 0.5f, y = 0.5f, width = Width.toFloat(), height = Height.toFloat(), radius = Radius.toFloat(),
+                regular = true, dark = false, refraction = 60f, pixel = 1f, tint = null,
+                base = backdrop, sample = { _, _ -> backdrop },
+            )
+            val center = image.color(Left + Width / 2, Top + Height / 2)
+            val error = maxOf(abs(center.red - expected[0]), abs(center.green - expected[1]), abs(center.blue - expected[2]))
+            if (error > Tolerance) "increase contrast did not reach the glass: off by ${error * 255}/255" else null
+        }
+    }
+
+    @Test
+    fun glassFollowsAnAncestorLayerTranslation() {
+        // graphicsLayer(translationX = …) moves the glass without a relayout.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            var shift by remember { mutableStateOf(0f) }
+            LaunchedEffect(Unit) {
+                repeat(4) { withFrameNanos { } }
+                shift = -40f
+            }
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).graphicsLayer(translationX = shift)) {
+                    Box(Modifier.fillMaxSize().liquidGlass(GlassShape(Radius.dp)))
+                }
+            }
+        }
+        assertRendered(scene) { differenceFromReference(it, regular = false, dark = false, tint = null, left = Left - 40) }
+    }
+
+    @Test
+    fun glassUnderAnAncestorScaleIsAScaledCopy() {
+        // Modifier.scale(0.8f → 0.5f): the glass follows without a relayout, and its corners and refraction scale too.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            var factor by remember { mutableStateOf(0.8f) }
+            LaunchedEffect(Unit) {
+                repeat(4) { withFrameNanos { } }
+                factor = 0.5f
+            }
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(LinearBackdropBrush)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).scale(factor)) {
+                    Box(Modifier.fillMaxSize().liquidGlass(GlassShape(Radius.dp)))
+                }
+            }
+        }
+        assertRendered(scene) {
+            differenceFromReference(
+                it, regular = false, dark = false, tint = null,
+                left = Left + Width / 4, top = Top + Height / 4, width = Width / 2, height = Height / 2,
+                radius = Radius / 2f, refraction = 30f, backdropAt = linearBackdrop,
+            )
+        }
+    }
+
+    @Test
+    fun clearGlassOverRegularGlassKeepsItsSideShade() {
+        // A Clear capsule inside a Regular card composites over the card, its rim's side shade included.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val capsuleLeft = Left + 40
+        val capsuleTop = Top + 38
+        val capsuleWidth = 120
+        val capsuleHeight = 44
+        val scene = @Composable {
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(Modifier.offset(Left.dp, Top.dp).size(Width.dp, Height.dp).liquidGlass(GlassShape(Radius.dp), material = GlassMaterial.Regular)) {
+                    Box(
+                        Modifier
+                            .offset((capsuleLeft - Left).dp, (capsuleTop - Top).dp)
+                            .size(capsuleWidth.dp, capsuleHeight.dp)
+                            .liquidGlass(GlassShape.Capsule, material = GlassMaterial.Clear),
+                    )
+                }
+            }
+        }
+        // The card at a point given relative to the capsule's center.
+        val dx = capsuleLeft + capsuleWidth / 2f - (Left + Width / 2f)
+        val dy = capsuleTop + capsuleHeight / 2f - (Top + Height / 2f)
+        val card: (Float, Float) -> FloatArray = { x, y ->
+            glassPixel(
+                x = x + dx, y = y + dy, width = Width.toFloat(), height = Height.toFloat(), radius = Radius.toFloat(),
+                regular = true, dark = false, refraction = 60f, pixel = 1f, tint = null,
+                base = backdrop, sample = { _, _ -> backdrop },
+            )
+        }
+        assertRendered(scene) {
+            differenceFromReference(
+                it, regular = false, dark = false, tint = null,
+                left = capsuleLeft, top = capsuleTop, width = capsuleWidth, height = capsuleHeight,
+                radius = null, nested = true, baseAt = card,
+            )
+        }
+    }
+
+    @Test
+    fun fadedOutGlassLeavesItsGpuSlotToVisibleGlass() {
+        // Two invisible surfaces (opacity 0, like a tab bar's resting lens) come first; the 16 visible ones all get the GPU glass.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val visible = GlassDefaults.MaxSurfacesPerScene
+        val scene = @Composable {
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                repeat(2) { Box(Modifier.offset(0.dp, 0.dp).size(48.dp, 40.dp).liquidGlass(GlassShape(12.dp), opacity = 0f)) }
+                for (i in 0 until visible) {
+                    Box(Modifier.offset((10 + (i % 5) * 60).dp, (10 + (i / 5) * 50).dp).size(48.dp, 40.dp).liquidGlass(GlassShape(12.dp)))
+                }
+            }
+        }
+        val expected = glassPixel(
+            x = 0.5f, y = 0.5f, width = 48f, height = 40f, radius = 12f,
+            regular = false, dark = false, refraction = 60f, pixel = 1f, tint = null,
+            base = backdrop, sample = { _, _ -> backdrop },
+        )
+        assertRendered(scene) { image ->
+            (0 until visible).firstNotNullOfOrNull { i ->
+                val center = image.color(10 + (i % 5) * 60 + 24, 10 + (i / 5) * 50 + 20)
+                val error = maxOf(abs(center.red - expected[0]), abs(center.green - expected[1]), abs(center.blue - expected[2]))
+                if (error > Tolerance) "surface $i is not GPU glass: off by ${error * 255}/255" else null
+            }
+        }
+    }
+
+    @Test
+    fun nonInteractiveGlassIgnoresItsInteractionSource() {
+        // interactive = false: a press from the interaction source neither grows nor lights the glass.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val scene = @Composable {
+            val source = remember { MutableInteractionSource() }
+            LaunchedEffect(source) {
+                repeat(2) { withFrameNanos { } }
+                source.emit(PressInteraction.Press(Offset(Width / 2f, Height / 2f)))
+            }
+            GlassScene(appearance = GlassAppearance.Light, increaseContrast = false) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                Box(
+                    Modifier
+                        .offset(Left.dp, Top.dp)
+                        .size(Width.dp, Height.dp)
+                        .liquidGlass(GlassShape(Radius.dp), interactive = false, interactionSource = source),
+                )
+            }
+        }
+        assertRendered(scene) { differenceFromReference(it, regular = false, dark = false, tint = null) }
+    }
+
+    @Test
+    fun glassOutsideASceneFollowsTheSystemDarkTheme() {
+        // No scene: inherited appearance follows the system's night mode, like explicit dark glass.
+        val night = Configuration(InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration).apply {
+            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
+        }
+        val scene = @Composable {
+            CompositionLocalProvider(LocalConfiguration provides night) {
+                Box(Modifier.fillMaxSize().background(backdropColor)) {
+                    Box(Modifier.offset(PairLeft.dp, Top.dp).size(PairWidth.dp, Height.dp).liquidGlass(GlassShape(Radius.dp)))
+                    Box(Modifier.offset(PairRight.dp, Top.dp).size(PairWidth.dp, Height.dp).liquidGlass(GlassShape(Radius.dp), appearance = GlassAppearance.Dark))
+                    Box(Modifier.offset(PairLeft.dp, (Top + Height + 10).dp).size(PairWidth.dp, 60.dp).liquidGlass(GlassShape(Radius.dp), appearance = GlassAppearance.Light))
+                }
+            }
+        }
+        assertRendered(scene) { image ->
+            val inherited = image.color(PairLeft + PairWidth / 2, Top + Height / 2)
+            val dark = image.color(PairRight + PairWidth / 2, Top + Height / 2)
+            val light = image.color(PairLeft + PairWidth / 2, Top + Height + 40)
+            when {
+                !dark.differsFrom(light, by = 0.03f) -> "dark and light fallback glass look the same"
+                inherited.differsFrom(dark, by = 3 * Tolerance) -> "glass outside a scene ignores the system dark theme: $inherited vs dark $dark"
                 else -> null
             }
         }

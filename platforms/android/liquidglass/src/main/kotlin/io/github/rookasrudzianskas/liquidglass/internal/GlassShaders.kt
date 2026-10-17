@@ -29,16 +29,25 @@ internal object ShaderPass {
  * RenderEffect on the scene's content layer, so `content` is that layer:
  *
  * - The sharp pass (uPass 0) samples the content itself and draws Clear and
- *   solid glass over it; everything else passes through untouched.
+ *   solid glass over it; pixels no glass touches pass through untouched.
  * - A frost pass (uPass 1 light, 2 dark) runs on the frosted content (the
  *   σ 7.33 blur blended with the wide fill blur) and outputs only Regular glass
- *   of that appearance, premultiplied, to be drawn source-over the sharp pass.
+ *   of that appearance, premultiplied.
+ *
+ * The passes are added together. Each surface composites over everything below
+ * it (the spec's z-order): `acc = own + acc · (1 − alpha)`. So every pass also
+ * walks the surfaces the other passes draw and lets them hide, by their alpha
+ * (glass, contrast border, rim light and its side shade, glow), what it drew
+ * beneath them. Summed, the passes give exactly the z-ordered composite, also
+ * for Clear glass over Regular glass, whose side shade lies outside its outline.
  *
  * AGSL hands colors to the shader premultiplied, in the working color space
  * of the destination. The optics are defined on sRGB gamma-encoded,
  * unpremultiplied values, so every sample is unpremultiplied, taken to linear
  * sRGB with toLinearSrgb() and encoded with the sRGB curve, and every result is
- * taken back the same way. On an ordinary sRGB window this round trip is exact.
+ * taken back the same way. On an ordinary sRGB window this round trip is exact;
+ * on a wide-gamut window the glass itself is in the sRGB gamut, and pixels no
+ * glass term reaches are passed through unconverted.
  *
  * Geometry is in px (layer space); the optics run in dp, as in the spec.
  *
@@ -287,10 +296,20 @@ float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 l
   return rim + result * (1.0 - rim.a);
 }
 
+// The pointer glow's alpha (white, over the composite). glow = (center, radius, amount) in dp.
+float lgGlowAlpha(float4 glow, float2 p, float3 field, float4 look, float pixel) {
+  if (glow.w <= 0.0) return 0.0;
+  return mix(0.3, 0.16, look.x) * glow.w * (1.0 - lgSat(length(p - glow.xy) / glow.z))
+      * lgCoverage(field.x, pixel) * look.z;
+}
+
 half4 main(float2 fragCoord) {
   half4 raw = content.eval(fragCoord);
   float pixel = 1.0 / uDensity;
-  float reach = (1.0 + pixel) * uDensity;
+  // Coverage, the contrast border, the rim light (and its side shade) and the glow are all zero
+  // from this distance outside an outline on, so pixels beyond it are left exactly as they are.
+  float edge = 0.5 + 0.5 * pixel;
+  float reach = edge * uDensity + 1.0;
   bool frostPass = uPass > 0.5;
   float4 acc = float4(0.0);
   bool touched = false;
@@ -306,30 +325,31 @@ half4 main(float2 fragCoord) {
     float4 look = uLook[i];
     float2 p = rel / uDensity;
     float3 field = lgShapeField(p, rect.zw * (2.0 / uDensity), shape.xy);
-    if (field.x > 1.0 + pixel) continue;
+    if (field.x >= edge) continue;
     float material = shape.w;
     bool regular = material > 0.5 && material < 1.5;
     bool own = frostPass ? (regular && abs(look.x - (uPass - 1.0)) < 0.5) : !regular;
-    if (!own) {
-      // A surface drawn by another pass covers what this pass drew beneath it.
-      if (frostPass) acc *= 1.0 - lgCoverage(field.x, pixel) * look.z;
-      continue;
-    }
     if (!touched) {
+      // A frost pass has nothing beneath glass it does not draw itself.
+      if (frostPass && !own) continue;
       if (!frostPass) acc = lgToSrgbPremul(raw);
       touched = true;
+    }
+    if (!own) {
+      // Glass another pass draws hides, by its own alpha, what this pass drew beneath it
+      // (the backdrop's alpha stands in for its sample's: equal on opaque content).
+      float hide = lgCompose(float4(0.0, 0.0, 0.0, float(raw.a)), float4(0.0), field, material, look, uTint[i], pixel).a;
+      float glowAlpha = lgGlowAlpha(uGlow[i], p, field, look, pixel);
+      acc *= (1.0 - hide) * (1.0 - glowAlpha);
+      continue;
     }
     bool refracts = material < 1.5;
     float2 offset = refracts ? lgRefractionOffset(field, shape.z) : float2(0.0);
     float compression = refracts ? lgCompression(field.x, shape.z) : 1.0;
     float4 src = lgToSrgb(lgRefracted(fragCoord + offset * uDensity, field.yz, compression));
     acc = lgCompose(src, acc, field, material, look, uTint[i], pixel);
-    float4 glow = uGlow[i];
-    if (glow.w > 0.0) {
-      float alpha = mix(0.3, 0.16, look.x) * glow.w * (1.0 - lgSat(length(p - glow.xy) / glow.z))
-          * lgCoverage(field.x, pixel) * look.z;
-      acc = float4(alpha) + acc * (1.0 - alpha);
-    }
+    float glowAlpha = lgGlowAlpha(uGlow[i], p, field, look, pixel);
+    acc = float4(glowAlpha) + acc * (1.0 - glowAlpha);
   }
   if (!touched) return frostPass ? half4(0.0) : raw;
   return lgFromSrgb(acc);

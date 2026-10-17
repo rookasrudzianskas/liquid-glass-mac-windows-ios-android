@@ -76,7 +76,7 @@ public class GlassButtonSize private constructor(
  *
  * @param onClick called when the button is clicked.
  * @param modifier modifier for the button.
- * @param enabled whether the button responds; disabled content is dimmed.
+ * @param enabled whether the button responds; a disabled button, glass and label, is dimmed to 45%.
  * @param size height, padding and label style.
  * @param shape outline; a capsule by default.
  * @param material Clear or Regular; null inherits the scene's.
@@ -252,6 +252,7 @@ private fun GlassButtonLayout(
             refraction = refraction,
             interactive = enabled && interactive,
             motion = motion,
+            opacity = if (enabled) 1f else DisabledAlpha,
             interactionSource = source,
         )
     }
@@ -273,7 +274,7 @@ private fun GlassButtonLayout(
                         onClick = onClick,
                     )
                     .padding(padding)
-                    .alpha(if (enabled) 1f else 0.4f),
+                    .alpha(if (enabled) 1f else DisabledAlpha),
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
@@ -286,3 +287,6 @@ private fun GlassButtonLayout(
 
 /** Keyboard focus ring around glass controls. */
 internal val FocusRingColor = Color(0xFF0A84FF)
+
+/** Opacity of a disabled control, glass and content alike (as on Apple platforms and Windows). */
+internal const val DisabledAlpha = 0.45f

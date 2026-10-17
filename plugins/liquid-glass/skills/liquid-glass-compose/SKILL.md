@@ -41,11 +41,11 @@ dependencies {
 }
 ```
 
-Alternative, JitPack (builds `platforms/android` from a tagged commit):
+Alternative, JitPack (builds `platforms/android` from a release tag; the coordinate resolves only once the `1.0.0` tag is published, so prefer the Maven repository above):
 
 ```kotlin
 // settings.gradle.kts: repositories { maven("https://jitpack.io") }
-implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:<tag>")
+implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0")
 ```
 
 | Requirement | Value |
@@ -73,7 +73,7 @@ GlassScene(Modifier.fillMaxSize())        a Box: the region glass may refract; h
 
 1. **Scene** = `GlassScene { }`, a `Box` (`BoxScope` content, place children with `Modifier.align`). Glass sees only its own scene's content. Use one per screen, filling the window.
 2. **Content** = `GlassContent { }`, the backdrop. It records its children into a GPU layer and, on Android 13+, paints every glass surface of the scene into that same layer with one `RenderEffect`. That is why glass outside the content's bounds draws nothing, and why a plain composable placed in the scene (outside the content) draws above every glass surface.
-3. **Surfaces** = any glass composable or `Modifier.liquidGlass` element elsewhere in the scene, at any depth: in a `Column`, a scrolling list, under `offset`, `graphicsLayer` scale or translation, animated. Each reports its exact bounds every frame. A surface's children draw in the normal tree above its glass and are not refracted.
+3. **Surfaces** = any glass composable or `Modifier.liquidGlass` element elsewhere in the scene, at any depth: in a `Column`, a scrolling list, under `offset`, `Modifier.scale`, `graphicsLayer` scale or translation (lambda or parameter form), animated. Each reports its exact bounds every frame; under a scale its corners, refraction and glow scale too. A surface's children draw in the normal tree above its glass and are not refracted.
 4. **Options inherit.** `GlassScene(material, appearance, refraction, motion, reduceTransparency, increaseContrast)` sets the defaults; components override them with nullable parameters (`null` = the scene's) and `refraction = Dp.Unspecified` (the scene's).
 5. **Nesting.** Glass that must float above other glass (a tab bar over pages that have their own glass) needs a second scene: put a whole `GlassScene` inside the outer scene's `GlassContent`. The inner scene's output, glass included, becomes the outer backdrop. Nested scenes do not inherit options.
 
@@ -180,17 +180,17 @@ Every signature and default, with snippets: [references/api.md](references/api.m
 | `GlassSurface(modifier) { }` | Glass `Box` that provides the right foreground color | as `liquidGlass` without `opacity`/`interactionSource`, plus `contentAlignment` (`Alignment.TopStart`) |
 | `GlassText(text)` | Text in the glass foreground | `style` (`GlassDefaults.LabelTextStyle`, 17 sp semibold), `color` (`Unspecified` → `LocalGlassContentColor`), `maxLines` (`Int.MAX_VALUE`) |
 | `GlassIcon(imageVector \| painter, contentDescription)` | Icon in the glass foreground | `tint` (`LocalGlassContentColor.current`), `size` (22.dp); `contentDescription` is required (null if decorative) |
-| `GlassButton(onClick) { RowScope }` | Interactive capsule with any content | `enabled` (true), `size` (`GlassButtonSize.Regular` 44 dp; `Small` 34, `Large` 52), `shape` (`Capsule`), `tint`, `material`, `appearance`, `refraction`, `interactive` (true), `motion`, `interactionSource` |
+| `GlassButton(onClick) { RowScope }` | Interactive capsule with any content; disabled = glass and label at 45% | `enabled` (true), `size` (`GlassButtonSize.Regular` 44 dp; `Small` 34, `Large` 52), `shape` (`Capsule`), `tint`, `material`, `appearance`, `refraction`, `interactive` (true), `motion`, `interactionSource` |
 | `GlassButton(text, onClick)` | Text button | `icon` (null), `enabled`, `size`, `material`, `appearance`, `tint`, `interactionSource` |
 | `GlassButton(icon, contentDescription, onClick)` | Icon-only circle | `enabled`, `size`, `material`, `appearance`, `tint`, `interactionSource` |
 | `GlassToolbar(modifier) { }` | 52 dp floating capsule; its `GlassButton`s become plain items (their own tint, material, appearance and shape are ignored) | `material`, `appearance`, `tint`, `interactive` (true), `motion` |
 | `GlassToolbarSpacer()` | Splits toolbar items into separate glass clusters | `minWidth` (8.dp), `flexible` (true) |
-| `GlassTabBar(tabs, selectedIndex, onSelectedIndexChange)` | 62 dp capsule with a sliding, draggable glass lens; segmented control if tabs have no icons | `modifier`, `material`, `appearance`, `tint`, `selectedContentColor` (`Unspecified`), `interactive` (true), `motion` |
+| `GlassTabBar(tabs, selectedIndex, onSelectedIndexChange)` | 62 dp capsule with a sliding, draggable glass lens; segmented control if tabs have no icons | `modifier`, `material`, `appearance`, `tint`, `selectedContentColor` (`Unspecified` = foreground), `unselectedContentColor` (`Unspecified` = foreground at 85%), `interactive` (true), `motion` |
 | `GlassTab(label, icon)` | One tab | `icon` (null = label-only) |
-| `GlassSlider(value, onValueChange)` | 44 dp tall, fills its width; white thumb lifts into glass | `enabled` (true), `valueRange` (`0f..1f`), `steps` (0), `onValueChangeFinished` (null), `tint` (platform accent), `appearance`, `motion` |
-| `GlassSwitch(checked, onCheckedChange)` | 54 × 24 dp track in a 54 × 44 dp touch box | `enabled` (true), `tint` (platform accent), `appearance`, `motion` |
-| `GlassMenu(expanded, onDismissRequest, trigger) { ColumnScope }` | Regular panel that grows out of its trigger | `modifier` (the panel, 250 dp wide), `material` (`Regular`), `appearance`, `tint`, `shape` (`GlassShape(GlassDefaults.MenuRadius)` = 28 dp), `motion` |
-| `GlassMenuItem(text, onClick)` / `GlassMenuDivider()` | 44 dp menu row; separator | `icon` (null), `enabled` (true), `destructive` (false), `checked` (null = action, true/false = choice) |
+| `GlassSlider(value, onValueChange)` | 44 dp tall, fills its width; white thumb lifts into glass; disabled = 45% | `enabled` (true), `valueRange` (`0f..1f`), `steps` (0), `onValueChangeFinished` (null), `tint` (platform accent), `appearance`, `motion`, `label` (null; TalkBack name) |
+| `GlassSwitch(checked, onCheckedChange)` | 54 × 24 dp track in a 54 × 44 dp touch box; disabled = 45% | `enabled` (true), `tint` (platform accent), `appearance`, `motion`, `label` (null; TalkBack name) |
+| `GlassMenu(expanded, onDismissRequest, trigger) { ColumnScope }` | Regular panel that grows out of its trigger (out of the whole cluster for a toolbar item) | `modifier` (the panel: as wide as its widest item, 220 dp to the safe width), `material` (`Regular`), `appearance`, `tint`, `shape` (`GlassShape(GlassDefaults.MenuRadius)` = 28 dp), `motion` |
+| `GlassMenuItem(text, onClick)` / `GlassMenuDivider()` | Menu row ≥ 44 dp, label wraps; separator | `icon` (null), `enabled` (true), `destructive` (false), `checked` (null = action, true/false = choice) |
 | `GlassProgressiveBlur(edge)` | Progressive edge blur of the backdrop under bars | `modifier`, `size` (`GlassDefaults.ProgressiveBlurSize` = 80.dp), `blur` (`GlassDefaults.ProgressiveBlurRadius` = 20.dp) |
 | `GlassShape(radius)`, `GlassShape.Capsule`, `GlassShape.Circle` | Continuous-corner `Shape`, also for `clip`/`border` | `radius` finite, ≥ 0 |
 | `GlassDefaults` | Constants | `Refraction`, `SurfaceRadius` (16.dp), `MenuRadius` (28.dp), `MaxSurfacesPerScene` (16), `LightContentColor` (`#111113`), `DarkContentColor` (white), `LabelTextStyle`, `contentColor(dark)`, `systemIncreaseContrast()` |
@@ -254,7 +254,7 @@ GlassSurface(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padd
     Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         GlassText("Midnight Drive", style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold))
         GlassText("The Glass Hours", style = TextStyle(fontSize = 15.sp), color = secondary)
-        GlassSlider(position, { position = it }, Modifier.semantics { contentDescription = "Playback position" }, tint = Color(0xFF0A84FF))
+        GlassSlider(position, { position = it }, tint = Color(0xFF0A84FF), label = "Playback position")
         GlassButton(Icons.Filled.PlayArrow, "Play", onClick = onPlay, size = GlassButtonSize.Large, material = GlassMaterial.Regular, tint = Color(0xFF0A84FF))
     }
 }
@@ -267,7 +267,7 @@ GlassSurface(Modifier.align(Alignment.Center).padding(20.dp).widthIn(max = 420.d
     Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassText("Wi-Fi", Modifier.weight(1f).clearAndSetSemantics {}, style = TextStyle(fontSize = 17.sp))
-            GlassSwitch(wifi, { wifi = it }, Modifier.semantics { contentDescription = "Wi-Fi" }, tint = Color(0xFF30D158))
+            GlassSwitch(wifi, { wifi = it }, tint = Color(0xFF30D158), label = "Wi-Fi")
         }
     }
 }
@@ -354,17 +354,17 @@ Box(
 - `GlassToolbar` content is a plain lambda, not a `RowScope`: no `weight`; use `GlassToolbarSpacer()` (flexible) for space and give the toolbar `fillMaxWidth()` so spacers can spread. Only `GlassButton`s become borderless items; other composables are placed as they are. Group related actions in one toolbar instead of rows of standalone `GlassButton`s.
 - Inside `GlassToolbar` a `GlassButton` keeps only `onClick`, `enabled`, its content and label style: `tint`, `material`, `appearance`, `shape`, `refraction`, `interactive`, `motion` and `size` height are ignored, and it keeps the toolbar's foreground color. A tinted action goes beside the toolbar (recipe above).
 - `GlassTabBar` is controlled: update `selectedIndex` in `onSelectedIndexChange` or the lens snaps back. It spans the width it is given; use `fillMaxWidth()` with side padding (20 dp in the Studio) or a fixed `width`. Use 3 to 5 tabs.
-- `GlassSlider` applies `fillMaxWidth().height(44.dp)` and `GlassSwitch` applies `size(54.dp, 44.dp)` after your modifier: constrain a slider's width from outside (`Modifier.width(…)` or its parent), and do not try to change either height. Their glass thumbs live in a private scene, so they work on a glass card and outside any scene (there pass `appearance` explicitly, see below).
+- `GlassSlider` applies `fillMaxWidth().height(44.dp)` and `GlassSwitch` applies `size(54.dp, 44.dp)` after your modifier: constrain a slider's width from outside (`Modifier.width(…)` or its parent), and do not try to change either height. Their glass thumbs live in a private scene, so they work on a glass card and outside any scene.
 - Nested scenes start from their own parameter defaults: pass every option you set (`material`, `appearance`, `refraction`, `motion`, `reduceTransparency`, `increaseContrast`) to each scene.
-- `appearance = GlassAppearance.Automatic` (and null) follows `isSystemInDarkTheme()` only inside a `GlassScene`, not your app's own theme switch: pass the resolved appearance when the app overrides the theme. Outside any scene it resolves to Light, so give out-of-scene sliders, switches, menus and fallback glass `appearance = if (isSystemInDarkTheme()) GlassAppearance.Dark else GlassAppearance.Light`, or keep them in a scene.
+- `appearance = GlassAppearance.Automatic` (and null) follows `isSystemInDarkTheme()`, inside a `GlassScene` and outside any (out-of-scene sliders, switches, menu popups and fallback glass included), not your app's own theme switch: pass the resolved appearance when the app overrides the theme. Scene options may change at runtime; glass on screen follows them in the same frame.
 - Glass controls on a Regular card are allowed (one level of nesting, as in the `liquid-glass` design rules). Give `GlassButton`s there `material = GlassMaterial.Regular` so they show the card's frost; a Clear button refracts the backdrop directly and shows it sharp through the frost. Plain fills (as on the Studio's Lab page) are the alternative for dense control groups; `GlassSlider`/`GlassSwitch` are designed for cards.
 
 **Limits**
 
-- Up to 16 surfaces per scene on the GPU (`GlassDefaults.MaxSurfacesPerScene`). Counting: 1 per `GlassSurface`, `liquidGlass` element or standalone `GlassButton`; 1 per toolbar cluster (buttons inside a toolbar are free); 2 per `GlassTabBar`; 1 per open menu (in the outermost scene); 0 for slider and switch thumbs; 0 for surfaces scrolled or clipped out of view. Extra surfaces draw the fallback material (Regular ones over a platform blur, Clear ones a translucent fill). Surfaces are counted shallowest first, so tab-bar lenses and open menus come last and fall back first: keep the outermost scene at 15 or fewer. Nest scenes to go further.
-- Glass follows translation and scale of any ancestor; rotation is not supported (it draws the axis-aligned bounds).
+- Up to 16 surfaces per scene on the GPU (`GlassDefaults.MaxSurfacesPerScene`). Counting: 1 per `GlassSurface`, `liquidGlass` element or standalone `GlassButton`; 1 per toolbar cluster (buttons inside a toolbar are free); 1 per `GlassTabBar`, 2 while its lens is lifted (pressed or sliding); 1 per open menu (in the outermost scene); 0 for slider and switch thumbs; 0 for surfaces scrolled or clipped out of view or faded out (`opacity` 0). Extra surfaces draw the fallback material (Regular ones over a platform blur, Clear ones a translucent fill). Surfaces are counted shallowest first, so tab-bar lenses and open menus come last and fall back first: keep the outermost scene at 15 or fewer. Nest scenes to go further.
+- Glass follows translation and scale of any ancestor, also a parameter-form `graphicsLayer(scaleX = …)` or `Modifier.scale` changing without a relayout; rotation is not supported (it draws the axis-aligned bounds).
 - Alpha on a layer between a scene and its glass (`AnimatedVisibility` fades, `Crossfade`, `AnimatedContent` and `NavHost` default transitions around glass that shares an outer backdrop) fades only the children, never the glass, so labels fade while the glass pops. Fade glass with `Modifier.liquidGlass(opacity = …)`, use slide, scale or expand transitions (the glass follows them), or `EnterTransition.None`/`ExitTransition.None` on the `NavHost`. Fading a whole `GlassScene` (each destination its own scene) fades everything together.
-- `interactive = false` only removes the press when no `interactionSource` is passed. With one (always the case in `GlassButton`), press grow and glow still follow the source's press and hover; only the drag stretch goes. For static glass on a clickable element, use `Modifier.liquidGlass(...)` without the clickable's source.
+- `interactive = false` makes glass fully static (no grow, stretch or glow), also with an `interactionSource` and in `GlassButton(interactive = false)`; clicks still work.
 - `tint = Color.Transparent` is a black tint (any specified color tints fully; alpha is ignored). "No tint" is `Color.Unspecified`.
 - `GlassShape` radius must be finite and ≥ 0, `GlassTabBar` needs at least one tab, `GlassSlider` needs `steps >= 0` and a non-empty `valueRange`; otherwise they throw `IllegalArgumentException`.
 - Menus are placed inside the outermost scene and its safe drawing insets: make that scene fill the window.
@@ -376,15 +376,15 @@ Box(
 | Android 13+ inside a scene | The AGSL glass |
 | Android 12 inside a scene | Fallback material (Regular surfaces over a platform blur of the content, Clear ones a translucent fill) + rim light; progressive blur works |
 | Android 7 to 11 inside a scene | Fallback material (translucent fill) + rim light; progressive blur becomes a fade toward the edge |
-| Outside any `GlassScene`, inside its own `GlassContent`, in a `Dialog`/`Popup` window | Fallback material + rim light (no backdrop); outside a scene `Automatic` resolves to Light |
+| Outside any `GlassScene`, inside its own `GlassContent`, in a `Dialog`/`Popup` window, wholly outside the `GlassContent`'s bounds | Fallback material + rim light (no backdrop); outside a scene `Automatic` follows the system dark theme |
 | Beyond 16 surfaces | The extra surfaces get the fallback material (Regular over a platform blur) |
 
-Glass never crashes; where the GPU path is unavailable it draws the fallback material. Glass placed entirely outside its scene's `GlassContent` bounds is not drawn. An emulator shows the GPU path only on an Android 13+ image with GPU emulation (`-gpu host` or `swiftshader_indirect`); Android Studio previews and JVM screenshot tools may show the fallback, so judge the look on a device.
+Glass never crashes; where the GPU path is unavailable it draws the fallback material, also for glass placed entirely outside its scene's `GlassContent` bounds. An emulator shows the GPU path only on an Android 13+ image with GPU emulation (`-gpu host` or `swiftshader_indirect`); Android Studio previews and JVM screenshot tools may show the fallback, so judge the look on a device.
 
 **Color and performance**
 
 - Use saturated system hues as light/dark pairs: blue `#007AFF`/`#0A84FF`, green `#34C759`/`#30D158`, red `#FF3B30`/`#FF453A`, orange `#FF9500`/`#FF9F0A`.
-- One `RenderEffect` draws all surfaces of a scene: a sharp pass, plus one frost pass per Regular appearance present (light, dark), each adding two blurs of the content layer (σ 7.33 dp and about 23 dp). Scenes with only Clear glass skip them.
+- One `RenderEffect` draws all surfaces of a scene: a sharp pass, plus one frost pass per Regular appearance present (light, dark), each adding two blurs of the content layer (σ 7.33 dp and about 23 dp), the passes added together in exact z-order (Clear over Regular keeps its rim and side shade). Scenes with only Clear glass skip them.
 - Nothing runs while the scene is still. The effect is rebuilt whenever the content layer redraws: content changes, a surface moving, a spring advancing. A backdrop that animates forever (looping video, infinite transitions) costs a rebuild every frame; keep it as the only such animation on screen.
 - Each `GlassProgressiveBlur` band draws six band-sized blur layers: keep bands as shallow as the design allows. Every nested scene records its content into its own layers: nest only where glass must cover glass.
 - A long list of glass rows works (offscreen rows are free), but it is a design smell: one glass bar over a solid list is cheaper and calmer.
@@ -392,12 +392,13 @@ Glass never crashes; where the GPU path is unavailable it draws the fallback mat
 **Accessibility**
 
 - Roles come built in: buttons `Role.Button`, switches `Role.Switch` with toggle state, sliders expose range and "set progress", tab bars are selectable groups of `Role.Tab`, menu items `Role.Button` or `Role.Checkbox` (`checked`), the open menu is a pane. Glass itself adds no semantics nodes.
-- Icon-only `GlassButton` requires `contentDescription`; `GlassIcon` takes `null` only when decorative. Label `GlassSlider` and `GlassSwitch` with `Modifier.semantics { contentDescription = "…" }` and hide the duplicate row text with `clearAndSetSemantics {}`.
-- Font scaling: labels use `sp` and controls grow with them. Use `heightIn(min = …)`, never fixed heights, for rows and bars.
+- Icon-only `GlassButton` requires `contentDescription`; `GlassIcon` takes `null` only when decorative. Label `GlassSlider` and `GlassSwitch` with `label = "…"` and hide the duplicate row text with `clearAndSetSemantics {}`; give a slider whose value is not a percentage `Modifier.semantics { stateDescription = "60 dp" }`.
+- Disabled buttons, sliders and switches dim to 45%, glass included; menu items to 40%.
+- Font scaling: labels use `sp` and controls grow with them; menu panels widen to fit and wrap long items, tab labels keep a 4 dp gap and ellipsize. Use `heightIn(min = …)`, never fixed heights, for rows and bars.
 - Reduced motion: the system "Remove animations" setting lowers `GlassMotion.Full` to `Reduced` automatically. Use `motion = GlassMotion.None` for screenshot tests.
 - Increase contrast follows the system (Android 14 contrast level, "High contrast text") through `GlassDefaults.systemIncreaseContrast()`; it adds a 1 dp border and forces Regular.
 - Reduce transparency has no Android system setting: expose an app setting and pass `GlassScene(reduceTransparency = …)` (to every scene) for an opaque fill.
-- Keyboard: focus rings on buttons, sliders and switches (tab bars and menu items show no focus indicator), arrows for tabs and sliders, Enter/Space for switches, Escape and Back close menus. Haptics (press tick, toggle, detents) are built in; do not add your own.
+- Keyboard: 2 dp focus rings on buttons, sliders, switches, tabs and menu items (menu items are also highlighted), arrows for tabs and sliders, Enter/Space for switches, Escape and Back close menus. Haptics (press tick, toggle, detents) are built in; do not add your own.
 - Menu strings `liquidglass_menu` ("Menu") and `liquidglass_dismiss_menu` ("Close menu") can be overridden or localized in your `res/values*/strings.xml`.
 
 **Design defaults on Android**
@@ -434,7 +435,7 @@ SideEffect {
 | Tint has no effect | The `GlassButton` is a toolbar item: move the tinted action beside the toolbar. |
 | Glass turns black | `tint = Color.Transparent`: use `Color.Unspecified`. |
 | Dark text on dark glass | Material `Text`/`Icon` color, or `LocalGlassContentColor` read outside the surface. |
-| Light glass in dark mode | `Automatic` outside a scene resolves to Light; or the app overrides the system theme. |
+| Light glass in dark mode | The app overrides the system theme: pass the resolved `appearance`. |
 | Glass misplaced or the wrong size | `padding` before `liquidGlass` insets it; rotation draws axis-aligned bounds; `align` on a `GlassMenu` trigger does nothing (wrap it in a `Box`). |
 | Tab lens snaps back | `onSelectedIndexChange` does not update `selectedIndex`. |
 

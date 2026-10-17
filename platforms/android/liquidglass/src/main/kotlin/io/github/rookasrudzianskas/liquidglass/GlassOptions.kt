@@ -66,7 +66,7 @@ public object GlassDefaults {
     /** Maximum number of surfaces one scene refracts on the GPU at once; more fall back to the fallback material. */
     public const val MaxSurfacesPerScene: Int = 16
 
-    /** Default height of the [GlassProgressiveBlur] band. */
+    /** Default depth of the [GlassProgressiveBlur] band from its edge (80 dp): its height at the top or bottom, its width at the start or end. */
     public val ProgressiveBlurSize: Dp = 80.dp
 
     /** Default strongest blur (Gaussian σ at the edge) of [GlassProgressiveBlur]. */

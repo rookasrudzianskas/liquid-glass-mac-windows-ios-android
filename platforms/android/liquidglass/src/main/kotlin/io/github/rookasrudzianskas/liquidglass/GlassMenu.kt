@@ -3,6 +3,11 @@ package io.github.rookasrudzianskas.liquidglass
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
+import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -103,7 +108,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassFade
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassOverlayLevel
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.OVERLAY_LEVEL
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
@@ -159,7 +164,7 @@ public fun GlassMenu(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scene = LocalGlassScene.current
-    val style = LocalGlassStyle.current
+    val style = currentGlassStyle()
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
     val menu = remember { MenuState() }
@@ -211,7 +216,23 @@ public fun GlassMenu(
                 popupPositionProvider = remember(menu) { MenuPopupPosition(menu) },
                 onDismissRequest = { dismiss() },
                 properties = PopupProperties(focusable = true),
-            ) { panel() }
+            ) {
+                // Kept inside the window's margins, like the in-scene panel.
+                Box(
+                    Modifier.layout { measurable, constraints ->
+                        val inset = 2 * PanelMargin.roundToPx()
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = 0,
+                                minHeight = 0,
+                                maxWidth = maxOf(0, constraints.maxWidth - inset),
+                                maxHeight = maxOf(0, constraints.maxHeight - inset),
+                            ),
+                        )
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    },
+                ) { panel() }
+            }
         }
     }
     if (!present || scene == null) return
@@ -280,7 +301,8 @@ public fun GlassMenuItem(
     ) {
         val shown = color.copy(alpha = if (enabled) 1f else 0.4f)
         if (icon != null) GlassIcon(icon, contentDescription = null, tint = shown, size = 20.dp)
-        GlassText(text, Modifier.weight(1f), style = ItemTextStyle, color = shown, maxLines = 1)
+        // Long labels and large fonts wrap: the panel grows to fit its items, up to the safe width.
+        GlassText(text, Modifier.weight(1f).padding(vertical = 10.dp), style = ItemTextStyle, color = shown)
         if (checked == true) GlassIcon(CheckMark, contentDescription = null, tint = shown, size = 18.dp)
     }
 }
@@ -328,12 +350,13 @@ private fun MenuOverlay(menu: MenuState, expanded: Boolean, onDismiss: () -> Uni
             )
         }
         Layout(content = panel) { measurables, constraints ->
-            val placeable = measurables.first().measure(Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight))
-            val margin = 8.dp.roundToPx()
+            val margin = PanelMargin.roundToPx()
             val top = insets.getTop(density) + margin
             val bottom = constraints.maxHeight - insets.getBottom(density) - margin
             val left = insets.getLeft(density, layoutDirection) + margin
             val right = constraints.maxWidth - insets.getRight(density, layoutDirection) - margin
+            // The panel fits the safe area; taller content scrolls inside it.
+            val placeable = measurables.first().measure(Constraints(maxWidth = maxOf(0, right - left), maxHeight = maxOf(0, bottom - top)))
             layout(constraints.maxWidth, constraints.maxHeight) {
                 // The trigger is located against this layout's own coordinates, known while placing.
                 val anchor = coordinates?.let(menu::triggerIn) ?: Rect.Zero
@@ -397,7 +420,9 @@ private fun MenuPanel(
         CompositionLocalProvider(LocalMenuDismiss provides onDismiss, LocalGlassToolbarItem provides false, LocalGlassToolbarClusters provides null) {
             Column(
                 modifier
-                    .width(IntrinsicMenuWidth)
+                    // As wide as its widest item (at least MinMenuWidth), up to the space it is given.
+                    .widthIn(min = MinMenuWidth)
+                    .width(IntrinsicSize.Max)
                     .onGloballyPositioned { menu.panelCoordinates = it }
                     .glassSurface(params, dynamics)
                     .graphicsLayer {
@@ -417,6 +442,7 @@ private fun MenuPanel(
                             false
                         }
                     }
+                    .verticalScroll(rememberScrollState())
                     .padding(MenuInset),
                 content = content,
             )
@@ -580,7 +606,11 @@ private val MenuInset = 6.dp
 
 /** How far a menu reaches past the toolbar cluster it opens from. */
 private val ClusterOverlap = 1.dp
-private val IntrinsicMenuWidth = 250.dp
+/** The narrowest panel (as on iOS); it grows with its labels. */
+private val MinMenuWidth = 220.dp
+
+/** Space kept between the panel and the safe area's edges. */
+private val PanelMargin = 8.dp
 private val ItemShape = RoundedCornerShape(22.dp)
 private val ItemTextStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Normal)
 private val DestructiveColor = Color(0xFFFF3B30)

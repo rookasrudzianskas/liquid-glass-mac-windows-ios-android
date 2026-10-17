@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.internal.ControlThumb
 import io.github.rookasrudzianskas.liquidglass.internal.FrameAnimator
 import io.github.rookasrudzianskas.liquidglass.internal.GlassHaptics
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.ThumbState
 import io.github.rookasrudzianskas.liquidglass.internal.platformAccent
 import kotlin.math.abs
@@ -74,7 +75,7 @@ import kotlin.math.roundToInt
  * @param value current value, within [valueRange].
  * @param onValueChange called with each new value while dragging.
  * @param modifier modifier for the slider; it fills the width it is given, 44 dp tall.
- * @param enabled whether the slider responds.
+ * @param enabled whether the slider responds; a disabled slider is dimmed to 45%.
  * @param valueRange the range of values.
  * @param steps number of discrete values between the ends (0 for continuous); each is a haptic detent.
  * @param onValueChangeFinished called when a drag or key press ends.
@@ -99,7 +100,7 @@ public fun GlassSlider(
 ) {
     require(steps >= 0) { "steps must be nonnegative" }
     require(valueRange.endInclusive > valueRange.start) { "valueRange must not be empty" }
-    val style = LocalGlassStyle.current
+    val style = currentGlassStyle()
     val dark = style.isDark(appearance)
     val accent = if (tint.isSpecified) tint else platformAccent(dark)
     val density = LocalDensity.current.density
@@ -213,6 +214,8 @@ public fun GlassSlider(
         GlassLocalScene(
             Modifier
                 .matchParentSize()
+                // A disabled slider fades as a whole: track, fill and thumb (its glass is drawn inside).
+                .alpha(if (enabled) 1f else DisabledAlpha)
                 .layout { measurable, constraints ->
                     // The scene reaches past the ends so the grown thumb stays inside it.
                     val pad = SliderOverhang.roundToPx()

@@ -285,8 +285,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -325,7 +323,7 @@ fun NowPlaying() {
             Column(Modifier.padding(20.dp)) {
                 GlassText("Midnight Drive", style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold))
                 GlassText("The Glass Hours", style = TextStyle(fontSize = 15.sp), color = secondary)
-                GlassSlider(position, { position = it }, Modifier.padding(top = 6.dp).semantics { contentDescription = "Playback position" }, tint = Accent)
+                GlassSlider(position, { position = it }, Modifier.padding(top = 6.dp), tint = Accent, label = "Playback position")
                 Row(Modifier.fillMaxWidth()) {
                     GlassText(clock(position * TrackSeconds), Modifier.weight(1f), style = Caption, color = secondary)
                     GlassText("-" + clock((1f - position) * TrackSeconds), style = Caption, color = secondary)
@@ -405,8 +403,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -448,7 +444,7 @@ fun QuickSettings() {
                 SwitchRow("Focus", focus) { focus = it }
                 Hairline()
                 GlassText("Brightness", Modifier.padding(top = 12.dp).clearAndSetSemantics {}, style = RowLabel)
-                GlassSlider(brightness, { brightness = it }, Modifier.semantics { contentDescription = "Brightness" }, tint = Color(0xFFFF9F0A))
+                GlassSlider(brightness, { brightness = it }, tint = Color(0xFFFF9F0A), label = "Brightness")
             }
         }
     }
@@ -458,7 +454,7 @@ fun QuickSettings() {
 private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
         GlassText(label, Modifier.weight(1f).clearAndSetSemantics {}, style = RowLabel)
-        GlassSwitch(checked, onCheckedChange, Modifier.semantics { contentDescription = label }, tint = Green)
+        GlassSwitch(checked, onCheckedChange, tint = Green, label = label)
     }
 }
 
@@ -547,7 +543,7 @@ Notes:
 - In a `GlassToolbar`, put the `GlassMenu` straight in the toolbar's content with an icon `GlassButton` as the trigger: `trigger = { GlassButton(Icons.Filled.MoreVert, "More", onClick = { open = true }) }`. The toolbar positions it.
 - Keep `open` in `remember`, not `rememberSaveable`: a menu should not reopen after a configuration change.
 - Inside a scene the panel draws in the scene's overlay (the outermost scene when nested) and refracts the whole scene. Outside any scene it opens in a `Popup` with the fallback material.
-- The panel is 250 dp wide; pass `modifier = Modifier.width(280.dp)` to change it. Items are 44 dp tall with 22 dp corners inside the 28 dp panel (6 dp inset): concentric.
+- The panel is as wide as its widest item (220 dp at least, the safe width at most) and long labels wrap; pass `modifier = Modifier.width(280.dp)` to fix it. Items are 44 dp tall with 22 dp corners inside the 28 dp panel (6 dp inset): concentric.
 
 ## 6. Progressive blur over a scrolling list
 

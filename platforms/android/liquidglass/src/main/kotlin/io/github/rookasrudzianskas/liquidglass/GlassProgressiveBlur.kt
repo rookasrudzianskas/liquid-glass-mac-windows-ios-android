@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -21,8 +22,8 @@ import androidx.compose.ui.node.ObserverModifierNode
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.observeReads
+import androidx.compose.ui.node.requireLayoutDirection
 import androidx.compose.ui.platform.InspectorInfo
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier.Node
@@ -30,7 +31,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.BlurFrame
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSceneState
 import io.github.rookasrudzianskas.liquidglass.internal.GlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
-import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassStyle
+import io.github.rookasrudzianskas.liquidglass.internal.resolveGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.SceneBlur
 
 /** The edge of the content a [GlassProgressiveBlur] fades into. */
@@ -110,8 +111,11 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
 
     private var scene: GlassSceneState? = null
     private var style = GlassStyle()
-    private var layoutDirection = LayoutDirection.Ltr
     private var coordinates: LayoutCoordinates? = null
+
+    /** The band and direction the last frame drew. */
+    private var lastBand = Rect.Zero
+    private var lastToward = Offset.Zero
 
     fun update(edge: GlassEdge, blur: Dp) {
         this.edge = edge
@@ -128,6 +132,7 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
     override fun onDetach() {
         scene?.unregister(this)
         coordinates = null
+        lastBand = Rect.Zero
     }
 
     override fun onObservedReadsChanged() {
@@ -143,8 +148,7 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
 
     private fun readLocals() = observeReads {
         scene = currentValueOf(LocalGlassScene)
-        style = currentValueOf(LocalGlassStyle)
-        layoutDirection = currentValueOf(LocalLayoutDirection)
+        style = resolveGlassStyle()
     }
 
     override fun onSceneRenderingChanged() = invalidateDraw()
@@ -154,9 +158,9 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
         scene?.invalidate()
     }
 
-    /** Unit direction from the sharp side toward the blurred edge. */
+    /** Unit direction from the sharp side toward the blurred edge (the layout direction is read fresh: it is a static local). */
     private fun toward(): Offset {
-        val rtl = layoutDirection == LayoutDirection.Rtl
+        val rtl = requireLayoutDirection() == LayoutDirection.Rtl
         return when (edge) {
             GlassEdge.Top -> Offset(0f, -1f)
             GlassEdge.Bottom -> Offset(0f, 1f)
@@ -169,9 +173,17 @@ private class ProgressiveBlurNode(private var edge: GlassEdge, private var blur:
         val coordinates = coordinates?.takeIf { it.isAttached } ?: return null
         if (scene?.renders(coordinates) != true || !content.isAttached) return null
         val band = content.localBoundingBoxOf(coordinates, clipBounds = false)
-        if (band.isEmpty) return null
         val toward = toward()
+        lastBand = band
+        lastToward = toward
+        if (band.isEmpty) return null
         return BlurFrame(band, toward.x, toward.y, blur.value * density, style.isDark(null))
+    }
+
+    override fun moved(content: LayoutCoordinates): Boolean {
+        val coordinates = coordinates?.takeIf { it.isAttached } ?: return false
+        if (scene?.renders(coordinates) != true || !content.isAttached) return false
+        return content.localBoundingBoxOf(coordinates, clipBounds = false) != lastBand || toward() != lastToward
     }
 
     override fun ContentDrawScope.draw() {

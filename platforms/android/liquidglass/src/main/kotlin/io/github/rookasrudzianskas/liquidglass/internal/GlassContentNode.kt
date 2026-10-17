@@ -1,6 +1,8 @@
 package io.github.rookasrudzianskas.liquidglass.internal
 
 import android.os.Build
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -24,6 +26,7 @@ import androidx.compose.ui.node.TraversableNode
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.requireGraphicsContext
 import androidx.compose.ui.node.requireLayoutCoordinates
+import androidx.compose.ui.node.requireView
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -123,9 +126,33 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         if (isAttached) invalidateDraw()
     }
 
-    override fun onAttach() = scene.attachContent(this)
+    /**
+     * Before each draw of the window, checks whether glass moved without a
+     * relayout (an ancestor's layer changed) and redraws the glass if so.
+     */
+    private val preDraw = ViewTreeObserver.OnPreDrawListener {
+        if (isAttached && scene.hasParticipants) {
+            val coordinates = requireLayoutCoordinates()
+            if (coordinates.isAttached && scene.moved(coordinates)) invalidateDraw()
+        }
+        true
+    }
+    private var view: View? = null
+    private var treeObserver: ViewTreeObserver? = null
+
+    override fun onAttach() {
+        scene.attachContent(this)
+        val view = requireView()
+        this.view = view
+        treeObserver = view.viewTreeObserver.also { it.addOnPreDrawListener(preDraw) }
+    }
 
     override fun onDetach() {
+        // A tree observer registered before the view attached is merged into the window's and dies.
+        val observer = treeObserver?.takeIf { it.isAlive } ?: view?.viewTreeObserver
+        if (observer?.isAlive == true) observer.removeOnPreDrawListener(preDraw)
+        treeObserver = null
+        view = null
         scene.detachContent(this)
         val graphics = requireGraphicsContext()
         listOfNotNull(backdropLayer, bandedLayer, glassLayer, fallbackLayer).forEach(graphics::releaseGraphicsLayer)
