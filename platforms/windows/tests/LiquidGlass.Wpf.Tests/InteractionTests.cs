@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using LiquidGlass.Wpf.Rendering;
@@ -158,15 +159,23 @@ public class InteractionTests
         });
     }
 
-    [Fact]
-    public void APressDoesNotKeepAClosedWindowAlive()
+    /// <summary>
+    /// A closed window is collected after a press on glass in it, as it is after a press on a plain button and after
+    /// no press at all (the baselines, which rule out WPF's own input state). On failure the message names the chain
+    /// of references that keeps the window alive.
+    /// </summary>
+    [Theory]
+    [InlineData("glass button, pressed")]
+    [InlineData("glass button, never pressed")]
+    [InlineData("plain button in a scene, pressed")]
+    public void APressDoesNotKeepAClosedWindowAlive(string variant)
     {
         Sta.Run(() =>
         {
             GlassSystemSettings.AnimationsOverride = true;
             try
             {
-                var (window, press) = PressAndClose();
+                var (window, press) = PressAndClose(variant);
                 for (var i = 0; i < 3; i++)
                 {
                     GC.Collect();
@@ -174,8 +183,8 @@ public class InteractionTests
                     GC.Collect();
                     Sta.Pump();
                 }
-                Assert.False(press.IsAlive, "the press event is still referenced after the window closed");
-                Assert.False(window.IsAlive, "the closed window is still referenced");
+                Assert.False(press is { IsAlive: true }, $"{variant}: the press event is still referenced after the window closed");
+                if (window.IsAlive) Assert.Fail($"{variant}: the closed window is still referenced{GcRoots.PathTo(typeof(LeakProbeWindow))}");
             }
             finally
             {
@@ -185,22 +194,50 @@ public class InteractionTests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static (WeakReference Window, WeakReference Press) PressAndClose()
+    private static (WeakReference Window, WeakReference? Press) PressAndClose(string variant)
     {
-        var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        ButtonBase button = variant.StartsWith("plain", StringComparison.Ordinal)
+            ? new Button { Content = "Press", Width = 120, Height = 32, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+            : new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         var scene = new GlassScene { Content = new Border { Background = Brushes.SteelBlue } };
         scene.Children.Add(button);
-        var window = Sta.Show(scene, 400, 200);
-        var down = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent };
-        button.RaiseEvent(down);
-        Wait(0.3);
-        button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
-        // Let the release settle, so the frame loop stops after its last frame.
-        Wait(1.6);
+        var window = new LeakProbeWindow
+        {
+            Content = scene,
+            Width = 400,
+            Height = 200,
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            Left = 20,
+            Top = 20,
+        };
+        window.Show();
+        Sta.Pump();
+        MouseButtonEventArgs? down = null;
+        if (variant.EndsWith("pressed", StringComparison.Ordinal) && !variant.EndsWith("never pressed", StringComparison.Ordinal))
+        {
+            down = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent };
+            button.RaiseEvent(down);
+            Wait(0.3);
+            button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+            // Let the release settle, so the frame loop stops after its last frame.
+            Wait(1.6);
+        }
+        // Nothing the press started may outlive it: the frame loop has stopped and the mouse is free.
+        if (button is GlassButton glass && glass.Template.FindName("PART_Surface", glass) is GlassSurface { Interaction: { } interaction })
+            Assert.False(GlassFrameLoop.IsRunning(interaction), $"{variant}: the press is still animating");
+        Assert.Null(Mouse.Captured);
         Keyboard.ClearFocus();
         window.Close();
         Sta.Pump();
-        return (new WeakReference(window), new WeakReference(down));
+        return (new WeakReference(window), down is null ? null : new WeakReference(down));
+    }
+
+    /// <summary>A window type of its own, so the leak check can find exactly this window on the heap.</summary>
+    private sealed class LeakProbeWindow : Window
+    {
     }
 
     private static void Wait(double seconds) => Sta.Wait(seconds);

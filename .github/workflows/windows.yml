@@ -119,6 +119,14 @@ jobs:
           dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- probe --out "$env:REPORT\probe" 2>&1 |
             Tee-Object -FilePath "$env:REPORT\probe.log"
 
+      - name: Measure WPF's blur
+        if: always()
+        run: |
+          # The σ BlurEffect renders on screen and in RenderTargetBitmap at 100%, 200% and 300%: the model the
+          # progressive blur and the Regular frost are planned with.
+          dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- blur --out "$env:REPORT\blur" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\blur.log"
+
       - name: Render the glass gallery
         if: always()
         run: |
@@ -188,6 +196,11 @@ jobs:
               foreach ($required in "LICENSE", "NOTICE.md", "README.md", "icon.png") {
                 if ($names -notcontains $required) { $failures += "$($package.Name) lacks $required" }
               }
+              $nuspec = $zip.Entries | Where-Object { $_.FullName -like "*.nuspec" } | Select-Object -First 1
+              $reader = New-Object IO.StreamReader($nuspec.Open())
+              $manifest = $reader.ReadToEnd()
+              $reader.Close()
+              if ($manifest -notmatch "<releaseNotes>") { $failures += "$($package.Name) has no release notes" }
               if ($package.Name -like "LiquidGlassEngineering.Wpf.*") {
                 foreach ($tfm in "net48", "net8.0-windows7.0", "net10.0-windows7.0") {
                   if ($names -notcontains "lib/$tfm/LiquidGlass.Wpf.dll") { $failures += "$($package.Name) lacks lib/$tfm" }
@@ -200,12 +213,82 @@ jobs:
                 $reader.Close()
                 if ($text.Contains($env:GITHUB_WORKSPACE)) { $failures += "$($dll.FullName) in $($package.Name) records the build path" }
                 if (-not $text.Contains("/_/")) { $failures += "$($dll.FullName) in $($package.Name) has no mapped source path" }
+                # The symbols travel inside the library (the project feed has no symbol server).
+                $memory = New-Object IO.MemoryStream
+                $entry = $dll.Open()
+                $entry.CopyTo($memory)
+                $entry.Close()
+                $memory.Position = 0
+                $pe = New-Object System.Reflection.PortableExecutable.PEReader($memory)
+                $embedded = @($pe.ReadDebugDirectory() | Where-Object { $_.Type -eq [System.Reflection.PortableExecutable.DebugDirectoryEntryType]::EmbeddedPortablePdb })
+                $pe.Dispose()
+                if ($embedded.Count -eq 0) { $failures += "$($dll.FullName) in $($package.Name) has no embedded PDB" }
               }
             }
             finally { $zip.Dispose() }
           }
           Get-Content $log
           if ($failures) { throw "package check failed: $($failures -join '; ')" }
+
+      - name: Restore and build a consumer of the packages
+        if: always()
+        run: |
+          # What a developer does with the install instructions: a WPF app for every target the package names, restored
+          # from these packages (and nuget.org) into an empty package folder, so nothing comes from a cache.
+          $consumer = "$env:RUNNER_TEMP\consumer"
+          $log = "$env:REPORT\consumer.txt"
+          New-Item -ItemType Directory -Force -Path $consumer | Out-Null
+          $version = (Get-ChildItem "$env:RELEASE\nuget" -Filter "LiquidGlassEngineering.Wpf.*.nupkg").BaseName -replace '^LiquidGlassEngineering\.Wpf\.', ''
+          if (-not $version) { "no LiquidGlassEngineering.Wpf package to consume" | Set-Content $log; throw "no package" }
+          @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="release" value="$env:RELEASE\nuget" />
+            </packageSources>
+          </configuration>
+          "@ | Set-Content "$consumer\nuget.config"
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFrameworks>net48;net8.0-windows;net10.0-windows</TargetFrameworks>
+              <UseWPF>true</UseWPF>
+              <LangVersion>latest</LangVersion>
+              <RestorePackagesPath>$env:RUNNER_TEMP\consumer-packages</RestorePackagesPath>
+            </PropertyGroup>
+            <ItemGroup>
+              <PackageReference Include="LiquidGlassEngineering.Wpf" Version="$version" />
+            </ItemGroup>
+          </Project>
+          "@ | Set-Content "$consumer\Consumer.csproj"
+          @"
+          using System;
+          using System.Windows;
+          using LiquidGlass.Wpf;
+          public static class Program
+          {
+              [STAThread]
+              public static void Main()
+              {
+                  var scene = new GlassScene();
+                  scene.Children.Add(new GlassButton { Content = "Glass" });
+                  new Window { Content = scene };
+                  Console.WriteLine(GlassDiagnostics.ShaderSource);
+              }
+          }
+          "@ | Set-Content "$consumer\Program.cs"
+          dotnet build "$consumer\Consumer.csproj" -c Release 2>&1 | Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { throw "a consumer of LiquidGlassEngineering.Wpf $version did not restore and build for net48, net8.0-windows and net10.0-windows" }
+          foreach ($tfm in "net48", "net8.0-windows", "net10.0-windows") {
+            $exe = "$consumer\bin\Release\$tfm\Consumer.exe"
+            if (-not (Test-Path $exe)) { throw "no $tfm build of the consumer" }
+            $source = & $exe
+            "$($tfm): runs, shader $source" | Tee-Object -Append -FilePath $log
+            if ($LASTEXITCODE -ne 0) { throw "the $tfm consumer did not run" }
+          }
 
       - name: List the release artifacts
         if: always()
@@ -228,11 +311,23 @@ jobs:
           Get-Content "$env:REPORT\publish.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           Get-Content "$env:REPORT\release.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           Get-Content "$env:REPORT\studio\studio.txt" -ErrorAction SilentlyContinue | Add-Content $summary
+          Get-Content "$env:REPORT\consumer.txt" -ErrorAction SilentlyContinue | Select-String ": runs, shader " | ForEach-Object { "consumer $($_.Line)" } | Add-Content $summary
+          Get-Content "$env:REPORT\blur\blur.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
             [xml]$x = Get-Content $trx.FullName
             $c = $x.TestRun.ResultSummary.Counters
             "$($trx.Name): total $($c.total), passed $($c.passed), failed $($c.failed)" | Add-Content $summary
           }
+
+      - name: Check that the precompiled shader is current
+        if: always()
+        run: |
+          # Bytecode compiled from older sources is ignored by the library, which then compiles the HLSL at run time:
+          # commit the fxc output in this report (shaders/GlassSurface.ps and .sha256) before releasing.
+          $state = Get-Content "$env:REPORT\shaders\fxc.log" -ErrorAction SilentlyContinue | Select-String "precompiled shader"
+          if (-not $state) { throw "fxc did not report on the precompiled shader" }
+          if ($state.Line -match "STALE") { throw "$($state.Line): refresh src\LiquidGlass.Wpf\Shaders\Compiled from this report" }
+          $state.Line
 
       - name: Upload the report
         if: always()

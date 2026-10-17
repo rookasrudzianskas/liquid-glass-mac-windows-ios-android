@@ -20,6 +20,34 @@ internal static class WindowCapture
     /// </summary>
     public static (int Width, int Height) SavePng(IntPtr hwnd, string path)
     {
+        var shot = Capture(hwnd);
+        var width = shot.Width;
+        var height = shot.Height;
+        BitmapSource image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, shot.Pixels, width * 4);
+        if (DwmGetWindowAttribute(hwnd, ExtendedFrameBounds, out var frame, Marshal.SizeOf<Rect>()) == 0)
+        {
+            var crop = new Int32Rect(frame.Left - shot.Left, frame.Top - shot.Top, frame.Right - frame.Left, frame.Bottom - frame.Top);
+            if (crop.X >= 0 && crop.Y >= 0 && crop.Width > 0 && crop.Height > 0 && crop.X + crop.Width <= width && crop.Y + crop.Height <= height)
+            {
+                image = new CroppedBitmap(image, crop);
+                width = crop.Width;
+                height = crop.Height;
+            }
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        using var file = File.Create(path);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(image));
+        encoder.Save(file);
+        return (width, height);
+    }
+
+    /// <summary>
+    /// The composed pixels of <paramref name="hwnd"/>'s whole window rectangle (opaque BGRA, top row first), with the
+    /// rectangle's screen position.
+    /// </summary>
+    public static Shot Capture(IntPtr hwnd)
+    {
         if (!GetWindowRect(hwnd, out var rect)) throw new InvalidOperationException("GetWindowRect failed.");
         var width = rect.Right - rect.Left;
         var height = rect.Bottom - rect.Top;
@@ -39,28 +67,11 @@ internal static class WindowCapture
         {
             if (!PrintWindow(hwnd, memory, PwRenderFullContent))
                 throw new InvalidOperationException("PrintWindow failed.");
-            var stride = width * 4;
-            var pixels = new byte[stride * height];
+            var pixels = new byte[width * 4 * height];
             Marshal.Copy(bits, pixels, 0, pixels.Length);
             // The DIB is BGRX; make it opaque.
             for (var i = 3; i < pixels.Length; i += 4) pixels[i] = 255;
-            BitmapSource image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
-            if (DwmGetWindowAttribute(hwnd, ExtendedFrameBounds, out var frame, Marshal.SizeOf<Rect>()) == 0)
-            {
-                var crop = new Int32Rect(frame.Left - rect.Left, frame.Top - rect.Top, frame.Right - frame.Left, frame.Bottom - frame.Top);
-                if (crop.X >= 0 && crop.Y >= 0 && crop.Width > 0 && crop.Height > 0 && crop.X + crop.Width <= width && crop.Y + crop.Height <= height)
-                {
-                    image = new CroppedBitmap(image, crop);
-                    width = crop.Width;
-                    height = crop.Height;
-                }
-            }
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            using var file = File.Create(path);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(image));
-            encoder.Save(file);
-            return (width, height);
+            return new Shot(pixels, width, height, rect.Left, rect.Top);
         }
         finally
         {
@@ -70,6 +81,9 @@ internal static class WindowCapture
             _ = ReleaseDC(IntPtr.Zero, screen);
         }
     }
+
+    /// <summary>A window capture: BGRA pixels and the window rectangle's screen position.</summary>
+    public sealed record Shot(byte[] Pixels, int Width, int Height, int Left, int Top);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect

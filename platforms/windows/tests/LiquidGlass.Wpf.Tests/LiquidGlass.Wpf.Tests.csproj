@@ -21,6 +21,8 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <!-- Names the reference chain that keeps a leaked window alive (GcRoots). -->
+    <PackageReference Include="Microsoft.Diagnostics.Runtime" Version="3.1.512801" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">

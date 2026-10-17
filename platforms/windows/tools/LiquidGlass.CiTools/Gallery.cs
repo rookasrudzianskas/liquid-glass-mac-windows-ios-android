@@ -132,7 +132,8 @@ internal static class Gallery
         Grid.SetColumn(right, 1);
         backdrop.Children.Add(left);
         backdrop.Children.Add(right);
-        var scene = new GlassScene { Width = 156, Height = 124, Margin = new Thickness(6), Content = backdrop };
+        // Four probes (162 units each with their margins) fit one row of a column, so every one is captured whole.
+        var scene = new GlassScene { Width = 150, Height = 124, Margin = new Thickness(6), Content = backdrop };
         GlassScene.SetMaterial(scene, GlassMaterial.Clear);
         scene.Children.Add(glass);
         return scene;

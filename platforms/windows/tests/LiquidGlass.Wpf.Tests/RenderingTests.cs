@@ -100,6 +100,8 @@ public class RenderingTests
             var root = new Grid { Width = 200, Height = 64, Children = { lens } };
             root.Measure(new Size(200, 64));
             root.Arrange(new Rect(0, 0, 200, 64));
+            // Size changes reach the lens (OnRenderSizeChanged) only when the layout manager runs its queue.
+            root.UpdateLayout();
             Assert.Equal(GlassLensMode.Opaque, lens.Mode);
             Assert.NotNull(lens.Overlay.RimBitmap);
 
@@ -139,16 +141,23 @@ public class RenderingTests
         Assert.True(Math.Abs(BlurPasses.RenderedSigma(BlurPasses.Radii(22 / 3.0, scale), scale) - 22 / 3.0) < 0.25);
     }
 
+    /// <summary>
+    /// The progressive blur as it reaches the screen at 100%, 200% and 300% display scale: the strongest level and level
+    /// 5 render their σ. The window's own scale is 1 on the test machine, so a layout transform applies the display's
+    /// scale (WPF applies a display's as a root transform the same way) and the blur plans its passes for it. At 100%
+    /// the strongest level of the largest blur is one effect of 99 device pixels, the most one renders.
+    /// </summary>
     [Theory]
-    [InlineData(2.0)]
-    [InlineData(3.0)]
-    public void ProgressiveBlurRendersItsSigmaAtHighDisplayScales(double scale)
+    [InlineData(1.0, GlassProgressiveBlur.MaxBlur)]
+    [InlineData(2.0, 20.0)]
+    [InlineData(3.0, 20.0)]
+    public void ProgressiveBlurRendersItsSigmaAtHighDisplayScales(double scale, double edgeBlur)
     {
         Sta.Run(() =>
         {
-            // A vertical hard edge, black | white, under a band 80 units deep at the bottom of a 300-unit area; the
+            // A vertical hard edge, black | white, under a band 80 units deep at the bottom of a 240-unit area; the
             // source continues below the band so the blur has content on every side.
-            const int size = 400;
+            const int size = 300;
             var source = new Grid { Width = size, Height = size, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             source.ColumnDefinitions.Add(new ColumnDefinition());
             source.ColumnDefinitions.Add(new ColumnDefinition());
@@ -156,48 +165,58 @@ public class RenderingTests
             Grid.SetColumn(white, 1);
             source.Children.Add(new Border { Background = Brushes.Black });
             source.Children.Add(white);
-            var blur = new GlassProgressiveBlur { Edge = GlassEdge.Bottom, Size = 80, Blur = 20, Source = source, Height = 300, VerticalAlignment = VerticalAlignment.Top };
-            var root = new Grid { Children = { source, blur } };
-            var window = Sta.Show(root, size, size);
-            // Rendered below at this scale: plan the passes for it, as the element would on such a display.
+            var blur = new GlassProgressiveBlur { Edge = GlassEdge.Bottom, Size = 80, Blur = edgeBlur, Source = source, Height = 240, VerticalAlignment = VerticalAlignment.Top };
+            var content = new Grid { Width = size, Height = size, Children = { source, blur } };
+            var scaled = new Border { Child = content, LayoutTransform = new ScaleTransform(scale, scale) };
+            var root = new Border { Child = scaled };
+            var px = (int)Math.Round(size * scale);
+            var window = Sta.Show(root, px, px);
+            // Plan the passes for this scale, as the element does on such a display.
             blur.ScaleOverride = scale;
             Sta.Pump();
+            Sta.Wait(0.5);
             Assert.Equal(GlassProgressive.Levels, blur.LevelRadii.Count);
-            Assert.True(blur.LevelRadii[GlassProgressive.Levels - 1].Count > 1, "the strongest level should need more than one pass");
+            if (scale > 1) Assert.True(blur.LevelRadii[GlassProgressive.Levels - 1].Count > 1, "the strongest level should need more than one pass");
 
-            var px = (int)Math.Round(size * scale);
-            var bitmap = new RenderTargetBitmap(px, px, 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+            var screen = ScreenPixels.Capture(window, root);
+            var bitmap = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(root);
             var pixels = new byte[px * px * 4];
             bitmap.CopyPixels(pixels, px * 4, 0);
-            double Green(int x, int y) => pixels[(y * px + x) * 4 + 1];
 
             // σ from the 10%–90% width of the blurred step: 2.563 σ for a Gaussian.
-            double Sigma(double y)
+            double Sigma(Func<int, int, double> green, double y)
             {
                 var row = (int)Math.Round(y * scale);
-                var dark = Green((int)(100 * scale), row);
-                var light = Green((int)(300 * scale), row);
+                int from = (int)(50 * scale), to = (int)(250 * scale);
+                var dark = green(from, row);
+                var light = green(to, row);
                 double Cross(double fraction)
                 {
                     var level = dark + (light - dark) * fraction;
-                    for (var x = (int)(100 * scale); x < (int)(300 * scale); x++)
+                    for (var x = from; x < to; x++)
                     {
-                        double a = Green(x, row), b = Green(x + 1, row);
+                        double a = green(x, row), b = green(x + 1, row);
                         if (a <= level && b > level) return x + (level - a) / (b - a);
                     }
                     return double.NaN;
                 }
                 return (Cross(0.9) - Cross(0.1)) / 2.5631 / scale;
             }
+            double OnScreen(int x, int y) => screen.Green(x, y);
+            double InBitmap(int x, int y) => pixels[(y * px + x) * 4 + 1];
 
             // At the edge only the strongest level shows; where level 5 has all the weight, only it does.
             var level5 = SolveEase(5.0 / 6);
-            var sigma6 = Sigma(299);
-            var sigma5 = Sigma(220 + level5 * 80);
-            Assert.True(Math.Abs(sigma6 - 20) < 1.5, $"level 6 at {scale}×: σ {sigma6:F2} instead of 20");
-            Assert.True(Math.Abs(sigma5 - GlassProgressive.LevelBlur(5, 20)) < 1.2, $"level 5 at {scale}×: σ {sigma5:F2} instead of {GlassProgressive.LevelBlur(5, 20):F2}");
-            Assert.True(sigma6 > sigma5 + 3, $"the edge ({sigma6:F2}) should be blurred more than level 5 ({sigma5:F2})");
+            var expected6 = GlassProgressive.LevelBlur(6, edgeBlur);
+            var expected5 = GlassProgressive.LevelBlur(5, edgeBlur);
+            var sigma6 = Sigma(OnScreen, 239);
+            var sigma5 = Sigma(OnScreen, 160 + level5 * 80);
+            var passes = string.Join("; ", blur.LevelRadii.Select(level => string.Join(" + ", level.Select(r => (r * scale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)))));
+            var detail = $"on screen σ {sigma6:F2} (level 6) and {sigma5:F2} (level 5); RenderTargetBitmap σ {Sigma(InBitmap, 239):F2} and {Sigma(InBitmap, 160 + level5 * 80):F2}; passes in device pixels: {passes}";
+            Assert.True(Math.Abs(sigma6 - expected6) < 1.5, $"level 6 at {scale}×: σ {sigma6:F2} instead of {expected6:F2} ({detail})");
+            Assert.True(Math.Abs(sigma5 - expected5) < 1.2, $"level 5 at {scale}×: σ {sigma5:F2} instead of {expected5:F2} ({detail})");
+            Assert.True(sigma6 > sigma5 + 3, $"the edge ({sigma6:F2}) should be blurred more than level 5 ({sigma5:F2}) ({detail})");
             window.Close();
         });
     }
