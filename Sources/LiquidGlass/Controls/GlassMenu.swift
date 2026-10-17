@@ -36,10 +36,13 @@ public struct GlassMenu<Label: View, Content: View>: View {
 
     /// Creates a menu with a custom trigger label.
     /// - Parameters:
-    ///   - material: The panel's material; `nil` is Regular.
-    ///   - appearance: Light or dark glass; `nil` inherits.
+    ///   - material: The panel's material; `nil` is Regular. The trigger
+    ///     inherits the scene's.
+    ///   - appearance: Light or dark glass for the trigger and the panel,
+    ///     and their labels; `nil` inherits.
     ///   - radius: The panel's corner radius. Default 28.
-    ///   - tint: Colors the panel's glass.
+    ///   - tint: Colors the trigger's and the panel's glass; labels on it
+    ///     turn white or dark for contrast.
     ///   - motion: Overrides the scene's motion level.
     ///   - content: ``GlassMenuItem``s and ``GlassMenuDivider``s.
     ///   - label: The trigger's label.
@@ -93,21 +96,15 @@ public struct GlassMenu<Label: View, Content: View>: View {
             .modifier(OptionalHelp(text: help))
     }
 
-    @ViewBuilder
+    /// The trigger: a glass button with the menu's material, appearance,
+    /// tint and motion. An icon-only trigger is the icon button circle (44 pt
+    /// on iOS, 28 on macOS); the menu adds its tooltip itself.
     private var trigger: some View {
-        if iconOnly {
-            GlassButton(radius: .circle, material: options.material, tint: options.tint) {
-                morph.open(motion: resolvedMotion)
-            } label: {
-                label.labelStyle(.iconOnly)
-            }
-        } else {
-            GlassButton(material: options.material, tint: options.tint) {
-                morph.open(motion: resolvedMotion)
-            } label: {
-                label
-            }
-        }
+        GlassButton(
+            iconOnly: iconOnly, help: nil, role: nil, radius: iconOnly ? .circle : nil, material: options.material,
+            appearance: options.appearance, refraction: nil, tint: options.tint, prominent: false, interactive: true,
+            motion: options.motion, action: { morph.open(motion: resolvedMotion) }, label: label
+        )
     }
 }
 
@@ -139,37 +136,71 @@ extension GlassMenu where Label == SwiftUI.Label<Text, Image?> {
         self.content = content()
         self.label = SwiftUI.Label { Text(titleKey) } icon: { Image(systemName: systemImage) }
     }
+
+    /// Creates a menu with an icon-only, circular trigger named by a string,
+    /// for example a title computed at runtime.
+    @_disfavoredOverload
+    public init<S: StringProtocol>(
+        icon systemImage: String, label title: S,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, radius: GlassRadius = 28,
+        tint: Color? = nil, motion: GlassMotion? = nil, @ViewBuilder content: () -> Content
+    ) {
+        self.options = GlassSurfaceOptions(
+            material: material, appearance: appearance, radius: radius, refraction: nil,
+            tint: tint, interactive: true, motion: motion
+        )
+        self.iconOnly = true
+        self.help = Text(title)
+        self.content = content()
+        self.label = SwiftUI.Label { Text(title) } icon: { Image(systemName: systemImage) }
+    }
 }
 
 /// An item of a ``GlassMenu``. Outside a glass panel (for example in the
 /// system menu fallback) it is a plain button.
+///
+/// A disabled item (`.disabled(true)`) dims and is skipped by the arrow keys.
+/// Pass `checked` for items that show a choice: they reserve a leading column
+/// and draw a checkmark in it when `true`.
 public struct GlassMenuItem: View {
     private let title: Text
     private let systemImage: String?
     private let role: ButtonRole?
+    private let checked: Bool?
     private let action: () -> Void
 
     @State private var id = UUID()
     @State private var hovering = false
     @Environment(\.glassMenuPanel) private var panel
+    @Environment(\.isEnabled) private var isEnabled
 
     /// Creates an item.
     /// - Parameters:
     ///   - role: `.destructive` draws the item in red.
+    ///   - checked: `true` or `false` for an item that shows a choice, with
+    ///     a checkmark when it is `true`; `nil` (the default) for a command.
     ///   - action: Runs when the item is chosen; the menu then closes.
-    public init(_ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil, action: @escaping () -> Void) {
+    public init(
+        _ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil,
+        checked: Bool? = nil, action: @escaping () -> Void
+    ) {
         self.title = Text(titleKey)
         self.systemImage = systemImage
         self.role = role
+        self.checked = checked
         self.action = action
     }
 
     /// Creates an item from a title string.
     @_disfavoredOverload
-    public init<S: StringProtocol>(_ title: S, systemImage: String? = nil, role: ButtonRole? = nil, action: @escaping () -> Void) {
+    public init<S: StringProtocol>(
+        _ title: S, systemImage: String? = nil, role: ButtonRole? = nil,
+        checked: Bool? = nil, action: @escaping () -> Void
+    ) {
         self.title = Text(title)
         self.systemImage = systemImage
         self.role = role
+        self.checked = checked
         self.action = action
     }
 
@@ -179,6 +210,13 @@ public struct GlassMenuItem: View {
                 panel.choose(action)
             } label: {
                 HStack(spacing: GlassMenuMetrics.iconSpacing) {
+                    if let checked {
+                        Image(systemName: "checkmark")
+                            .font(GlassMenuMetrics.font.weight(.semibold))
+                            .opacity(checked ? 1 : 0)
+                            .frame(width: GlassMenuMetrics.checkWidth)
+                            .accessibilityHidden(true)
+                    }
                     if let systemImage {
                         Image(systemName: systemImage).frame(width: GlassMenuMetrics.iconWidth)
                     }
@@ -187,13 +225,21 @@ public struct GlassMenuItem: View {
                 }
                 .font(GlassMenuMetrics.font)
                 .foregroundStyle(role == .destructive ? AnyShapeStyle(Color.red) : AnyShapeStyle(.foreground))
+                .opacity(isEnabled ? 1 : 0.4)
                 .padding(.horizontal, GlassMenuMetrics.itemPadding)
                 .frame(minHeight: GlassMenuMetrics.itemHeight)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(GlassMenuItemStyle(highlighted: hovering || panel.highlighted == id, radius: panel.itemRadius))
+            .buttonStyle(GlassMenuItemStyle(highlighted: isEnabled && (hovering || panel.highlighted == id), radius: panel.itemRadius))
             .onHover { hovering = $0 }
-            .preference(key: GlassMenuItemKey.self, value: [GlassMenuItemEntry(id: id, action: action)])
+            .accessibilityAddTraits(checked == true ? .isSelected : [])
+            // Disabled items can't be reached with the arrow keys or Return.
+            .preference(key: GlassMenuItemKey.self, value: isEnabled ? [GlassMenuItemEntry(id: id, action: action)] : [])
+        } else if let checked {
+            // The system menu draws a toggle as a checkmark item.
+            Toggle(isOn: Binding(get: { checked }, set: { _ in action() })) {
+                SwiftUI.Label { title } icon: { systemImage.map { Image(systemName: $0) } }
+            }
         } else {
             Button(role: role, action: action) {
                 SwiftUI.Label { title } icon: { systemImage.map { Image(systemName: $0) } }
@@ -233,6 +279,7 @@ enum GlassMenuMetrics {
     static let font = Font.system(size: 13)
     static let iconWidth: CGFloat = 16
     static let iconSpacing: CGFloat = 8
+    static let checkWidth: CGFloat = 12
     #else
     static let itemHeight: CGFloat = 44
     static let itemPadding: CGFloat = 16
@@ -241,6 +288,7 @@ enum GlassMenuMetrics {
     static let font = Font.body
     static let iconWidth: CGFloat = 24
     static let iconSpacing: CGFloat = 12
+    static let checkWidth: CGFloat = 16
     #endif
     /// Space between the trigger and the panel.
     static let offset: CGFloat = 8
@@ -316,7 +364,7 @@ struct GlassMenuItemKey: PreferenceKey {
 }
 
 /// The open panel, placed next to its trigger in the scene's coordinates.
-private struct GlassMenuPanel<Content: View>: View {
+struct GlassMenuPanel<Content: View>: View {
     let options: GlassSurfaceOptions
     /// The trigger's frame in the scene.
     let presenter: CGRect
@@ -329,6 +377,7 @@ private struct GlassMenuPanel<Content: View>: View {
     @State private var items: [GlassMenuItemEntry] = []
     @State private var highlighted: UUID?
     @FocusState private var focused: Bool
+    @Environment(\.layoutDirection) private var layoutDirection
 
     private var radius: CGFloat {
         if case .points(let value) = options.radius { return CGFloat(value) }
@@ -344,7 +393,7 @@ private struct GlassMenuPanel<Content: View>: View {
                 dismiss()
             }
         )
-        let placement = GlassMenuPlacement(presenter: presenter, scene: scene)
+        let placement = GlassMenuPlacement(presenter: presenter, scene: scene, rightToLeft: layoutDirection == .rightToLeft)
         placement {
             VStack(alignment: .leading, spacing: 0) {
                 content
@@ -353,10 +402,17 @@ private struct GlassMenuPanel<Content: View>: View {
             .frame(minWidth: GlassMenuMetrics.minWidth, alignment: .leading)
             .fixedSize()
             .environment(\.glassMenuPanel, context)
+            // The items draw over the panel's glass, in its foreground.
+            .modifier(GlassForegroundStyle(options: options, defaultMaterial: .regular))
+            // The items keep the app's layout direction.
+            .environment(\.layoutDirection, layoutDirection)
             .onPreferenceChange(GlassMenuItemKey.self) { items = $0 }
             .modifier(GlassMenuMorphing(options: options, presenter: presenter, presenterRadius: presenterRadius, radius: radius, morph: morph))
         }
         .frame(width: scene.width, height: scene.height)
+        // The trigger's frame and the morph's geometry are left to right in
+        // every layout direction, so the placement and the morph are too.
+        .environment(\.layoutDirection, .leftToRight)
         .coordinateSpace(.named(GlassMenuPlacement.space))
         .focusable()
         .focused($focused)
@@ -366,8 +422,8 @@ private struct GlassMenuPanel<Content: View>: View {
             dismiss()
             return .handled
         }
-        .onKeyPress(.downArrow) { move(1) }
-        .onKeyPress(.upArrow) { move(-1) }
+        .onKeyPress(.downArrow) { move(by: 1) }
+        .onKeyPress(.upArrow) { move(by: -1) }
         .onKeyPress(.return) {
             guard let entry = items.first(where: { $0.id == highlighted }) else { return .ignored }
             context.choose(entry.action)
@@ -377,11 +433,23 @@ private struct GlassMenuPanel<Content: View>: View {
         .accessibilityAction(.escape, dismiss)
     }
 
-    private func move(_ step: Int) -> KeyPress.Result {
-        guard !items.isEmpty else { return .ignored }
-        let index = items.firstIndex { $0.id == highlighted }.map { ($0 + step + items.count) % items.count }
-        highlighted = items[index ?? (step > 0 ? 0 : items.count - 1)].id
+    private func move(by step: Int) -> KeyPress.Result {
+        guard let next = GlassMenuNavigation.item(after: highlighted, by: step, in: items) else { return .ignored }
+        highlighted = next
         return .handled
+    }
+}
+
+/// Arrow-key navigation over an open panel's items. Disabled items publish
+/// no entry, so the keys never reach them.
+enum GlassMenuNavigation {
+    /// The item `step` places from `highlighted`, wrapping around: the first
+    /// (down) or last (up) item when nothing is highlighted yet, `nil`
+    /// without items.
+    static func item(after highlighted: UUID?, by step: Int, in items: [GlassMenuItemEntry]) -> UUID? {
+        guard !items.isEmpty else { return nil }
+        let index = items.firstIndex { $0.id == highlighted }.map { ($0 + step % items.count + items.count) % items.count }
+        return items[index ?? (step > 0 ? 0 : items.count - 1)].id
     }
 }
 
@@ -440,10 +508,12 @@ private struct GlassMenuMorphing: ViewModifier {
 }
 
 /// Places the panel below its trigger, trailing edges aligned, flipping
-/// above and shifting sideways to stay inside the scene.
+/// above and shifting sideways to stay inside the scene. Laid out left to
+/// right; `rightToLeft` puts the trailing edge on the left.
 private struct GlassMenuPlacement: Layout {
     let presenter: CGRect
     let scene: CGSize
+    let rightToLeft: Bool
 
     /// The coordinate space the placement and morph measure in.
     static let space = "LiquidGlass.menuPlacement"
@@ -456,7 +526,7 @@ private struct GlassMenuPlacement: Layout {
         guard let panel = subviews.first else { return }
         let size = panel.sizeThatFits(.unspecified)
         let margin = GlassMenuMetrics.margin, offset = GlassMenuMetrics.offset
-        var x = presenter.maxX - size.width
+        var x = rightToLeft ? presenter.minX : presenter.maxX - size.width
         x = min(max(x, margin), scene.width - margin - size.width)
         let below = presenter.maxY + offset
         let above = presenter.minY - offset - size.height

@@ -10,7 +10,8 @@ import AppKit
 /// ``GlassContent`` they would vanish from every surface's backdrop.
 /// `GlassScrollView` moves its content with an offset instead: drag to
 /// scroll (iOS), with UIScrollView's deceleration and rubber band past the
-/// ends; trackpad and mouse wheel on macOS. Its ``GlassScrollPosition`` is
+/// ends; trackpad, mouse wheel and keyboard (arrows, Page Up and Down, Space,
+/// Home and End once it has focus) on macOS. Its ``GlassScrollPosition`` is
 /// shared by the visible backdrop and its copies, so glass always refracts
 /// the content exactly where it is.
 ///
@@ -39,6 +40,7 @@ public struct GlassScrollView<Content: View>: View {
     private let content: Content
 
     @Environment(\.glassBackdropRole) private var role
+    @Environment(\.layoutDirection) private var layoutDirection
 
     /// Creates a scroll view.
     /// - Parameters:
@@ -85,7 +87,10 @@ public struct GlassScrollView<Content: View>: View {
                         ScrollIndicator(position: position, vertical: axes.contains(.vertical))
                     }
                 }
-                .modifier(ScrollInput(position: position, enabled: interactive, frame: viewport.frame(in: .global)))
+                .modifier(ScrollInput(
+                    position: position, enabled: interactive, frame: viewport.frame(in: .global),
+                    rightToLeft: layoutDirection == .rightToLeft
+                ))
         }
         .clipped()
         .accessibilityScrollAction { edge in
@@ -140,32 +145,60 @@ private struct ScrollIndicator: View {
     }
 }
 
-/// Touch and scroll-wheel input for the visible scroll view (copies inside
-/// glass only display the shared position).
+/// Touch, scroll-wheel and keyboard input for the visible scroll view
+/// (copies inside glass only display the shared position).
+///
+/// Right to left, content starts at the right edge and SwiftUI mirrors the
+/// offset, so horizontal input is mirrored too: the content follows the
+/// finger.
 private struct ScrollInput: ViewModifier {
     let position: GlassScrollPosition
     let enabled: Bool
     let frame: CGRect
+    let rightToLeft: Bool
 
     @GestureState private var touching = false
+    @GestureState private var dragging = false
+    @State private var fingerDown = false
+
+    private var horizontal: CGFloat { rightToLeft ? -1 : 1 }
 
     func body(content: Content) -> some View {
         if enabled {
             content
                 .contentShape(Rectangle())
                 #if os(macOS)
-                .background(ScrollWheelMonitor(position: position, frame: frame))
+                .background(ScrollWheelMonitor(position: position, frame: frame, horizontal: horizontal))
+                .modifier(ScrollKeys(position: position))
                 #else
                 // A finger landing stops the coasting content where it is.
                 .modifier(GlassTouchInput(
                     space: LocalCoordinateSpace.local, tracking: $touching,
-                    changed: { _ in position.touchDown() }, changedGlobally: { _ in }, ended: {}
+                    changed: { _ in
+                        if !fingerDown {
+                            fingerDown = true
+                            position.touchDown()
+                        }
+                    },
+                    changedGlobally: { _ in },
+                    ended: { _ in
+                        fingerDown = false
+                        position.touchUp()
+                    }
                 ))
                 .gesture(
                     DragGesture(minimumDistance: 8)
-                        .onChanged { position.drag(translation: $0.translation) }
-                        .onEnded { position.endDrag(velocity: $0.velocity) }
+                        .updating($dragging) { _, state, _ in state = true }
+                        .onChanged { position.drag(translation: CGSize(width: $0.translation.width * horizontal, height: $0.translation.height)) }
+                        .onEnded { position.endDrag(velocity: CGSize(width: $0.velocity.width * horizontal, height: $0.velocity.height)) }
                 )
+                // SwiftUI doesn't call `onEnded` for a cancelled drag (the
+                // system took the touch); end it here so the content settles
+                // and the display link can stop. A completed drag has already
+                // ended, and ending it again does nothing.
+                .onChange(of: dragging) { _, isDragging in
+                    if !isDragging { position.endDrag(velocity: .zero) }
+                }
                 #endif
         } else {
             content.allowsHitTesting(false)
@@ -174,66 +207,154 @@ private struct ScrollInput: ViewModifier {
 }
 
 #if os(macOS)
+/// Arrow keys, Page Up and Down, Space (Shift-Space up), Home and End.
+private struct ScrollKeys: ViewModifier {
+    let position: GlassScrollPosition
+
+    func body(content: Content) -> some View {
+        content
+            .focusable()
+            .focusEffectDisabled()
+            .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .pageUp, .pageDown, .space, .home, .end]) { press in
+                let viewport = position.viewportSize
+                let line: CGFloat = 40
+                let page = max(line, viewport.height * 0.9)
+                let delta: CGSize
+                switch press.key {
+                case .upArrow: delta = CGSize(width: 0, height: -line)
+                case .downArrow: delta = CGSize(width: 0, height: line)
+                case .leftArrow: delta = CGSize(width: -line, height: 0)
+                case .rightArrow: delta = CGSize(width: line, height: 0)
+                case .pageUp: delta = CGSize(width: 0, height: -page)
+                case .pageDown: delta = CGSize(width: 0, height: page)
+                case .space: delta = CGSize(width: 0, height: press.modifiers.contains(.shift) ? -page : page)
+                case .home:
+                    position.scrollTo(edge: .top)
+                    return .handled
+                case .end:
+                    position.scrollTo(edge: .bottom)
+                    return .handled
+                default: return .ignored
+                }
+                position.scroll(byKeyboard: delta)
+                return .handled
+            }
+    }
+}
+
 /// Routes the window's scroll-wheel events over `frame` to the position.
 /// Trackpads deliver precise deltas and their own momentum; mouse wheels
 /// deliver lines.
 private struct ScrollWheelMonitor: View {
     let position: GlassScrollPosition
     let frame: CGRect
+    let horizontal: CGFloat
 
     @State private var monitor = WheelMonitor()
 
     var body: some View {
-        Color.clear
+        WindowAnchor { view in monitor.anchor = view }
             .onAppear { monitor.start(position: position) }
             .onDisappear { monitor.stop() }
             .onChange(of: frame, initial: true) { _, frame in monitor.frame = frame }
+            .onChange(of: horizontal, initial: true) { _, horizontal in monitor.horizontal = horizontal }
     }
 }
 
+/// An empty AppKit view that tells the monitor which window, and where in
+/// it, the scroll view lives.
+private struct WindowAnchor: NSViewRepresentable {
+    let found: (NSView) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { found(view) }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {}
+}
+
 @MainActor
-private final class WheelMonitor {
+final class WheelMonitor {
     var frame = CGRect.zero
+    var horizontal: CGFloat = 1
+    weak var anchor: NSView?
     private var token: Any?
-    /// Bumped by every event, so a pending end is dropped when momentum follows.
+    /// Bumped by every event, so a pending end is dropped when more follow.
     private var generation = 0
+    /// A trackpad gesture (or its momentum) that began over the scroll view.
+    /// AppKit keeps sending its events to the same window wherever the
+    /// pointer goes, and they still belong to this scroll view.
+    private var gestureActive = false
 
     func start(position: GlassScrollPosition) {
         guard token == nil else { return }
         token = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self, weak position] event in
-            guard let self, let position, let view = event.window?.contentView else { return event }
-            var point = view.convert(event.locationInWindow, from: nil)
-            if !view.isFlipped { point.y = view.bounds.height - point.y }
-            guard self.frame.contains(point) else { return event }
+            guard let self, let position, self.accepts(event) else { return event }
             self.handle(event, position: position)
             return nil
         }
     }
 
-    private func handle(_ event: NSEvent, position: GlassScrollPosition) {
+    /// Only events for this scroll view's window, when no sheet covers it,
+    /// over the scroll view and not over an AppKit view in front of it (a
+    /// native scroll view or text view takes its own wheel events).
+    private func accepts(_ event: NSEvent) -> Bool {
+        guard let anchor, let window = anchor.window, event.window === window,
+              window.attachedSheet == nil, let content = window.contentView else { return false }
+        if continuesGesture(event) { return true }
+        var point = content.convert(event.locationInWindow, from: nil)
+        if !content.isFlipped { point.y = content.bounds.height - point.y }
+        guard frame.contains(point) else { return false }
+        // SwiftUI views share one hosting view; an AppKit scroll view (a
+        // native ScrollView, List or TextEditor) in front scrolls itself.
+        if let frameView = content.superview,
+           let hit = frameView.hitTest(frameView.convert(event.locationInWindow, from: nil)),
+           hit is NSScrollView || hit.enclosingScrollView != nil {
+            return false
+        }
+        return true
+    }
+
+    /// Whether `event` continues the trackpad gesture (or its momentum)
+    /// under way, which belongs to this scroll view wherever the pointer is
+    /// by now.
+    func continuesGesture(_ event: NSEvent) -> Bool {
+        gestureActive && event.phase != .began && event.phase != .mayBegin
+    }
+
+    func handle(_ event: NSEvent, position: GlassScrollPosition) {
         generation += 1
         guard event.hasPreciseScrollingDeltas else {
             let line: CGFloat = 16
-            position.scroll(by: CGSize(width: -event.scrollingDeltaX * line, height: -event.scrollingDeltaY * line), phase: .step)
+            position.scroll(by: CGSize(width: -event.scrollingDeltaX * line * horizontal, height: -event.scrollingDeltaY * line), phase: .step)
             return
         }
-        position.scroll(by: CGSize(width: -event.scrollingDeltaX, height: -event.scrollingDeltaY), phase: .interacting)
+        if event.phase == .began || event.phase == .mayBegin { gestureActive = true }
+        position.scroll(by: CGSize(width: -event.scrollingDeltaX * horizontal, height: -event.scrollingDeltaY), phase: .interacting)
         if event.momentumPhase == .ended || event.momentumPhase == .cancelled || event.phase == .cancelled {
-            position.scroll(by: .zero, phase: .ended)
-        } else if event.phase == .ended {
-            // The fingers lifted. The system's momentum events may follow;
-            // if none arrive, the gesture is over.
+            end(position)
+        } else if event.phase == .ended || !event.momentumPhase.isEmpty {
+            // The fingers lifted, or momentum is coasting. More momentum
+            // events may follow; if none arrive, the gesture is over.
             let pending = generation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self, weak position] in
-                guard let self, self.generation == pending else { return }
-                position?.scroll(by: .zero, phase: .ended)
+            DispatchQueue.main.asyncAfter(deadline: .now() + (event.momentumPhase.isEmpty ? 0.12 : 0.3)) { [weak self, weak position] in
+                guard let self, let position, self.generation == pending else { return }
+                self.end(position)
             }
         }
+    }
+
+    private func end(_ position: GlassScrollPosition) {
+        gestureActive = false
+        position.scroll(by: .zero, phase: .ended)
     }
 
     func stop() {
         if let token { NSEvent.removeMonitor(token) }
         token = nil
+        gestureActive = false
     }
 }
 #endif

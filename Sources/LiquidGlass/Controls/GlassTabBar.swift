@@ -23,19 +23,25 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
 
     @State private var lens = TabLens()
     @State private var barInteraction = GlassInteraction()
+    @State private var drag = GlassDragIntent(distance: GlassControlMetrics.dragCommitDistance)
     @GestureState private var tracking = false
     @Namespace private var space
     @Environment(\.glassMotion) private var inheritedMotion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.controlSize) private var controlSize
-    @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
+    #if os(macOS)
+    @FocusState private var focused: Bool
+    #endif
 
     /// Creates a tab bar.
     /// - Parameters:
     ///   - selection: The selected tab's value.
     ///   - material: Clear or Regular glass; `nil` inherits the scene's.
-    ///   - appearance: Light or dark glass; `nil` inherits.
-    ///   - tint: Colors the bar's glass.
+    ///     The selection lens uses the same material.
+    ///   - appearance: Light or dark glass; `nil` inherits. The tabs take
+    ///     its foreground and color scheme.
+    ///   - tint: Colors the bar's glass; the tabs turn white or dark for
+    ///     contrast.
     ///   - interactive: Whether the bar responds to presses and lens drags.
     ///   - motion: Overrides the scene's motion level.
     ///   - content: ``GlassTab`` items.
@@ -63,9 +69,9 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
                 if let value = value.base as? Selection, value != selection { selection = value }
             }
         ))
-        .modifier(OnTintForeground(tinted: options.tint != nil))
+        .modifier(GlassForegroundStyle(options: options))
         .padding(inset)
-        .frame(height: (GlassControlMetrics.tabBarHeight(controlSize) * typeScale).rounded())
+        .modifier(GlassBarHeight(height: GlassControlMetrics.tabBarHeight(controlSize), minimum: false))
         .backgroundPreferenceValue(GlassTabKey.self) { tabs in
             GeometryReader { proxy in
                 let frames = tabs.map { TabFrame(value: $0.value, rect: proxy[$0.anchor]) }
@@ -76,9 +82,11 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
                         content: Color.clear.frame(width: proxy.size.width, height: proxy.size.height)
                     )
                     if lens.isPlaced {
+                        // The lens is the bar's own material, so a frosted bar
+                        // stays frosted under the selection.
                         GlassSurfaceCore(
                             options: GlassSurfaceOptions(
-                                material: .clear, appearance: options.appearance, radius: .capsule,
+                                material: options.material, appearance: options.appearance, radius: .capsule,
                                 refraction: nil, tint: nil, interactive: false, motion: options.motion
                             ),
                             outline: lens.presentation, extraPadding: 12,
@@ -86,45 +94,75 @@ public struct GlassTabBar<Selection: Hashable, Content: View>: View {
                         )
                     }
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 .onChange(of: frames, initial: true) { _, frames in lens.tabs = frames }
                 .onChange(of: selected, initial: true) { _, rect in
                     if let rect { lens.select(rect, motion: motion) }
                 }
             }
+            // Tab frames come from anchors, which are left to right in every
+            // layout direction, like the lens outline drawn from them.
+            .environment(\.layoutDirection, .leftToRight)
         }
         .coordinateSpace(.named(space))
         .contentShape(Capsule())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named(space))
-                .updating($tracking) { _, state, _ in state = true }
-                .onChanged { value in
-                    guard options.interactive else { return }
-                    barInteraction.pointerChanged(local: value.location)
-                    lens.drag(to: value.location.x, start: value.startLocation.x, motion: motion)
-                }
-                .onEnded { _ in finishDrag() }
-        )
-        .onChange(of: tracking) { _, isTracking in
-            if !isTracking { finishDrag() }
-        }
+        // Presses light the bar without taking the touch: a scroll that starts
+        // on the bar still scrolls. The lens follows a drag only once it moves
+        // sideways, and then keeps the touch.
+        .modifier(GlassTouchInput(
+            space: NamedCoordinateSpace.named(space), tracking: $tracking,
+            changed: { pointerMoved(to: $0, motion: motion) },
+            changedGlobally: { _ in },
+            ended: { _ in finishDrag() },
+            claimsTouch: { drag.isCommitted }
+        ))
         #if os(macOS)
-        .focusable()
+        .focusable(interactions: .activate)
+        .focused($focused)
+        // The bar draws its own focus ring, like a focused glass button.
         .focusEffectDisabled()
+        .overlay {
+            if focused {
+                Capsule()
+                    .stroke(Color.accentColor.opacity(0.6), lineWidth: 3)
+                    .padding(-3)
+                    .allowsHitTesting(false)
+            }
+        }
         .onKeyPress(.leftArrow) { moveSelection(by: -1) }
         .onKeyPress(.rightArrow) { moveSelection(by: 1) }
         #endif
         .accessibilityElement(children: .contain)
+        #if os(iOS)
+        .accessibilityAddTraits(.isTabBar)
+        #endif
         .sensoryFeedback(.selection, trigger: selection)
+        // Like the system's bars: they stop growing at the largest text sizes
+        // and their labels show in the Large Content Viewer instead.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    private func pointerMoved(to location: CGPoint, motion: GlassMotion) {
+        guard options.interactive else { return }
+        barInteraction.pointerChanged(local: location)
+        if let start = drag.update(location) {
+            lens.drag(to: location.x, start: start.x, motion: motion)
+        }
     }
 
     private func finishDrag() {
         barInteraction.pointerEnded()
+        let carried = drag.isCommitted
+        drag.reset()
+        guard carried else { return }
         if let value = lens.endDrag()?.base as? Selection, value != selection { selection = value }
     }
 
     #if os(macOS)
+    /// Moves the selection to the next tab on the left (`-1`) or right (`1`),
+    /// in the order the tabs appear in either layout direction.
     private func moveSelection(by step: Int) -> KeyPress.Result {
-        let values = lens.tabs.compactMap { $0.value.base as? Selection }
+        let values = lens.valuesInVisualOrder.compactMap { $0.base as? Selection }
         guard let index = values.firstIndex(of: selection) else { return .ignored }
         let next = min(max(index + step, 0), values.count - 1)
         if next != index { selection = values[next] }
@@ -271,11 +309,18 @@ final class TabLens: GlassAnimating {
     @ObservationIgnored private var dragging = false
     @ObservationIgnored private var grab = 0.0
 
-    /// Moves the lens to the selected tab's frame.
+    /// The tabs' values from left to right, as they appear in either layout
+    /// direction (`tabs` is in declaration order).
+    var valuesInVisualOrder: [AnyHashable] {
+        tabs.sorted { $0.rect.midX < $1.rect.midX }.map(\.value)
+    }
+
+    /// Moves the lens to the selected tab's frame: on the track spring, which
+    /// is critically damped under reduced motion, or at once without motion.
     func select(_ rect: CGRect, motion: GlassMotion) {
         self.motion = motion
         guard !dragging else { return }
-        if !isPlaced || motion != .full {
+        if !isPlaced || motion == .none {
             x.jump(to: rect.minX); width.jump(to: rect.width)
             y.jump(to: rect.minY); height.jump(to: rect.height)
             isPlaced = rect.width > 0
@@ -292,7 +337,11 @@ final class TabLens: GlassAnimating {
     /// Carries the lens with a drag across the bar.
     func drag(to location: CGFloat, start: CGFloat, motion: GlassMotion) {
         self.motion = motion
-        guard motion != .none, isPlaced, let first = tabs.first, let last = tabs.last else { return }
+        // The tabs' frames run in declaration order, which is right to left
+        // in a right-to-left layout: the lens stays between the outermost.
+        guard motion != .none, isPlaced,
+              let lower = tabs.map({ Double($0.rect.minX) }).min(),
+              let upper = tabs.map({ Double($0.rect.maxX) }).max() else { return }
         let location = Double(location), start = Double(start)
         if !dragging {
             guard abs(location - start) > 4 else { return }
@@ -302,7 +351,7 @@ final class TabLens: GlassAnimating {
             grab = abs(start - current) < width.value / 2 ? start - current : 0
         }
         let size = nearest(to: location - grab).map { Double($0.rect.width) } ?? width.state.target
-        let center = min(max(location - grab, Double(first.rect.minX) + size / 2), Double(last.rect.maxX) - size / 2)
+        let center = min(max(location - grab, lower + size / 2), upper - size / 2)
         let follow = GlassSpring.follow(width: size, height: height.value)
         x.set(center - size / 2, follow, motion: motion)
         width.set(size, follow, motion: motion)

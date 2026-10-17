@@ -8,18 +8,26 @@ import UIKit
 /// systems, so a scroll that starts on a glass control wouldn't scroll. This
 /// recognizer runs alongside every other one (buttons and scroll views
 /// included), never cancels or delays their touches, and ends the press as
-/// soon as an enclosing scroll view starts to pan.
+/// soon as an enclosing scroll view starts to pan, unless the press has
+/// claimed the touch (a control being dragged sideways), which stops the
+/// scroll instead.
 @available(iOS 18.0, *)
 struct GlassTouchTracker<Space: CoordinateSpaceProtocol>: UIGestureRecognizerRepresentable {
     /// The coordinate space `changed` reports the local location in.
     let space: Space
     /// The finger moved: its location in `space` and in the global space.
     let changed: (_ local: CGPoint, _ global: CGPoint) -> Void
-    /// The finger lifted, or the touch was taken over or cancelled.
-    let ended: () -> Void
+    /// The finger lifted (`true`), or the touch was taken over or cancelled.
+    let ended: (_ completed: Bool) -> Void
+    /// Whether the press owns the touch, so a scroll that starts is stopped.
+    let claimsTouch: () -> Bool
 
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
         Coordinator()
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        context.coordinator.claimsTouch = claimsTouch
     }
 
     func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
@@ -30,6 +38,7 @@ struct GlassTouchTracker<Space: CoordinateSpaceProtocol>: UIGestureRecognizerRep
         recognizer.delaysTouchesBegan = false
         recognizer.delaysTouchesEnded = false
         recognizer.delegate = context.coordinator
+        context.coordinator.claimsTouch = claimsTouch
         return recognizer
     }
 
@@ -37,14 +46,17 @@ struct GlassTouchTracker<Space: CoordinateSpaceProtocol>: UIGestureRecognizerRep
         switch recognizer.state {
         case .began, .changed:
             changed(context.converter.location(in: space), context.converter.location(in: .global))
+        case .ended:
+            ended(true)
         default:
-            ended()
+            ended(false)
         }
     }
 
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private weak var tracker: UIGestureRecognizer?
+        var claimsTouch: () -> Bool = { false }
 
         func gestureRecognizer(
             _ gestureRecognizer: UIGestureRecognizer,
@@ -62,9 +74,12 @@ struct GlassTouchTracker<Space: CoordinateSpaceProtocol>: UIGestureRecognizerRep
 
         @objc private func scrollPanChanged(_ pan: UIPanGestureRecognizer) {
             guard pan.state == .began, let tracker, tracker.state == .began || tracker.state == .changed else { return }
-            // Toggling isEnabled cancels the recognizer, which reports `ended`.
-            tracker.isEnabled = false
-            tracker.isEnabled = true
+            // Toggling isEnabled cancels a recognizer: the scroll's, when the
+            // press owns the touch; otherwise the tracker's, which reports
+            // `ended`.
+            let cancelled = claimsTouch() ? pan : tracker
+            cancelled.isEnabled = false
+            cancelled.isEnabled = true
         }
     }
 }

@@ -24,13 +24,13 @@ public struct GlassToolbar<Content: View>: View {
     @State private var layout = ToolbarLayout()
     @GestureState private var tracking = false
     @Namespace private var space
-    @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
     /// Creates a toolbar.
     /// - Parameters:
     ///   - material: Clear or Regular glass; `nil` inherits the scene's.
-    ///   - appearance: Light or dark glass; `nil` inherits.
-    ///   - tint: Colors the glass.
+    ///   - appearance: Light or dark glass; `nil` inherits. The items take
+    ///     its foreground and color scheme.
+    ///   - tint: Colors the glass; the items turn white or dark for contrast.
     ///   - interactive: Whether clusters respond to presses. Default `true`.
     ///   - motion: Overrides the scene's motion level.
     public init(
@@ -50,11 +50,9 @@ public struct GlassToolbar<Content: View>: View {
             content
         }
         .environment(\.glassToolbarItem, true)
-        // Bars stop growing at the largest text sizes, like the system's.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .modifier(OnTintForeground(tinted: options.tint != nil))
+        .modifier(GlassForegroundStyle(options: options))
         .padding(inset)
-        .frame(minHeight: (GlassControlMetrics.toolbarHeight * typeScale).rounded())
+        .modifier(GlassBarHeight(height: GlassControlMetrics.toolbarHeight, minimum: true))
         .backgroundPreferenceValue(GlassToolbarSpacerKey.self) { spacers in
             GeometryReader { proxy in
                 let clusters = Self.clusters(in: proxy.size, spacers: spacers.map { proxy[$0] }, inset: inset)
@@ -67,8 +65,12 @@ public struct GlassToolbar<Content: View>: View {
                         .offset(x: clusters[index].minX, y: clusters[index].minY)
                     }
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 .onChange(of: clusters, initial: true) { _, rects in layout.clusters = rects }
             }
+            // Cluster frames come from anchors, which are left to right in
+            // every layout direction; so are the offsets placing them.
+            .environment(\.layoutDirection, .leftToRight)
         }
         .coordinateSpace(.named(space))
         .contentShape(Rectangle())
@@ -76,7 +78,7 @@ public struct GlassToolbar<Content: View>: View {
             space: NamedCoordinateSpace.named(space), tracking: $tracking,
             changed: { layout.pointerChanged(at: $0, enabled: options.interactive) },
             changedGlobally: { layout.pointerChanged(global: $0) },
-            ended: { layout.pointerEnded() }
+            ended: { _ in layout.pointerEnded() }
         ))
         .onContinuousHover(coordinateSpace: .named(space)) { phase in
             switch phase {
@@ -85,6 +87,9 @@ public struct GlassToolbar<Content: View>: View {
             }
         }
         .accessibilityElement(children: .contain)
+        // Bars stop growing at the largest text sizes, like the system's;
+        // their items show in the Large Content Viewer instead.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     /// The capsule of each cluster: the toolbar's bounds split at its spacers,
@@ -100,6 +105,26 @@ public struct GlassToolbar<Content: View>: View {
         }
         if size.width > start { rects.append(CGRect(x: start, y: 0, width: size.width - start, height: size.height)) }
         return rects
+    }
+}
+
+/// A bar's height from its base metric, scaled with Dynamic Type. The bar
+/// caps its Dynamic Type size, so this reads the capped size: the bar stops
+/// growing when its labels do.
+struct GlassBarHeight: ViewModifier {
+    let height: CGFloat
+    /// `true` for a minimum height, `false` for an exact one.
+    let minimum: Bool
+
+    @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
+
+    func body(content: Content) -> some View {
+        let scaled = (height * typeScale).rounded()
+        if minimum {
+            content.frame(minHeight: scaled)
+        } else {
+            content.frame(height: scaled)
+        }
     }
 }
 

@@ -49,14 +49,49 @@ extension Color.Resolved {
 }
 
 /// The outline of a surface: its continuous-corner shape in `rect`, or in the
-/// view's bounds when `rect` is `nil`.
+/// view's bounds when `rect` is `nil`. `rect` is measured from the left edge,
+/// like the geometry it comes from, so the shape never mirrors.
 struct GlassOutlineShape: Shape {
     var rect: CGRect?
     var radius: GlassRadius
 
+    var layoutDirectionBehavior: LayoutDirectionBehavior { .fixed }
+
     func path(in bounds: CGRect) -> Path {
         let frame = rect.map { $0.offsetBy(dx: bounds.minX, dy: bounds.minY) } ?? bounds
         return GlassShape(radius: radius).path(in: frame)
+    }
+}
+
+/// Text and icons drawn on glass: the glass foreground (`#111113` on light
+/// glass, white on dark, `spec/OPTICS.md` §8), or white or dark for contrast
+/// with tinted glass. A forced light or dark appearance also sets their color
+/// scheme, so `.primary` and `.secondary` adapt. Surfaces apply it to their
+/// content; bars and menus to the items drawn over their glass, which are
+/// not a surface's content.
+struct GlassForegroundStyle: ViewModifier {
+    let options: GlassSurfaceOptions
+    var defaultMaterial: GlassMaterial?
+    /// Whether a tint chooses the foreground; otherwise it is the glass's own.
+    var tintsContent = true
+
+    @Environment(\.self) private var environment
+
+    func body(content: Content) -> some View {
+        let style = environment.glassStyle(options, defaultMaterial: defaultMaterial)
+        let explicit = (options.appearance ?? environment.glassAppearance) != .automatic
+        content
+            .transformEnvironment(\.colorScheme) { scheme in
+                if explicit { scheme = style.dark ? .dark : .light }
+            }
+            .foregroundStyle(foreground(style))
+    }
+
+    private func foreground(_ style: GlassRenderStyle) -> Color {
+        if tintsContent, let tint = style.tint {
+            return GlassForeground.onTint(tint, material: style.material)
+        }
+        return GlassForeground.color(dark: style.dark)
     }
 }
 
@@ -81,6 +116,9 @@ struct GlassSurfaceCore<Content: View>: View {
     /// Buttons attach them outside SwiftUI's `Button` instead, so the
     /// button's own gesture keeps working.
     var handlesInput = true
+    /// Whether tinted glass draws its content white or dark for contrast
+    /// with the tint (buttons), rather than in the glass foreground.
+    var tintsContent = false
     var content: Content
 
     @State private var ownInteraction = GlassInteraction()
@@ -102,13 +140,9 @@ struct GlassSurfaceCore<Content: View>: View {
         let style = environment.glassStyle(options, defaultMaterial: defaultMaterial)
         let motion = environment.glassMotion(options.motion)
         let interactive = options.interactive && environment.isEnabled
-        let explicitAppearance = (options.appearance ?? environment.glassAppearance) != .automatic
         return content
             .environment(\.glassNested, true)
-            .transformEnvironment(\.colorScheme) { scheme in
-                if explicitAppearance { scheme = style.dark ? .dark : .light }
-            }
-            .foregroundStyle(GlassForeground.color(dark: style.dark))
+            .modifier(GlassForegroundStyle(options: options, defaultMaterial: defaultMaterial, tintsContent: tintsContent))
             .clipShape(GlassOutlineShape(rect: outline, radius: style.radius))
             .modifier(GlassPressTransform(model: interactive ? model : nil))
             .background {
@@ -121,6 +155,9 @@ struct GlassSurfaceCore<Content: View>: View {
                         localBackdrop: localBackdrop, model: interactive || interaction != nil ? model : nil
                     )
                 }
+                // The glass works in left-to-right coordinates, as measured
+                // geometry, touches and the shader do in every layout direction.
+                .environment(\.layoutDirection, .leftToRight)
             }
             .contentShape(GlassOutlineShape(rect: outline, radius: style.radius))
             .modifier(GlassPressGestures(model: interactive && handlesInput ? model : nil, tracking: $tracking))
@@ -139,17 +176,33 @@ private struct GlassLayerHost: View {
     let model: GlassInteraction?
 
     var body: some View {
-        let state = GlassOutlineState(
-            rect: outline,
-            scale: model?.scale ?? CGSize(width: 1, height: 1),
-            translation: model?.translation ?? .zero,
-            glow: model?.glow ?? 0,
-            glowPoint: model?.glowPoint ?? .zero,
-            opacity: opacity
-        )
-        GlassLayer(size: size, style: style, outline: state, padding: padding, localBackdrop: localBackdrop)
+        layer
             .onChange(of: outline?.size ?? size, initial: true) { _, newSize in model?.size = newSize }
             .onChange(of: motion, initial: true) { _, newMotion in model?.motion = newMotion }
+    }
+
+    @ViewBuilder
+    private var layer: some View {
+        let shape = outline?.size ?? size
+        if min(shape.width, shape.height) < GlassRendering.minimumSide {
+            // An empty or degenerate outline (empty text, collapsed content,
+            // a first layout pass) has no glass; the rim around it would
+            // draw a stray line or dot.
+            Color.clear
+        } else {
+            GlassLayer(
+                size: size, style: style,
+                outline: GlassOutlineState(
+                    rect: outline,
+                    scale: model?.scale ?? CGSize(width: 1, height: 1),
+                    translation: model?.translation ?? .zero,
+                    glow: model?.glow ?? 0,
+                    glowPoint: model?.glowPoint ?? .zero,
+                    opacity: opacity
+                ),
+                padding: padding, localBackdrop: localBackdrop
+            )
+        }
     }
 }
 
@@ -157,11 +210,16 @@ private struct GlassLayerHost: View {
 private struct GlassPressTransform: ViewModifier {
     let model: GlassInteraction?
 
+    @Environment(\.layoutDirection) private var layoutDirection
+
     func body(content: Content) -> some View {
         if let model {
+            // The translation is left to right, like the touches it follows;
+            // SwiftUI mirrors offsets right to left.
+            let x = layoutDirection == .rightToLeft ? -model.translation.width : model.translation.width
             content
                 .scaleEffect(x: model.scale.width, y: model.scale.height)
-                .offset(model.translation)
+                .offset(x: x, y: model.translation.height)
         } else {
             content
         }
@@ -182,7 +240,7 @@ struct GlassPressGestures: ViewModifier {
                     space: LocalCoordinateSpace.local, tracking: tracking,
                     changed: { model.pointerChanged(local: $0) },
                     changedGlobally: { model.pointerChanged(global: $0) },
-                    ended: { model.pointerEnded() }
+                    ended: { _ in model.pointerEnded() }
                 ))
                 .onContinuousHover(coordinateSpace: .local) { phase in
                     switch phase {
@@ -205,7 +263,14 @@ struct GlassTouchInput<Space: CoordinateSpaceProtocol>: ViewModifier {
     let changed: (CGPoint) -> Void
     /// The same location in the global space.
     let changedGlobally: (CGPoint) -> Void
-    let ended: () -> Void
+    /// The press ended: `true` when the finger lifted, `false` when the
+    /// touch was cancelled or taken over (for example by a scroll view). It
+    /// may be reported twice, once of each kind.
+    let ended: (_ completed: Bool) -> Void
+    /// While this returns `true`, the press owns the touch: an enclosing
+    /// scroll view that starts to pan is stopped instead of the press (a
+    /// slider or tab lens being dragged sideways).
+    var claimsTouch: () -> Bool = { false }
 
     func body(content: Content) -> some View {
         #if canImport(UIKit)
@@ -216,7 +281,8 @@ struct GlassTouchInput<Space: CoordinateSpaceProtocol>: ViewModifier {
                     changed(local)
                     changedGlobally(global)
                 },
-                ended: ended
+                ended: ended,
+                claimsTouch: claimsTouch
             ))
         } else {
             drags(content)
@@ -231,13 +297,13 @@ struct GlassTouchInput<Space: CoordinateSpaceProtocol>: ViewModifier {
     private func drags(_ content: Content) -> some View {
         content
             .onChange(of: tracking.wrappedValue) { _, isTracking in
-                if !isTracking { ended() }
+                if !isTracking { ended(false) }
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: space)
                     .updating(tracking) { _, state, _ in state = true }
                     .onChanged { changed($0.location) }
-                    .onEnded { _ in ended() }
+                    .onEnded { _ in ended(true) }
             )
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .global)

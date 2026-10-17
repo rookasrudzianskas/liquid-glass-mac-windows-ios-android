@@ -3,10 +3,12 @@ import SwiftUI
 /// A slider whose thumb lifts into clear glass while you drag it.
 ///
 /// The track is a 6-point capsule filled with `tint` (the accent color by
-/// default) up to the value. Press anywhere on the track to jump there and
-/// keep dragging. With a `step`, the value snaps and touch devices play a
-/// selection haptic per step. VoiceOver and keyboard users get a standard
-/// adjustable slider.
+/// default) up to the value. Tap anywhere on the track to jump there, or
+/// drag sideways. On touch screens the slider follows a finger only once it
+/// moves sideways, so a vertical swipe that starts on it still scrolls an
+/// enclosing scroll view. With a `step`, the value snaps and touch devices
+/// play a selection haptic per step. VoiceOver and keyboard users get a
+/// standard adjustable slider.
 ///
 /// ```swift
 /// GlassSlider(value: $volume, in: 0...100) { Text("Volume") }
@@ -24,7 +26,8 @@ public struct GlassSlider<Value: BinaryFloatingPoint, Label: View>: View where V
 
     @State private var thumb = GlassThumbMotion()
     @State private var editing = false
-    @GestureState private var dragging = false
+    @State private var drag = GlassDragIntent(distance: Self.commitDistance)
+    @GestureState private var tracking = false
     @Environment(\.glassMotion) private var inheritedMotion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
@@ -78,27 +81,21 @@ public struct GlassSlider<Value: BinaryFloatingPoint, Label: View>: View where V
             // internals lay out left to right.
             .environment(\.layoutDirection, .leftToRight)
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($dragging) { _, state, _ in state = true }
-                    .onChanged { drag in
-                        if !editing {
-                            editing = true
-                            onEditingChanged(true)
-                            thumb.setPressed(interactive, motion: resolvedMotion)
-                        }
-                        let raw = (drag.location.x - metrics.size.width / 2) / travel
-                        set(fraction: Double(rtl ? 1 - raw : raw))
-                    }
-                    .onEnded { _ in endEditing(motion: resolvedMotion) }
-            )
+            .modifier(GlassTouchInput(
+                space: LocalCoordinateSpace.local, tracking: $tracking,
+                changed: { location in
+                    pointerMoved(to: location, thumbX: x, travel: travel, rtl: rtl, motion: resolvedMotion)
+                },
+                changedGlobally: { _ in },
+                ended: { completed in
+                    pointerEnded(completed: completed, travel: travel, rtl: rtl, motion: resolvedMotion)
+                },
+                claimsTouch: { drag.isCommitted }
+            ))
             .onChange(of: x, initial: true) { _, newX in thumb.track(x: newX) }
         }
         .frame(height: Self.controlHeight)
         .frame(minWidth: 80)
-        .onChange(of: dragging) { _, isDragging in
-            if !isDragging { endEditing(motion: resolvedMotion) }
-        }
         .sensoryFeedback(.selection, trigger: stepIndex)
         .accessibilityRepresentation {
             if let step {
@@ -116,9 +113,49 @@ public struct GlassSlider<Value: BinaryFloatingPoint, Label: View>: View where V
 
     #if os(macOS)
     static var controlHeight: CGFloat { 28 }
+    /// A press jumps to the pointer at once.
+    static var commitDistance: CGFloat { 0 }
     #else
     static var controlHeight: CGFloat { 44 }
+    static var commitDistance: CGFloat { GlassControlMetrics.dragCommitDistance }
     #endif
+
+    /// A finger or pointer pressed or moved, at `location` in the slider's
+    /// left-to-right coordinates.
+    private func pointerMoved(to location: CGPoint, thumbX: CGFloat, travel: CGFloat, rtl: Bool, motion: GlassMotion) {
+        guard isEnabled else { return }
+        let undecided = !drag.isCommitted
+        if drag.update(location) != nil {
+            if !editing {
+                editing = true
+                onEditingChanged(true)
+            }
+            set(location: location.x, travel: travel, rtl: rtl)
+        }
+        // The thumb lifts as soon as it is pressed, elsewhere on the track
+        // once the slider follows the finger.
+        if undecided, interactive, editing || abs(location.x - thumbX) <= GlassThumbMetrics.slider.size.width / 2 + 6 {
+            thumb.setPressed(true, motion: motion)
+        }
+    }
+
+    /// The press ended. A tap that never moved far jumps to where it landed.
+    private func pointerEnded(completed: Bool, travel: CGFloat, rtl: Bool, motion: GlassMotion) {
+        let tap = completed && !editing ? drag.pendingStart : nil
+        drag.reset()
+        if let tap, isEnabled {
+            onEditingChanged(true)
+            set(location: tap.x, travel: travel, rtl: rtl)
+            onEditingChanged(false)
+        }
+        thumb.setPressed(false, motion: motion)
+        endEditing(motion: motion)
+    }
+
+    private func set(location: CGFloat, travel: CGFloat, rtl: Bool) {
+        let raw = Double((location - GlassThumbMetrics.slider.size.width / 2) / travel)
+        set(fraction: rtl ? 1 - raw : raw)
+    }
 
     private var fraction: Double {
         let span = Double(range.upperBound - range.lowerBound)
@@ -145,7 +182,6 @@ public struct GlassSlider<Value: BinaryFloatingPoint, Label: View>: View where V
     private func endEditing(motion: GlassMotion) {
         guard editing else { return }
         editing = false
-        thumb.setPressed(false, motion: motion)
         onEditingChanged(false)
     }
 

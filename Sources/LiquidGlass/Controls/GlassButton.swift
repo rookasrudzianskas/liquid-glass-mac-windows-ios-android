@@ -11,21 +11,30 @@ import SwiftUI
 /// GlassButton(icon: "plus", label: "Add") { add() }
 /// GlassButton("Buy", prominent: true) { buy() }
 ///     .controlSize(.large)
+/// GlassButton("Delete", systemImage: "trash", role: .destructive) { delete() }
 /// ```
 ///
 /// A prominent button tints its glass with `tint` (the accent color by
-/// default) and draws its label in white. Inside a ``GlassToolbar`` buttons
-/// drop their own glass and share the toolbar's.
+/// default). On tinted glass the label is white or `#111113`, whichever
+/// contrasts more with the tinted glass: white on blue or red, dark on
+/// yellow or mint. A destructive button draws its label in red unless it is
+/// tinted. Inside a ``GlassToolbar`` buttons drop their own glass and
+/// share the toolbar's.
 public struct GlassButton<Label: View>: View {
     private let action: () -> Void
     private let label: Label
+    private let role: ButtonRole?
     private let iconOnly: Bool
     /// The tooltip of an icon-only button: its otherwise invisible title.
     private let help: Text?
     private let radius: GlassRadius?
     private let material: GlassMaterial?
+    private let appearance: GlassAppearance?
+    private let refraction: Double?
     private let tint: Color?
     private let prominent: Bool
+    private let interactive: Bool
+    private let motion: GlassMotion?
 
     @State private var interaction = GlassInteraction()
     @GestureState private var tracking = false
@@ -34,77 +43,145 @@ public struct GlassButton<Label: View>: View {
 
     /// Creates a button with a custom label.
     /// - Parameters:
+    ///   - role: The button's role, as for `Button`; `.destructive` draws an
+    ///     untinted label in red.
     ///   - radius: The outline; `nil` is a capsule.
     ///   - material: Clear or Regular glass; `nil` inherits the scene's.
-    ///   - tint: Colors the glass. Tinted buttons draw their label in white.
+    ///   - appearance: Light or dark glass; `nil` inherits.
+    ///   - refraction: Optical travel at the rim in points; `nil` inherits.
+    ///   - tint: Colors the glass. The label turns white or dark, whichever
+    ///     contrasts more with the tinted glass.
     ///   - prominent: Tints the glass with the accent color when `tint` is `nil`.
+    ///   - interactive: Press grow, drag stretch and glow. Default `true`.
+    ///   - motion: Overrides the scene's motion level.
     public init(
-        radius: GlassRadius? = nil, material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        role: ButtonRole? = nil, radius: GlassRadius? = nil, material: GlassMaterial? = nil,
+        appearance: GlassAppearance? = nil, refraction: Double? = nil, tint: Color? = nil, prominent: Bool = false,
+        interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void, @ViewBuilder label: () -> Label
     ) {
+        self.init(
+            iconOnly: false, help: nil, role: role, radius: radius, material: material, appearance: appearance,
+            refraction: refraction, tint: tint, prominent: prominent, interactive: interactive, motion: motion,
+            action: action, label: label()
+        )
+    }
+
+    /// The designated initializer: `iconOnly` makes a circle of the button's
+    /// height around a label shown icon-only.
+    init(
+        iconOnly: Bool, help: Text?, role: ButtonRole?, radius: GlassRadius?, material: GlassMaterial?,
+        appearance: GlassAppearance?, refraction: Double?, tint: Color?, prominent: Bool,
+        interactive: Bool, motion: GlassMotion?, action: @escaping () -> Void, label: Label
+    ) {
         self.action = action
-        self.label = label()
-        self.iconOnly = false
-        self.help = nil
+        self.label = label
+        self.role = role
+        self.iconOnly = iconOnly
+        self.help = help
         self.radius = radius
         self.material = material
+        self.appearance = appearance
+        self.refraction = refraction
         self.tint = tint
         self.prominent = prominent
+        self.interactive = interactive
+        self.motion = motion
     }
 
     public var body: some View {
         let resolvedTint = tint ?? (prominent ? Color.accentColor : nil)
         let style = GlassButtonStyle(
-            interaction: interaction, iconOnly: iconOnly, radius: radius ?? (iconOnly ? .circle : .capsule),
-            material: material, tint: resolvedTint, toolbarItem: toolbarItem
+            interaction: interaction, iconOnly: iconOnly,
+            options: GlassSurfaceOptions(
+                material: material, appearance: appearance, radius: radius ?? (iconOnly ? .circle : .capsule),
+                refraction: refraction, tint: resolvedTint, interactive: interactive, motion: motion
+            ),
+            toolbarItem: toolbarItem
         )
-        Button(action: action) { label }
+        Button(role: role, action: action) { label }
             .buttonStyle(style)
             .modifier(OptionalHelp(text: help))
+            .modifier(ToolbarLargeContent(enabled: toolbarItem) { label })
             .opacity(isEnabled ? 1 : 0.45)
-            .modifier(GlassPressGestures(model: toolbarItem || !isEnabled ? nil : interaction, tracking: $tracking))
+            .modifier(GlassPressGestures(model: toolbarItem || !isEnabled || !interactive ? nil : interaction, tracking: $tracking))
     }
 }
 
 extension GlassButton where Label == SwiftUI.Label<Text, Image?> {
     /// Creates a button with a title and an optional SF Symbol.
     public init(
-        _ titleKey: LocalizedStringKey, systemImage: String? = nil,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        _ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     ) {
-        self.init(material: material, tint: tint, prominent: prominent, action: action) {
-            SwiftUI.Label { Text(titleKey) } icon: { systemImage.map { Image(systemName: $0) } }
-        }
+        self.init(
+            iconOnly: false, help: nil, role: role, radius: nil, material: material, appearance: appearance,
+            refraction: refraction, tint: tint, prominent: prominent, interactive: interactive, motion: motion,
+            action: action, label: SwiftUI.Label { Text(titleKey) } icon: { systemImage.map { Image(systemName: $0) } }
+        )
     }
 
     /// Creates a button with a title string and an optional SF Symbol.
     @_disfavoredOverload
     public init<S: StringProtocol>(
-        _ title: S, systemImage: String? = nil,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        _ title: S, systemImage: String? = nil, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     ) {
-        self.init(material: material, tint: tint, prominent: prominent, action: action) {
-            SwiftUI.Label { Text(title) } icon: { systemImage.map { Image(systemName: $0) } }
-        }
+        self.init(
+            iconOnly: false, help: nil, role: role, radius: nil, material: material, appearance: appearance,
+            refraction: refraction, tint: tint, prominent: prominent, interactive: interactive, motion: motion,
+            action: action, label: SwiftUI.Label { Text(title) } icon: { systemImage.map { Image(systemName: $0) } }
+        )
     }
 
     /// Creates an icon-only circular button. `label` names it for VoiceOver
     /// and tooltips.
     public init(
-        icon systemImage: String, label titleKey: LocalizedStringKey,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        icon systemImage: String, label titleKey: LocalizedStringKey, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     ) {
-        self.action = action
-        self.label = SwiftUI.Label { Text(titleKey) } icon: { Image(systemName: systemImage) }
-        self.iconOnly = true
-        self.help = Text(titleKey)
-        self.radius = .circle
-        self.material = material
-        self.tint = tint
-        self.prominent = prominent
+        self.init(
+            iconOnly: true, help: Text(titleKey), role: role, radius: .circle, material: material, appearance: appearance,
+            refraction: refraction, tint: tint, prominent: prominent, interactive: interactive, motion: motion,
+            action: action, label: SwiftUI.Label { Text(titleKey) } icon: { Image(systemName: systemImage) }
+        )
+    }
+
+    /// Creates an icon-only circular button named by a string, for example
+    /// a title computed at runtime.
+    @_disfavoredOverload
+    public init<S: StringProtocol>(
+        icon systemImage: String, label title: S, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.init(
+            iconOnly: true, help: Text(title), role: role, radius: .circle, material: material, appearance: appearance,
+            refraction: refraction, tint: tint, prominent: prominent, interactive: interactive, motion: motion,
+            action: action, label: SwiftUI.Label { Text(title) } icon: { Image(systemName: systemImage) }
+        )
+    }
+}
+
+/// Toolbar items stop growing with the bar at the largest text sizes, so
+/// they show in the Large Content Viewer, like the system's bar items.
+private struct ToolbarLargeContent<Large: View>: ViewModifier {
+    let enabled: Bool
+    @ViewBuilder let large: () -> Large
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.accessibilityShowsLargeContentViewer { large() }
+        } else {
+            content
+        }
     }
 }
 
@@ -133,6 +210,8 @@ enum GlassControlMetrics {
         }
     }
     static let labelSpacing: CGFloat = 4
+    /// A pointer drags controls at once: nothing scrolls by dragging.
+    static let dragCommitDistance: CGFloat = 3
     static let toolbarHeight: CGFloat = 34
     static let toolbarInset: CGFloat = 3
     static func tabBarHeight(_ size: ControlSize) -> CGFloat {
@@ -160,6 +239,9 @@ enum GlassControlMetrics {
         }
     }
     static let labelSpacing: CGFloat = 6
+    /// How far a finger moves sideways before a slider or tab lens follows
+    /// it, so a vertical swipe still scrolls.
+    static let dragCommitDistance: CGFloat = 8
     static let toolbarHeight: CGFloat = 52
     static let toolbarInset: CGFloat = 4
     static func tabBarHeight(_ size: ControlSize) -> CGFloat {
@@ -177,9 +259,7 @@ enum GlassControlMetrics {
 struct GlassButtonStyle: ButtonStyle {
     let interaction: GlassInteraction
     let iconOnly: Bool
-    let radius: GlassRadius
-    let material: GlassMaterial?
-    let tint: Color?
+    let options: GlassSurfaceOptions
     let toolbarItem: Bool
 
     func makeBody(configuration: Configuration) -> some View {
@@ -198,6 +278,7 @@ private struct GlassButtonBody: View {
 
     var body: some View {
         let height = (GlassControlMetrics.buttonHeight(controlSize) * typeScale).rounded()
+        let radius = style.options.radius
         let label = configuration.label
             .labelStyle(GlassButtonLabelStyle(iconOnly: style.iconOnly))
             .font(GlassControlMetrics.font(controlSize))
@@ -205,28 +286,27 @@ private struct GlassButtonBody: View {
             .padding(.horizontal, style.iconOnly ? 0 : GlassControlMetrics.horizontalPadding(controlSize))
             .frame(minWidth: height, minHeight: height)
             .frame(width: style.iconOnly ? height : nil)
+            .modifier(DestructiveForeground(enabled: configuration.role == .destructive && style.options.tint == nil))
         Group {
             if style.toolbarItem {
                 label
                     .background {
-                        GlassShape(radius: style.radius)
+                        GlassShape(radius: radius)
                             .fill(.foreground.opacity(configuration.isPressed || hovering || isFocused ? GlassControlMetrics.highlightOpacity : 0))
                     }
-                    .contentShape(GlassShape(radius: style.radius))
+                    .contentShape(GlassShape(radius: radius))
                     .onHover { hovering = $0 }
             } else {
                 GlassSurfaceCore(
-                    options: GlassSurfaceOptions(
-                        material: style.material, appearance: nil, radius: style.radius, refraction: nil,
-                        tint: style.tint, interactive: true, motion: nil
-                    ),
+                    options: style.options,
                     interaction: style.interaction,
                     handlesInput: false,
-                    content: label.modifier(OnTintForeground(tinted: style.tint != nil))
+                    tintsContent: true,
+                    content: label
                 )
                 .overlay {
                     if isFocused {
-                        GlassShape(radius: style.radius)
+                        GlassShape(radius: radius)
                             .stroke(Color.accentColor.opacity(0.6), lineWidth: 3)
                             .padding(-3)
                     }
@@ -235,8 +315,17 @@ private struct GlassButtonBody: View {
         }
         .focusEffectDisabled()
         .onChange(of: configuration.isPressed) { _, pressed in
-            if !style.toolbarItem { style.interaction.keyboardPress(pressed) }
+            if !style.toolbarItem, style.options.interactive { style.interaction.keyboardPress(pressed) }
         }
+    }
+}
+
+/// Draws a destructive button's label in red.
+private struct DestructiveForeground: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled { content.foregroundStyle(.red) } else { content }
     }
 }
 
@@ -246,20 +335,6 @@ struct OptionalHelp: ViewModifier {
 
     func body(content: Content) -> some View {
         if let text { content.help(text) } else { content }
-    }
-}
-
-/// Draws content in white on tinted glass; otherwise keeps the glass's own
-/// foreground color.
-struct OnTintForeground: ViewModifier {
-    let tinted: Bool
-
-    func body(content: Content) -> some View {
-        if tinted {
-            content.foregroundStyle(.white)
-        } else {
-            content
-        }
     }
 }
 

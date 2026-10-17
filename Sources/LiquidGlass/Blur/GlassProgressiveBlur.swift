@@ -24,6 +24,7 @@ public struct GlassProgressiveBlur: View {
     private let blur: Double
 
     @Environment(\.glassBackdrop) private var backdrop
+    @Environment(\.layoutDirection) private var layoutDirection
 
     /// Creates a progressive blur.
     /// - Parameters:
@@ -45,6 +46,9 @@ public struct GlassProgressiveBlur: View {
                         blurLevel(level, backdrop: backdrop)
                     }
                 }
+                // The levels are placed in left-to-right coordinates; the
+                // gradients below resolve the edge for the layout direction.
+                .environment(\.layoutDirection, .leftToRight)
             } else {
                 Rectangle()
                     .fill(.ultraThinMaterial)
@@ -67,6 +71,8 @@ public struct GlassProgressiveBlur: View {
                 .frame(width: proxy.size.width + 2 * margin, height: proxy.size.height + 2 * margin)
                 .overlay(alignment: .topLeading) { GlassBackdropCopy(backdrop: backdrop) }
                 .clipped()
+                // Flattened first, so the blur sees one image of the backdrop.
+                .compositingGroup()
                 .blur(radius: GlassRendering.blurRadius(forSigma: sigma), opaque: false)
                 .offset(x: -margin, y: -margin)
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
@@ -88,21 +94,19 @@ public struct GlassProgressiveBlur: View {
         }
     }
 
-    private var sharpSide: UnitPoint {
+    /// Gradient points are fixed left and right, while `.leading` and
+    /// `.trailing` follow the layout direction.
+    private var edgePoint: UnitPoint {
+        let rtl = layoutDirection == .rightToLeft
         switch edge {
-        case .top: .bottom
-        case .bottom: .top
-        case .leading: .trailing
-        case .trailing: .leading
+        case .top: return .top
+        case .bottom: return .bottom
+        case .leading: return rtl ? .trailing : .leading
+        case .trailing: return rtl ? .leading : .trailing
         }
     }
 
-    private var edgePoint: UnitPoint {
-        switch edge {
-        case .top: .top
-        case .bottom: .bottom
-        case .leading: .leading
-        case .trailing: .trailing
-        }
+    private var sharpSide: UnitPoint {
+        UnitPoint(x: 1 - edgePoint.x, y: 1 - edgePoint.y)
     }
 }

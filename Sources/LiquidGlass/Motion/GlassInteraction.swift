@@ -39,7 +39,8 @@ struct SpringChannel {
 /// The elastic, illuminated response of one interactive surface
 /// (`spec/OPTICS.md` §6): it grows under a press, stretches toward a drag with
 /// constant volume, settles with gel-like overshoot on release, and lights up
-/// under the finger or pointer.
+/// under the finger or pointer. The outline follows the press and release
+/// springs; the light always follows the glow spring, in and out.
 ///
 /// Gesture callbacks set targets; the ``GlassMotionDriver`` advances the
 /// springs while anything moves, and views observe only the presentation
@@ -86,7 +87,7 @@ final class GlassInteraction: GlassAnimating {
             carried = .zero
             glowPoint = local
             press.set(1, .press, motion: motion)
-            light.set(1, .press, motion: motion)
+            light.set(1, .glow, motion: motion)
             let follow = GlassSpring.follow(width: size.width, height: size.height)
             tx.set(tx.state.target, follow, motion: motion)
             ty.set(ty.state.target, follow, motion: motion)
@@ -126,7 +127,7 @@ final class GlassInteraction: GlassAnimating {
         if down {
             glowPoint = CGPoint(x: size.width / 2, y: size.height / 2)
             press.set(1, .press, motion: motion)
-            light.set(1, .press, motion: motion)
+            light.set(1, .glow, motion: motion)
         } else {
             release()
         }

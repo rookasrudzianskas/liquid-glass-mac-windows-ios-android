@@ -59,6 +59,27 @@ enum GlassRendering {
         let blur = frosted ? 3 * GlassOptics.frostSigma + 4 : 0
         return CGFloat((growth + reach + blur + 2).rounded(.up)) + extra
     }
+
+    /// Outlines thinner than this, in points, draw no glass. The rim's
+    /// specular stroke reaches 0.9 points inside the outline (plus a pixel
+    /// of antialiasing) from both sides, so a thinner outline has no face to
+    /// refract, and its rim alone would draw a stray line or dot.
+    static let minimumSide: CGFloat = 3
+
+    /// The fill kernel's outer ring, in multiples of its σ (see `lgFill`).
+    static let fillReach = 2.6131
+
+    /// How far the shader reads from the pixel it shades: the refraction,
+    /// scaled by up to 1.5 for press growth and stretch, plus the fill
+    /// kernel's outer ring on Regular glass. SwiftUI renders that much of the
+    /// layer around what is visible, so a surface clipped by an ancestor (a
+    /// scroll view, a mask, the window's edge) still refracts true content
+    /// at the clip.
+    static func sampleReach(refraction: Double, frosted: Bool, dark: Bool) -> CGSize {
+        let fill = frosted ? fillReach * fillKernelSigma(dark: dark) : 0
+        let reach = CGFloat((refraction * 1.5 + fill + 2).rounded(.up))
+        return CGSize(width: reach, height: reach)
+    }
 }
 
 /// The optical layer of one glass surface: a copy of the scene's backdrop,
@@ -77,6 +98,8 @@ struct GlassLayer: View {
     @Environment(\.glassBackdrop) private var backdrop
 
     var body: some View {
+        // Placed by a left-to-right parent (see GlassSurfaceCore), so the
+        // offset, the outline and the shader's positions are all physical.
         let layer = CGSize(width: size.width + 2 * padding, height: size.height + 2 * padding)
         optics(layer: layer)
             .frame(width: layer.width, height: layer.height)
@@ -94,7 +117,10 @@ struct GlassLayer: View {
                     .layerEffect(shader(layer: layer, mode: 1), maxSampleOffset: .zero)
             } else {
                 copy(of: backdrop, layer: layer)
-                    .layerEffect(shader(layer: layer, mode: 0), maxSampleOffset: .zero)
+                    .layerEffect(
+                        shader(layer: layer, mode: 0),
+                        maxSampleOffset: GlassRendering.sampleReach(refraction: style.refraction, frosted: frosted, dark: style.dark)
+                    )
             }
         } else {
             fallback(layer: layer)
@@ -108,9 +134,16 @@ struct GlassLayer: View {
     /// replaces every pixel of this one.
     private static let shaderCanvas = Color.black
 
+    /// The ground under the backdrop copy. SwiftUI runs a layer effect only
+    /// where its content draws, so over a transparent or absent backdrop
+    /// (letterboxing, a backdrop narrower than the scene, a clear window) the
+    /// glass and its rim would be cut off. This draws everywhere, and at
+    /// alpha 1/255 the shader still sees an empty backdrop there.
+    private static let copyCanvas = Color.black.opacity(1.0 / 255.0)
+
     @ViewBuilder
     private func copy(of backdrop: GlassBackdrop, layer: CGSize) -> some View {
-        let clipped = Color.clear
+        let clipped = Self.copyCanvas
             .frame(width: layer.width, height: layer.height)
             .overlay(alignment: .topLeading) {
                 GlassBackdropCopy(backdrop: backdrop)
@@ -123,6 +156,11 @@ struct GlassLayer: View {
                 }
             }
             .clipped()
+            // Flattened into one image: the layer effect (and the frost blur)
+            // would otherwise run over each drawn piece separately, the
+            // canvas and every part of the backdrop, painting the rim once
+            // for each.
+            .compositingGroup()
         if frosted {
             clipped.blur(radius: GlassRendering.blurRadius(forSigma: GlassOptics.frostSigma), opaque: false)
         } else {

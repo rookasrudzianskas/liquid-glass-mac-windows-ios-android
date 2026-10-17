@@ -91,7 +91,24 @@ public final class GlassScrollPosition: GlassAnimating {
     func touchDown() {
         x.catchMotion()
         y.catchMotion()
-        publish()
+        run()
+    }
+
+    /// The finger lifted. Content it caught past an end without dragging
+    /// springs back.
+    func touchUp() {
+        x.settleIntoRange()
+        y.settleIntoRange()
+        run()
+    }
+
+    /// Moves by `delta` from where the content is headed (keyboard scrolling,
+    /// so repeated keys accumulate), animated and kept in range.
+    func scroll(byKeyboard delta: CGSize) {
+        let maximum = maximumOffset
+        x.settle(at: min(max(x.destination + Double(delta.width), 0), Double(maximum.x)), animated: true)
+        y.settle(at: min(max(y.destination + Double(delta.height), 0), Double(maximum.y)), animated: true)
+        run()
     }
 
     /// A drag moved the content by `translation` since it began.
@@ -168,6 +185,10 @@ struct ScrollAxis {
 
     var isActive: Bool { mode != .idle }
 
+    /// Where the axis comes to rest: the target it is settling to, or the
+    /// offset.
+    var destination: Double { mode == .settling ? spring.state.target : offset }
+
     private func banded(_ raw: Double) -> Double {
         if raw < 0 { return -GlassOptics.rubberBand(-raw, limit: limit) }
         if raw > maximum { return maximum + GlassOptics.rubberBand(raw - maximum, limit: limit) }
@@ -193,9 +214,24 @@ struct ScrollAxis {
     }
 
     mutating func catchMotion() {
-        guard mode == .coasting || mode == .settling else { return }
-        mode = .idle
+        switch mode {
+        case .coasting, .settling:
+            mode = .idle
+            velocity = 0
+        case .dragging:
+            // A drag whose end never arrived (its gesture was cancelled):
+            // let go of it before the new touch.
+            release(velocity: 0)
+        case .idle, .wheel:
+            break
+        }
+    }
+
+    /// Springs back into range if the content rests past an end.
+    mutating func settleIntoRange() {
+        guard mode == .idle, offset < 0 || offset > maximum else { return }
         velocity = 0
+        startSettling(to: offset < 0 ? 0 : maximum)
     }
 
     mutating func drag(_ translation: Double) {

@@ -137,4 +137,25 @@ enum GlassForeground {
     static let dark = Color.white
 
     static func color(dark: Bool) -> Color { dark ? Self.dark : Self.light }
+
+    /// The label color on glass tinted with `tint` (gamma-encoded sRGB):
+    /// white or the light glass's `#111113`, whichever has the higher WCAG
+    /// contrast with the glass as the tint formula draws it over a mid-tone
+    /// backdrop (`spec/OPTICS.md` §3: the pigment passes
+    /// `body + (1 − body)·luma`, with luma 0.5). Blue, red or purple glass
+    /// takes white; yellow, mint, green, orange or cyan glass a dark label.
+    static func onTint(_ tint: SIMD3<Float>, material: GlassMaterial) -> Color {
+        let body = material == .regular ? 0.78 : 0.68
+        let pass = body + (1 - body) * 0.5
+        let glass = relativeLuminance(Double(tint.x) * pass, Double(tint.y) * pass, Double(tint.z) * pass)
+        let onWhite = 1.05 / (glass + 0.05)
+        let onDark = (glass + 0.05) / (relativeLuminance(17 / 255, 17 / 255, 19 / 255) + 0.05)
+        return onDark > onWhite ? Self.light : Self.dark
+    }
+
+    /// WCAG 2 relative luminance of a gamma-encoded sRGB color.
+    static func relativeLuminance(_ red: Double, _ green: Double, _ blue: Double) -> Double {
+        func linear(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+    }
 }

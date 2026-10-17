@@ -150,7 +150,10 @@ public struct GlassScene<Backdrop: View, Foreground: View>: View {
         let top = edges.contains(.top) ? insets.top : 0
         let bottom = edges.contains(.bottom) ? insets.bottom : 0
         let rect = CGRect(x: -leading, y: -top, width: size.width + leading + trailing, height: size.height + top + bottom)
-        return GlassBackdrop(content: AnyView(layers.content.content), environment: environment, rect: rect, space: space)
+        // Right to left, the leading inset is on the right.
+        let left = environment.layoutDirection == .rightToLeft ? trailing : leading
+        let frame = CGRect(x: -left, y: rect.minY, width: rect.width, height: rect.height)
+        return GlassBackdrop(content: AnyView(layers.content.content), environment: environment, rect: rect, frame: frame, space: space)
     }
 }
 
@@ -160,8 +163,12 @@ struct GlassBackdrop {
     let content: AnyView
     /// The environment the visible backdrop renders with.
     let environment: EnvironmentValues
-    /// The backdrop's frame in the scene's coordinate space.
+    /// The backdrop's frame in the scene's coordinate space, with x measured
+    /// from the leading edge (how the scene places the visible backdrop).
     let rect: CGRect
+    /// The same frame with x measured from the left edge, as geometry
+    /// readers report positions in either layout direction.
+    let frame: CGRect
     /// The name of the scene's coordinate space.
     let space: Namespace.ID
 }
@@ -174,13 +181,13 @@ struct GlassBackdropCopy: View {
     let backdrop: GlassBackdrop
 
     var body: some View {
-        let rect = backdrop.rect
+        let target = backdrop.frame
         let space = backdrop.space
         backdrop.content
             .environment(\.self, backdrop.environment)
             .environment(\.glassBackdropRole, .copy)
             .ignoresSafeArea(.container)
-            .frame(width: rect.width, height: rect.height)
+            .frame(width: target.width, height: target.height)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .visualEffect { content, proxy in
@@ -188,8 +195,13 @@ struct GlassBackdropCopy: View {
                 let sx = proxy.size.width > 0 ? frame.width / proxy.size.width : 1
                 let sy = proxy.size.height > 0 ? frame.height / proxy.size.height : 1
                 return content
-                    .offset(x: rect.minX - frame.minX, y: rect.minY - frame.minY)
+                    .offset(x: target.minX - frame.minX, y: target.minY - frame.minY)
                     .scaleEffect(x: 1 / max(sx, 1e-3), y: 1 / max(sy, 1e-3), anchor: .topLeading)
             }
+            // Measured frames are left to right in every layout direction, so
+            // the correction above is too: SwiftUI would otherwise mirror the
+            // offset and the anchor right to left. The content keeps its own
+            // direction through its environment.
+            .environment(\.layoutDirection, .leftToRight)
     }
 }

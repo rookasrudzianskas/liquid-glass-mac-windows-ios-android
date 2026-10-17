@@ -1,6 +1,10 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 //
 // Liquid Glass for SwiftUI (iOS 17+, macOS 14+).
+//
+// Builds with Xcode 16 or later: the iOS target uses iOS 18 SDK API behind
+// availability checks, so the deployment targets stay iOS 17 and macOS 14.
+// The sources use the Swift 5 language mode.
 //
 // The Metal shaders in Sources/LiquidGlass/Shaders are compiled by Xcode
 // (xcodebuild or the Xcode app). `swift build` alone does not compile Metal,
@@ -26,5 +30,6 @@ let package = Package(
             dependencies: ["LiquidGlass"],
             path: "Tests/LiquidGlassTests"
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

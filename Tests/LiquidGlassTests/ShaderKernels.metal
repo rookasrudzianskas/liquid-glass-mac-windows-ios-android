@@ -64,3 +64,11 @@ kernel void lgTestEvaluate(device const float *input [[buffer(0)]],
 [[ stitchable ]] half4 lgTestBackdrop(float2 position, half4 color, float2 center) {
     return half4(lgTestBackdropColor(position - center));
 }
+
+// A smooth backdrop for the Regular material: a horizontal sine of
+// `wavelength` points in red, whose Gaussian blurs are known in closed form.
+[[ stitchable ]] half4 lgTestWave(float2 position, half4 color, float wavelength) {
+    float r = 0.5 + 0.3 * sin(2.0 * M_PI_F * position.x / wavelength);
+    return half4(r, 0.45, 0.6, 1.0);
+}
+

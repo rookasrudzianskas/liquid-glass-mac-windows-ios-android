@@ -5,7 +5,10 @@ import SwiftUI
 /// Tap to toggle, or drag the thumb across. The thumb travels on the
 /// measured switch spring (response 0.47 s, damping 0.7) and the track takes
 /// `tint` (the accent color by default) when on. It is a `Toggle` underneath,
-/// so VoiceOver, keyboard focus and `labelsHidden()` behave as usual.
+/// so VoiceOver and keyboard focus behave as usual. On iOS 18 and macOS 15,
+/// `labelsHidden()` hides the label (it stays the VoiceOver label) and the
+/// switch hugs its track; earlier systems don't report hidden labels to
+/// styles, so there the label still shows.
 ///
 /// ```swift
 /// GlassSwitch("Wi-Fi", isOn: $wifi)
@@ -88,13 +91,40 @@ public struct GlassSwitchStyle: ToggleStyle {
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-        HStack {
-            configuration.label
-            Spacer(minLength: 8)
-            GlassSwitchControl(
-                isOn: configuration.$isOn, tint: tint, appearance: appearance,
-                interactive: interactive, motion: motion
-            )
+        let control = GlassSwitchControl(
+            isOn: configuration.$isOn, tint: tint, appearance: appearance,
+            interactive: interactive, motion: motion
+        )
+        if #available(iOS 18.0, macOS 15.0, *) {
+            GlassSwitchRow(label: configuration.label, control: control)
+        } else {
+            HStack {
+                configuration.label
+                Spacer(minLength: 8)
+                control
+            }
+        }
+    }
+}
+
+/// The label, then the switch at the trailing edge; only the switch, named
+/// by the label for VoiceOver, when labels are hidden.
+@available(iOS 18.0, macOS 15.0, *)
+private struct GlassSwitchRow<Label: View, Control: View>: View {
+    let label: Label
+    let control: Control
+
+    @Environment(\.labelsVisibility) private var labelsVisibility
+
+    var body: some View {
+        if labelsVisibility == .hidden {
+            control.accessibilityLabel { _ in label }
+        } else {
+            HStack {
+                label
+                Spacer(minLength: 8)
+                control
+            }
         }
     }
 }
@@ -158,7 +188,7 @@ private struct GlassSwitchControl: View {
             space: LocalCoordinateSpace.local, tracking: $tracking,
             changed: { _ in if !touching { touching = true } },
             changedGlobally: { _ in },
-            ended: { touching = false }
+            ended: { _ in touching = false }
         ))
         // Dragging carries the thumb; releasing commits the side it is on.
         .simultaneousGesture(

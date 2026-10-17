@@ -22,6 +22,9 @@ struct GlassThumbMetrics {
 
 /// How a thumb lifts into glass: a 200 ms ease-in-out crossfade while held,
 /// a short pulse for a quick tap, and a stretch along the track with speed.
+/// Reduced motion keeps the crossfade and moves the switch on a critically
+/// damped spring, without the pulse or stretch; no motion applies every
+/// change at once.
 @MainActor
 @Observable
 final class GlassThumbMotion: GlassAnimating {
@@ -58,7 +61,7 @@ final class GlassThumbMotion: GlassAnimating {
         guard down != pressed else { return }
         pressed = down
         // A press released within 80 ms that hasn't lifted halfway plays the tap pulse.
-        pulse = !down && elapsed < 0.08 && progress < 0.5
+        pulse = motion == .full && !down && elapsed < 0.08 && progress < 0.5
         if down { elapsed = 0 }
         transition = (elapsed, progress, down ? 1 : 0)
         wake()
@@ -74,7 +77,7 @@ final class GlassThumbMotion: GlassAnimating {
     /// a drag exactly.
     func setPosition(_ target: Double, animated: Bool, motion: GlassMotion) {
         self.motion = motion
-        if !placed || !animated || motion != .full {
+        if !placed || !animated || motion == .none {
             positionSpring.jump(to: target)
             placed = true
         } else {
@@ -104,7 +107,7 @@ final class GlassThumbMotion: GlassAnimating {
 
     private func publish() {
         let newProgress: Double
-        if motion != .full {
+        if motion == .none {
             newProgress = pressed ? 1 : 0
         } else if pulse {
             newProgress = Self.sampleTap(elapsed)
