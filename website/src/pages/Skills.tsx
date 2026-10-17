@@ -29,7 +29,6 @@ const data = skillsData as { plugin: { name: string; version: string; descriptio
 const items = (downloads as { items: Item[] }).items;
 const samples = code as unknown as Record<string, Highlighted>;
 
-const EXPECTED = ["liquid-glass", "liquid-glass-swiftui", "liquid-glass-compose", "liquid-glass-wpf", "liquid-glass-port"];
 const ROLES: Record<string, string> = {
   "liquid-glass": "Design and platform choice",
   "liquid-glass-swiftui": "SwiftUI on iOS and macOS",
@@ -40,8 +39,6 @@ const ROLES: Record<string, string> = {
 
 export default function Skills() {
   const all = items.find((i) => i.id === "skills");
-  const listed = new Set(data.skills.map((s) => s.name));
-  const pending = EXPECTED.filter((n) => !listed.has(n));
 
   return (
     <div className="page skills">
@@ -130,15 +127,6 @@ export default function Skills() {
                 </li>
               );
             })}
-            {pending.map((name) => (
-              <li key={name} className="skill skill--pending">
-                <div className="skill__head">
-                  <code className="skill__name">{name}</code>
-                  <span className="skill__role">{ROLES[name]}</span>
-                </div>
-                <p className="skill__desc">Coming with the platform release.</p>
-              </li>
-            ))}
           </ul>
         </section>
 

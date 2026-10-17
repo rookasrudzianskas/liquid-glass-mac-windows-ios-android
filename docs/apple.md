@@ -389,13 +389,15 @@ The demo app, in [`platforms/apple/Studio`](../platforms/apple/Studio), runs on 
 3. **Materials lab:** live material, appearance, refraction, radius, tint and wallpaper controls for a draggable lens.
 4. **Progressive blur:** a `GlassScrollView` of stories with blurred top and bottom edges under a Regular toolbar.
 
-| | |
-| --- | --- |
-| ![Controls](images/apple/ios-controls.png) | ![Materials lab](images/apple/ios-lab.png) |
+<p align="center">
+  <img src="images/apple/ios-controls.png" width="32%" alt="Controls: glass buttons in every size, icon buttons, a toolbar, sliders and switches over a wallpaper, above a glass tab bar on iPhone">
+  <img src="images/apple/ios-lab.png" width="32%" alt="Materials lab: a draggable Clear glass card over the Dunes wallpaper, with material, appearance, refraction, radius, tint and wallpaper controls on iPhone">
+  <img src="images/apple/ios-blur.png" width="32%" alt="Progressive blur: a journal of stories scrolling under blurred edges, with Regular glass toolbar buttons and a tab bar on iPhone">
+</p>
 
 ![Liquid Glass Studio on macOS](images/apple/macos-controls.png)
 
-Open `platforms/apple/Studio/LiquidGlassStudio.xcodeproj` in Xcode, pick the *LiquidGlassStudio* scheme and run on an iOS Simulator, a device (set your team) or *My Mac*. Launch arguments `-page hero|controls|lab|blur` and `-appearance automatic|light|dark` choose where it starts. A prebuilt, ad-hoc signed macOS build is on the website's downloads page (right-click › Open the first time).
+Open `platforms/apple/Studio/LiquidGlassStudio.xcodeproj` in Xcode, pick the *LiquidGlassStudio* scheme and run on an iOS Simulator, a device (set your team) or *My Mac*. Launch arguments `-page hero|controls|lab|blur` and `-appearance automatic|light|dark` choose where it starts. A prebuilt macOS build is on the website's downloads page. It is ad-hoc signed and not notarized, so macOS blocks its first launch: open System Settings › Privacy & Security and click Open Anyway (on macOS 14, Control-click › Open also works), or run `xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"`.
 
 The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen); after adding files run `platforms/apple/scripts/generate-project.sh`. The app icon is drawn by `platforms/apple/Studio/Scripts/make-app-icon.swift`.
 

@@ -11,7 +11,11 @@ const PLATFORM_CARDS = [
 ];
 
 export default function DocsIndex() {
-  const groups = groupedDocs();
+  // Platform guides already have a card above; list every other doc by group.
+  const carded = new Set(PLATFORM_CARDS.filter((c) => hasDoc(c.slug)).map((c) => c.slug));
+  const groups = groupedDocs()
+    .map(([group, list]) => [group, list.filter((d) => !carded.has(d.slug))] as const)
+    .filter(([, list]) => list.length > 0);
   return (
     <div className="docs">
       <aside className="docs__sidebar">

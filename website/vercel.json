@@ -38,6 +38,10 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
+      "source": "/downloads/SHA256SUMS",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+    },
+    {
       "source": "/(llms.txt|llms-full.txt)",
       "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
     },

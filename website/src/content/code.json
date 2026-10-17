@@ -5,7 +5,7 @@
   },
   "gradleRepo": {
     "lang": "kotlin",
-    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"https://liquid-glass-engineering.vercel.app/maven\")\n    }\n}"
+    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"{{SITE_URL}}/maven\")\n    }\n}"
   },
   "gradleDep": {
     "lang": "kotlin",
@@ -17,11 +17,11 @@
   },
   "nugetCli": {
     "lang": "shellscript",
-    "code": "dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json --name liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"
+    "code": "dotnet nuget add source {{SITE_URL}}/nuget/index.json --name liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"
   },
   "nugetConfig": {
     "lang": "xml",
-    "code": "<!-- nuget.config -->\n<configuration>\n  <packageSources>\n    <add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />\n    <add key=\"liquid-glass\" value=\"https://liquid-glass-engineering.vercel.app/nuget/index.json\" />\n  </packageSources>\n</configuration>"
+    "code": "<!-- nuget.config -->\n<configuration>\n  <packageSources>\n    <add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />\n    <add key=\"liquid-glass\" value=\"{{SITE_URL}}/nuget/index.json\" />\n  </packageSources>\n</configuration>"
   },
   "pluginInstall": {
     "lang": "shellscript",
@@ -33,11 +33,11 @@
   },
   "skillsManual": {
     "lang": "shellscript",
-    "code": "curl -LO https://liquid-glass-engineering.vercel.app/downloads/liquid-glass-skills.zip\nunzip liquid-glass-skills.zip -d ~/.claude/skills    # Claude Code\nunzip liquid-glass-skills.zip -d ~/.agents/skills    # Codex and other Agent Skills tools"
+    "code": "curl -LO {{SITE_URL}}/downloads/liquid-glass-skills.zip\nunzip liquid-glass-skills.zip -d ~/.claude/skills    # Claude Code\nunzip liquid-glass-skills.zip -d ~/.agents/skills    # Codex and other Agent Skills tools"
   },
   "verify": {
     "lang": "shellscript",
-    "code": "shasum -a 256 liquid-glass-studio-macos.zip   # macOS / Linux\nGet-FileHash .\\liquid-glass-studio-windows.zip   # Windows PowerShell"
+    "code": "curl -LO {{SITE_URL}}/downloads/SHA256SUMS   # into the folder with your downloads\nshasum -a 256 -c SHA256SUMS --ignore-missing    # macOS\nsha256sum -c SHA256SUMS --ignore-missing        # Linux\nGet-FileHash .\\LiquidGlassStudio-win-x64.zip     # Windows PowerShell (SHA-256 by default)"
   },
   "fallbackApple": {
     "lang": "swift",
@@ -45,11 +45,11 @@
   },
   "fallbackAndroid": {
     "lang": "kotlin",
-    "code": "import io.github.rookasrudzianskas.liquidglass.*\n\n@Composable\nfun Hero() {\n    GlassScene {\n        GlassContent {\n            Image(painterResource(R.drawable.wallpaper), null, contentScale = ContentScale.Crop)\n        }\n        GlassSurface(material = GlassMaterial.Regular) {\n            Text(\"Liquid Glass\", style = MaterialTheme.typography.titleLarge)\n        }\n    }\n}"
+    "code": "import io.github.rookasrudzianskas.liquidglass.*\n\n@Composable\nfun Hero() {\n    GlassScene {\n        GlassContent {\n            Image(painterResource(R.drawable.wallpaper), null, contentScale = ContentScale.Crop)\n        }\n        GlassSurface(material = GlassMaterial.Regular) {\n            GlassText(\"Liquid Glass\")\n        }\n    }\n}"
   },
   "fallbackWindows": {
     "lang": "xml",
-    "code": "<lg:GlassScene>\n  <lg:GlassScene.Content>\n    <Image Source=\"Assets/Wallpaper.jpg\" Stretch=\"UniformToFill\" />\n  </lg:GlassScene.Content>\n  <lg:GlassSurface Material=\"Regular\" CornerRadius=\"24\">\n    <TextBlock Text=\"Liquid Glass\" FontSize=\"22\" FontWeight=\"SemiBold\" />\n  </lg:GlassSurface>\n</lg:GlassScene>"
+    "code": "<lg:GlassScene>\n  <lg:GlassScene.Content>\n    <Image Source=\"Assets/Wallpaper.jpg\" Stretch=\"UniformToFill\" />\n  </lg:GlassScene.Content>\n  <lg:GlassSurface Material=\"Regular\" Radius=\"24\">\n    <TextBlock Text=\"Liquid Glass\" FontSize=\"22\" FontWeight=\"SemiBold\" />\n  </lg:GlassSurface>\n</lg:GlassScene>"
   },
   "nugetRef": {
     "lang": "xml",

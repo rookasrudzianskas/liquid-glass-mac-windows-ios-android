@@ -8,7 +8,7 @@
 
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -50,14 +50,35 @@ const stripTags = (html) =>
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    // Numeric references (the highlighter writes `<` as &#x3C;); before &amp; so "&amp;#60;" stays literal.
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_m, dec) => String.fromCodePoint(Number(dec)))
     .replace(/&amp;/g, "&");
 
+const git = (args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+
+/** True when the repository folder is the top of its own git checkout (not a copy inside another one). */
+const inGitCheckout = (() => {
+  let value;
+  return () => {
+    if (value === undefined) {
+      try {
+        value = realpathSync(git(["rev-parse", "--show-toplevel"]).trim()) === realpathSync(repo);
+      } catch {
+        value = false;
+      }
+    }
+    return value;
+  };
+})();
+
+/** Last commit date of a file, as a UTC ISO timestamp (the pages and the sitemap both show the UTC day). */
 function gitDate(file) {
+  if (!inGitCheckout()) return null;
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%cI", "--", file], { cwd: repo, stdio: ["ignore", "pipe", "ignore"] })
-      .toString()
-      .trim();
-    return out || null;
+    const out = git(["log", "-1", "--format=%cI", "--", file]).trim();
+    const date = out ? new Date(out) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
   } catch {
     return null;
   }
@@ -114,17 +135,55 @@ function codeBlock({ html, label, lang }, title) {
 const GROUPS = ["Get started", "Platforms", "Reference", "Guides"];
 /** Alt text of every repository image the docs show, by repo-relative path. */
 const imageAlts = new Map();
+// `summary` is the page's meta description and docs-index excerpt (a complete
+// sentence of at most 160 characters). It lives here rather than in front
+// matter because GitHub renders front matter as a table at the top of the file.
+// A `description:` in a doc's front matter still wins, and is also shown as the lede.
 const KNOWN = {
   index: { group: "Get started", order: 0, title: "Overview" },
   readme: { group: "Get started", order: 0, title: "Overview", slug: "overview" },
   overview: { group: "Get started", order: 0 },
   "getting-started": { group: "Get started", order: 1 },
-  apple: { group: "Platforms", order: 10, nav: "Apple (SwiftUI)" },
-  android: { group: "Platforms", order: 11, nav: "Android (Compose)" },
-  windows: { group: "Platforms", order: 12, nav: "Windows (WPF)" },
-  optics: { group: "Reference", order: 20, nav: "Optics" },
-  components: { group: "Reference", order: 21, nav: "Components" },
+  apple: {
+    group: "Platforms",
+    order: 10,
+    nav: "Apple (SwiftUI)",
+    summary: "Native Liquid Glass for SwiftUI on iOS 17+ and macOS 14+: refracting glass surfaces and controls, rendered with Metal from the shared optical model.",
+  },
+  android: {
+    group: "Platforms",
+    order: 11,
+    nav: "Android (Compose)",
+    summary: "Native Liquid Glass for Jetpack Compose: refraction, Clear and Regular materials, rim light and elastic interaction, drawn with AGSL on Android 13+.",
+  },
+  windows: {
+    group: "Platforms",
+    order: 12,
+    nav: "Windows (WPF)",
+    summary: "Native Liquid Glass for WPF on Windows 10 and 11, rendered by an HLSL pixel shader, for .NET Framework 4.8, .NET 8 and .NET 10.",
+  },
+  optics: {
+    group: "Reference",
+    order: 20,
+    nav: "Optics",
+    summary: "The single source of truth for how every port renders glass: shape, refraction, Clear and Regular materials, rim light, interaction and accessibility.",
+  },
+  components: {
+    group: "Reference",
+    order: 21,
+    nav: "Components",
+    summary: "The components every port ships under the same names, from scene and surface to tab bar, menu and progressive blur, with shared options and behavior.",
+  },
 };
+
+/** Shorten text to at most `max` characters, at the end of a sentence when one fits, else at a word. */
+function summarize(text, max = 160) {
+  if (text.length <= max) return text;
+  const head = text.slice(0, max + 1);
+  const sentence = /^[\s\S]*[.!?](?=\s|$)/.exec(head)?.[0];
+  if (sentence && sentence.length >= max * 0.5) return sentence.trim();
+  return `${text.slice(0, max - 1).replace(/[\s,;:([]+\S*$/, "").replace(/[\s,;:]+$/, "")}…`;
+}
 
 function slugify(text) {
   return (
@@ -211,15 +270,10 @@ async function renderDoc(entry, slugByFile) {
   };
 
   const resolveHref = (href) => {
-    if (!href || /^(https?:|mailto:|tel:|#|data:)/i.test(href)) return href;
-    if (href.startsWith("/")) return href;
-    const [p, hash] = href.split("#");
-    const target = path.posix.normalize(path.posix.join(docDir, decodeURIComponent(p ?? "")));
-    const slug = slugByFile.get(target.toLowerCase());
-    if (slug) return `/docs/${slug}${hash ? `#${hash}` : ""}`;
-    if (target.startsWith("..")) return href;
-    const kind = isDirectory(path.join(repo, target)) ? "tree" : "blob";
-    return `${REPO_URL}/${kind}/main/${encodeURI(target)}${hash ? `#${hash}` : ""}`;
+    const link = classifyLink(href, docDir, slugByFile);
+    if (link.kind === "as-is") return href;
+    if (link.kind === "doc") return `/docs/${link.slug}${link.hash}`;
+    return repoFileUrl(link);
   };
 
   const marked = new Marked({ gfm: true });
@@ -281,7 +335,9 @@ async function renderDoc(entry, slugByFile) {
         continue;
       }
       src = copied.src;
-      if (copied.width && copied.height) dims = ` width="${copied.width}" height="${copied.height}"`;
+      mediaUrls.set(rel, copied.src);
+      // The size variables let the CSS reserve the image's box before it loads (docs.css).
+      if (copied.width && copied.height) dims = ` width="${copied.width}" height="${copied.height}" style="--w: ${copied.width}; --h: ${copied.height}"`;
     }
     const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(m.alt || "")}"${dims} loading="lazy" decoding="async"${m.title ? ` title="${escapeHtml(m.title)}"` : ""}>`;
     html = html.replace(`@@IMG${i}@@`, img);
@@ -303,6 +359,7 @@ async function renderDoc(entry, slugByFile) {
       html = html.split(tag).join("");
       continue;
     }
+    mediaUrls.set(rel, copied.src);
     let next = tag.replace(/\bsrc="[^"]+"/, `src="${escapeHtml(copied.src)}"`);
     if (copied.width && copied.height && !/\b(width|height)=/.test(next)) next = next.replace("<img", `<img width="${copied.width}" height="${copied.height}"`);
     else if (copied.width && copied.height && !/\bstyle=/.test(next)) next = next.replace("<img", `<img style="aspect-ratio: ${copied.width} / ${copied.height}"`);
@@ -310,10 +367,15 @@ async function renderDoc(entry, slugByFile) {
     html = html.split(tag).join(next);
   }
 
+  // Tables that hold nothing but images (a screenshot gallery written as a
+  // Markdown table) become a centered gallery, like the raw-HTML ones.
+  html = html.replace(/<table>([\s\S]*?)<\/table>/g, (whole, inner) => imageTableToGallery(inner) ?? whole);
+
   // Key/value tables written with an empty header row (`| | |`): drop the
-  // empty header and make the first column row headers, so every cell has one.
+  // empty header and make the first column row headers, so every cell has one
+  // (unless that column holds only images, which are not headers).
   html = html.replace(/<table>\s*<thead>\s*<tr>((?:\s*<th[^>]*>\s*<\/th>)+)\s*<\/tr>\s*<\/thead>([\s\S]*?)<\/table>/g, (_m, _empty, rest) =>
-    `<table class="table--keys">${rest.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>')}</table>`,
+    firstColumnIsHeader(rest) ? `<table class="table--keys">${toRowHeaders(rest)}</table>` : `<table>${rest}</table>`,
   );
 
   // Tables with some empty header cells: an empty corner makes the first column
@@ -325,7 +387,7 @@ async function renderDoc(entry, slugByFile) {
     const headHtml = cells
       .map((c, i) => (stripTags(c[2] ?? "").trim() || (i === 0 && cornerEmpty) ? `<th${c[1]}>${c[2]}</th>` : `<th${c[1]}><span class="sr-only">Details</span></th>`))
       .join("");
-    const rows = cornerEmpty ? rest.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>') : rest;
+    const rows = cornerEmpty && firstColumnIsHeader(rest) ? toRowHeaders(rest) : rest;
     return `<table><thead><tr>${headHtml}</tr></thead>${rows}</table>`;
   });
 
@@ -340,7 +402,15 @@ async function renderDoc(entry, slugByFile) {
   const parts = html.split(/(?=<h[2-4] id=")/);
   for (const part of parts) {
     const m = /^<h[2-4] id="([^"]+)">/.exec(part);
-    const text = stripTags(part.replace(/<a class="anchor"[^>]*>#<\/a>/g, "").replace(/<button[^>]*>.*?<\/button>/g, ""))
+    const text = stripTags(
+      part
+        .replace(/<a class="anchor"[^>]*>#<\/a>/g, "")
+        // A code block's bar (language label and copy button) is chrome, not content.
+        .replace(/<div class="code__bar">[\s\S]*?<\/div>/g, " ")
+        .replace(/<button[^>]*>[\s\S]*?<\/button>/g, "")
+        // Block boundaries separate words, so neighbouring blocks never fuse.
+        .replace(/<\/(?:p|pre|li|dt|dd|td|th|tr|div|h[1-6]|blockquote|figcaption)>|<br\s*\/?>/g, " "),
+    )
       .replace(/\s+/g, " ")
       .trim();
     if (!text) continue;
@@ -350,8 +420,9 @@ async function renderDoc(entry, slugByFile) {
 
   const firstPara = /<p>([\s\S]*?)<\/p>/.exec(html);
   const explicit = typeof data.description === "string";
-  let description = explicit ? data.description : firstPara ? stripTags(firstPara[1] ?? "").replace(/\s+/g, " ").trim() : "";
-  if (description.length > 180) description = `${description.slice(0, 177).replace(/\s+\S*$/, "")}…`;
+  const description = summarize(
+    explicit ? data.description.trim() : entry.summary ?? (firstPara ? stripTags(firstPara[1] ?? "").replace(/\s+/g, " ").trim() : ""),
+  );
   title ??= entry.title ?? entry.slug;
 
   return {
@@ -380,6 +451,127 @@ function isDirectory(p) {
   }
 }
 
+/** Site URL of every repository image the docs show, by repo-relative path (filled while rendering). */
+const mediaUrls = new Map();
+
+/**
+ * Where a link written in a doc points: another doc (by slug), a file or
+ * folder in the repository, or somewhere the site leaves alone (absolute URLs,
+ * fragments, site paths, and paths outside the repository).
+ */
+function classifyLink(href, docDir, slugByFile) {
+  if (!href || /^(?:[a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return { kind: "as-is" };
+  const cut = href.indexOf("#");
+  const file = cut < 0 ? href : href.slice(0, cut);
+  const hash = cut < 0 ? "" : href.slice(cut);
+  let decoded = file;
+  try {
+    decoded = decodeURIComponent(file);
+  } catch {
+    /* keep it as written */
+  }
+  const target = path.posix.normalize(path.posix.join(docDir, decoded));
+  const slug = slugByFile.get(target.toLowerCase());
+  if (slug) return { kind: "doc", slug, hash };
+  if (target === ".." || target.startsWith("../")) return { kind: "as-is" };
+  return { kind: isDirectory(path.join(repo, target)) ? "tree" : "blob", target, hash };
+}
+
+const repoFileUrl = (link) => `${REPO_URL}/${link.kind}/main/${encodeURI(link.target)}${link.hash}`;
+
+/** Apply `fn` to a Markdown document outside fenced code blocks and inline code spans. */
+function outsideCode(markdown, fn) {
+  const out = [];
+  let prose = [];
+  let fence = null;
+  const flush = () => {
+    if (!prose.length) return;
+    // Inline code is masked (a link label may hold some), then put back unchanged.
+    const code = [];
+    const masked = prose.join("\n").replace(/``[\s\S]*?``|`[^`\n]*`/g, (span) => `\uE000${code.push(span) - 1}\uE001`);
+    out.push(fn(masked).replace(/\uE000(\d+)\uE001/g, (_m, i) => code[Number(i)]));
+    prose = [];
+  };
+  for (const line of markdown.split("\n")) {
+    if (fence) {
+      out.push(line);
+      if (new RegExp(`^ {0,3}${fence[0]}{${fence.length},}\\s*$`).test(line)) fence = null;
+      continue;
+    }
+    const open = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (open?.[1]) {
+      flush();
+      fence = open[1];
+      out.push(line);
+    } else prose.push(line);
+  }
+  flush();
+  return out.join("\n");
+}
+
+/**
+ * A doc's Markdown with every relative link and image made absolute, for the
+ * Markdown twins (/docs/<slug>.md) and llms-full.txt, which are read away from
+ * the repository: docs point at their twins, images at the site's copies, and
+ * other repository files at GitHub.
+ */
+function absoluteMarkdown(markdown, docFile, slugByFile) {
+  const docDir = path.posix.dirname(docFile);
+  const resolve = (href, image) => {
+    const link = classifyLink(href, docDir, slugByFile);
+    if (link.kind === "as-is") return /^\/(?!\/)/.test(href) ? `${SITE_URL}${href}` : href;
+    if (link.kind === "doc") return `${SITE_URL}/docs/${link.slug}.md${link.hash}`;
+    const media = mediaUrls.get(link.target);
+    if (media) return `${SITE_URL}${media}`;
+    return image && link.kind === "blob" ? `${REPO_URL}/raw/main/${encodeURI(link.target)}` : repoFileUrl(link);
+  };
+  const target = (raw, image) => (raw.startsWith("<") ? `<${resolve(raw.slice(1, -1), image)}>` : resolve(raw, image));
+  const rewrite = (text) =>
+    text
+      // Inline links and images, [label](target "title"); a label may hold an image.
+      .replace(
+        /(!?)\[((?:[^[\]\\]|\\.|\[(?:[^[\]\\]|\\.)*\])*)\]\(\s*(<[^>\n]*>|[^\s()]+(?:\([^\s()]*\)[^\s()]*)*)((?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?\s*)\)/g,
+        (_m, bang, label, href, rest) => `${bang}[${bang ? label : rewrite(label)}](${target(href, Boolean(bang))}${rest})`,
+      )
+      // Reference definitions, [id]: target (not footnotes, [^1]: text)
+      .replace(/^( {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)/gm, (_m, lead, href) => `${lead}${target(href, false)}`)
+      // Raw HTML: <img src="…">, <a href="…">
+      .replace(/(<(img|source)\b[^>]*?\ssrc=")([^"]*)(")/gi, (_m, a, _tag, href, b) => `${a}${resolve(href, true)}${b}`)
+      .replace(/(<a\b[^>]*?\shref=")([^"]*)(")/gi, (_m, a, href, b) => `${a}${resolve(href, false)}${b}`);
+  return outsideCode(markdown, rewrite);
+}
+
+const ONLY_IMAGES = /^(?:<img\b[^>]*>\s*)+$/;
+
+/** The table's first-column cells, when it has body rows. */
+const firstCells = (rows) => [...rows.matchAll(/<tr>\s*<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => (m[1] ?? "").trim());
+
+/** A first column is a row header unless it is empty or holds only images. */
+function firstColumnIsHeader(rows) {
+  const cells = firstCells(rows);
+  return cells.length > 0 && !cells.every((c) => !c || ONLY_IMAGES.test(c));
+}
+
+const toRowHeaders = (rows) => rows.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>');
+
+/** A table of images only, as a centered gallery (`<p align="center">`, styled in docs.css); null otherwise. */
+function imageTableToGallery(inner) {
+  const cells = [...inner.matchAll(/<t([hd])\b[^>]*>([\s\S]*?)<\/t\1>/g)].map((m) => (m[2] ?? "").trim()).filter(Boolean);
+  if (!cells.length || !cells.every((c) => ONLY_IMAGES.test(c))) return null;
+  const perRow = Math.max(1, ...[...inner.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((r) => [...(r[1] ?? "").matchAll(/<img\b/g)].length));
+  const images = cells.flatMap((c) => c.match(/<img\b[^>]*>/g) ?? []);
+  const tall = images.some((img) => Number(/\bheight="(\d+)"/.exec(img)?.[1]) > Number(/\bwidth="(\d+)"/.exec(img)?.[1]));
+  // Portrait screenshots go at most three to a row, so a pair is not a screen tall.
+  const share = `${Math.floor(100 / (tall ? Math.max(perRow, 3) : perRow)) - 1}%`;
+  const sized = images.map((img) => {
+    const w = /\bwidth="(\d+)"/.exec(img)?.[1];
+    const h = /\bheight="(\d+)"/.exec(img)?.[1];
+    const plain = img.replace(/\s(?:width|height|style)="[^"]*"/g, "");
+    return plain.replace("<img", `<img width="${share}"${w && h ? ` style="aspect-ratio: ${w} / ${h}"` : ""}`);
+  });
+  return `<p align="center">\n${sized.join("\n")}\n</p>`;
+}
+
 async function buildDocs() {
   const entries = await discoverDocs();
   const slugByFile = new Map(entries.map((e) => [e.file.toLowerCase(), e.slug]));
@@ -405,9 +597,11 @@ async function buildDocs() {
 
   await rm(path.join(gen, "docs"), { recursive: true, force: true });
   for (const d of docs) {
-    const { sections: _s, markdown: _m, ...page } = d;
+    // The Markdown twin is read away from the repository: its links and images are made absolute.
+    d.twin = absoluteMarkdown(d.markdown, d.source, slugByFile);
+    const { sections: _s, markdown: _m, twin: _t, ...page } = d;
     await writeIfChanged(path.join(gen, "docs", `${d.slug}.json`), json(page));
-    await writeIfChanged(path.join(pub, "docs", `${d.slug}.md`), d.markdown);
+    await writeIfChanged(path.join(pub, "docs", `${d.slug}.md`), d.twin);
   }
   // Remove raw markdown of docs that no longer exist.
   if (exists(path.join(pub, "docs"))) {
@@ -446,16 +640,39 @@ async function countFiles(dir) {
   return n;
 }
 
+// Main skill first, then the platform skills in platform order.
+const SKILL_ORDER = ["liquid-glass", "liquid-glass-swiftui", "liquid-glass-compose", "liquid-glass-wpf", "liquid-glass-port"];
+
+/**
+ * Skill folders whose SKILL.md is committed (at HEAD), or null outside a git
+ * checkout. The pages link every skill to GitHub, so a folder that exists only
+ * in the working tree would publish links that 404.
+ */
+function committedSkills() {
+  if (!inGitCheckout()) return null;
+  try {
+    const files = git(["ls-tree", "-r", "--name-only", "HEAD", "--", "plugins/liquid-glass/skills"]).split("\n");
+    return new Set(files.map((f) => /^plugins\/liquid-glass\/skills\/([^/]+)\/SKILL\.md$/.exec(f)?.[1]).filter(Boolean));
+  } catch {
+    return new Set(); // a checkout without commits: nothing is published yet
+  }
+}
+
 async function buildSkills() {
   const pluginDir = path.join(repo, "plugins/liquid-glass");
   const plugin = await readJson(path.join(pluginDir, ".claude-plugin/plugin.json"), null);
   const marketplace = await readJson(path.join(repo, ".claude-plugin/marketplace.json"), null);
   const skills = [];
   const skillsDir = path.join(pluginDir, "skills");
+  const committed = committedSkills();
   if (exists(skillsDir)) {
     for (const name of (await readdir(skillsDir)).sort()) {
       const file = path.join(skillsDir, name, "SKILL.md");
       if (!exists(file)) continue;
+      if (committed && !committed.has(name)) {
+        console.warn(`[content] skipping skill ${name}: plugins/liquid-glass/skills/${name}/SKILL.md is not committed, so its GitHub links would 404`);
+        continue;
+      }
       const { data, body } = parseFrontmatter(await readFile(file, "utf8"));
       const heading = /^#\s+(.+)$/m.exec(body)?.[1]?.trim();
       skills.push({
@@ -468,9 +685,9 @@ async function buildSkills() {
       });
     }
   }
-  // Main skill first, then the platform skills in platform order.
-  const rank = ["liquid-glass", "liquid-glass-swiftui", "liquid-glass-compose", "liquid-glass-wpf", "liquid-glass-port"];
-  skills.sort((a, b) => (rank.indexOf(a.name) + 1 || 99) - (rank.indexOf(b.name) + 1 || 99) || a.name.localeCompare(b.name));
+  skills.sort((a, b) => (SKILL_ORDER.indexOf(a.name) + 1 || 99) - (SKILL_ORDER.indexOf(b.name) + 1 || 99) || a.name.localeCompare(b.name));
+  const missing = SKILL_ORDER.filter((name) => !skills.some((s) => s.name === name));
+  if (missing.length) console.warn(`[content] skills missing from the plugin: ${missing.join(", ")}`);
   const out = {
     plugin: plugin ? { name: plugin.name, version: plugin.version, description: plugin.description } : null,
     marketplace: marketplace ? { name: marketplace.name, description: marketplace.description } : null,
@@ -525,7 +742,7 @@ async function buildStaticCode() {
   const manifest = await readJson(path.join(pub, "downloads/manifest.json"), null);
   const nuget = manifest?.items?.filter((i) => i.id?.startsWith("nuget-") && i.packageId) ?? [];
   const nugetId = (nuget.find((i) => /wpf/i.test(i.packageId)) ?? nuget[0])?.packageId ?? "LiquidGlassEngineering.Wpf";
-  const vars = { NUGET_ID: nugetId, VERSION: manifest?.version ?? "1.0.0" };
+  const vars = { NUGET_ID: nugetId, VERSION: manifest?.version ?? "1.0.0", SITE_URL };
   const fill = (s) => s.replace(/\{\{(\w+)\}\}/g, (_m, k) => vars[k] ?? _m);
   await writeIfChanged(path.join(gen, "packages.json"), json({ nugetId, version: vars.VERSION }));
   const out = {};
@@ -534,6 +751,7 @@ async function buildStaticCode() {
     out[key] = { code, ...(await highlight(code, lang)) };
   }
   await writeIfChanged(path.join(gen, "code.json"), json(out));
+  return { nugetId, version: vars.VERSION };
 }
 
 // ---------------------------------------------------------------------------
@@ -615,6 +833,15 @@ async function buildWallpapers() {
   log(`wallpapers: ${Object.keys(items).join(", ") || "(none)"}`);
 }
 
+const NAME_TOKENS = { ios: "iOS", ipados: "iPadOS", macos: "macOS", ipad: "iPad", iphone: "iPhone", wpf: "WPF", ui: "UI" };
+
+/** Alt text for a screenshot no doc describes, from its file name ("ios-blur" -> "iOS blur"). */
+function altFromName(base) {
+  const words = base.split(/[-_\s]+/).filter(Boolean).map((w) => NAME_TOKENS[w.toLowerCase()] ?? w.toLowerCase());
+  const text = words.join(" ");
+  return /^[a-z]/.test(text) ? text[0].toUpperCase() + text.slice(1) : text;
+}
+
 async function buildScreens() {
   const root = path.join(repo, "docs/images");
   const out = {};
@@ -640,7 +867,7 @@ async function buildScreens() {
           width: info.width,
           height: info.height,
           name: base,
-          alt: imageAlts.get(`docs/images/${platform}/${f}`) ?? base.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+          alt: imageAlts.get(`docs/images/${platform}/${f}`) ?? altFromName(base),
         });
       }
       if (list.length) out[platform] = list;
@@ -681,13 +908,23 @@ async function buildIcons() {
 async function buildDownloads() {
   const file = path.join(pub, "downloads/manifest.json");
   const manifest = await readJson(file, null);
-  // Install notes that ship next to an artifact (for example an ad-hoc signed app).
+  // First-launch notes for apps that are not notarized or not code-signed.
   const notes = {};
   try {
     const readme = await readFile(path.join(repo, "artifacts/apple/README.txt"), "utf8");
-    if (/not notarized/i.test(readme)) notes["macos-studio"] = "Ad-hoc signed, not notarized: the first time, Control-click Liquid Glass Studio and choose Open.";
+    // Since macOS 15, Control-click › Open no longer overrides Gatekeeper for an app that is not notarized.
+    if (/not notarized/i.test(readme)) {
+      notes["macos-studio"] =
+        'Not notarized, so macOS blocks the first launch: open System Settings › Privacy & Security and click Open Anyway (on macOS 14, Control-click › Open also works), or run xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app".';
+    }
   } catch {
     /* no notes */
+  }
+  // build-downloads records whether each Windows Studio executable carries an Authenticode signature.
+  for (const item of manifest?.items ?? []) {
+    if (item.platform === "windows" && item.kind === "app" && item.signed === false) {
+      notes[item.id] = "Not code-signed, so Windows SmartScreen may stop the first launch: choose More info › Run anyway.";
+    }
   }
   await writeIfChanged(path.join(gen, "downloads.json"), json({ ...(manifest ?? { schema: 1, version: "1.0.0", generatedAt: null, items: [] }), notes }));
   log(`downloads: ${manifest ? `${manifest.items.filter((i) => i.available).length}/${manifest.items.length} available` : "no manifest yet"}`);
@@ -696,7 +933,9 @@ async function buildDownloads() {
 // ---------------------------------------------------------------------------
 // llms.txt
 
-async function buildLlms(docs, skills) {
+async function buildLlms(docs, skills, packages) {
+  const { nugetId, version } = packages;
+  const repoSlug = new URL(REPO_URL).pathname.slice(1);
   const lines = [
     "# Liquid Glass Engineering",
     "",
@@ -704,9 +943,13 @@ async function buildLlms(docs, skills) {
     "",
     `- Website: ${SITE_URL}`,
     `- Source: ${REPO_URL}`,
-    `- Swift package: ${REPO_URL} (from 1.0.0)`,
-    `- Gradle: maven("${SITE_URL}/maven"), io.github.rookasrudzianskas:liquid-glass-compose:1.0.0`,
-    `- NuGet: LiquidGlass.Wpf (feed ${SITE_URL}/nuget/index.json)`,
+    "",
+    "## Install",
+    "",
+    `- Swift Package Manager (iOS 17+, macOS 14+): \`.package(url: "${REPO_URL}", from: "${version}")\`, product \`LiquidGlass\``,
+    `- Gradle (Jetpack Compose, Android 7+, glass on 13+): repository \`maven("${SITE_URL}/maven")\` in settings.gradle.kts, then \`implementation("io.github.rookasrudzianskas:liquid-glass-compose:${version}")\``,
+    `- Gradle from JitPack instead: repository \`maven("https://jitpack.io")\`, then \`implementation("com.github.${repoSlug.replace("/", ":")}:${version}")\``,
+    `- NuGet (WPF on .NET Framework 4.8, .NET 8 and .NET 10): the package ${nugetId} ${version} is on the project feed, not nuget.org: \`dotnet nuget add source ${SITE_URL}/nuget/index.json -n liquid-glass\`, then \`dotnet add package ${nugetId} --version ${version}\``,
     "",
     "## Docs",
     "",
@@ -714,7 +957,8 @@ async function buildLlms(docs, skills) {
     "",
   ];
   if (skills.skills.length) {
-    lines.push("## Agent skills", "", `Install in Claude Code: \`/plugin marketplace add rookasrudzianskas/liquid-glass-mac-windows-ios-android\` then \`/plugin install liquid-glass@liquid-glass-engineering\`.`, "");
+    const plugin = `${skills.plugin?.name ?? "liquid-glass"}@${skills.marketplace?.name ?? "liquid-glass-engineering"}`;
+    lines.push("## Agent skills", "", `Install in Claude Code: \`/plugin marketplace add ${repoSlug}\` then \`/plugin install ${plugin}\`. Or unzip ${SITE_URL}/downloads/liquid-glass-skills.zip into ~/.claude/skills (Claude Code) or ~/.agents/skills (other Agent Skills tools).`, "");
     for (const s of skills.skills) lines.push(`- [${s.name}](${REPO_URL}/blob/main/${s.source}): ${s.description}`);
     lines.push("");
   }
@@ -723,7 +967,7 @@ async function buildLlms(docs, skills) {
 
   const full = [`# Liquid Glass Engineering: full documentation`, "", `> Generated from ${REPO_URL} for language models. Each section is one documentation page.`, ""];
   for (const d of docs) {
-    full.push(`---`, "", `<!-- ${SITE_URL}/docs/${d.slug} (source: ${d.source}) -->`, "", parseFrontmatter(d.markdown).body.trim(), "");
+    full.push(`---`, "", `<!-- ${SITE_URL}/docs/${d.slug} (source: ${d.source}) -->`, "", parseFrontmatter(d.twin ?? d.markdown).body.trim(), "");
   }
   await writeIfChanged(path.join(pub, "llms-full.txt"), full.join("\n"));
 }
@@ -748,8 +992,8 @@ async function main() {
   const docs = await buildDocs();
   const skills = await buildSkills();
   await buildSnippets(docs);
-  await buildStaticCode();
-  await buildLlms(docs, skills);
+  const packages = await buildStaticCode();
+  await buildLlms(docs, skills, packages);
   await buildDownloads();
   await buildFonts();
   await buildIcons();

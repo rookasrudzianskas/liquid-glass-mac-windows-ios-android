@@ -50,10 +50,16 @@ for (const { path: p, updated } of pages) {
   console.log(`[prerender] ${p} -> ${outFile(p)} (${(html.length / 1024).toFixed(1)} kB)`);
 }
 
+// The UTC day, as the pages show it ("Updated …" in Doc.tsx formats in UTC).
+function lastmod(updated) {
+  const date = updated ? new Date(updated) : null;
+  return date && !Number.isNaN(date.getTime()) ? `<lastmod>${date.toISOString().slice(0, 10)}</lastmod>` : "";
+}
+
 const xml = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  ...sitemap.map((u) => `  <url><loc>${u.loc}</loc>${u.updated ? `<lastmod>${u.updated.slice(0, 10)}</lastmod>` : ""}</url>`),
+  ...sitemap.map((u) => `  <url><loc>${u.loc}</loc>${lastmod(u.updated)}</url>`),
   "</urlset>",
   "",
 ].join("\n");
