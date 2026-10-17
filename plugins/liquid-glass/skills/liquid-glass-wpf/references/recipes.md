@@ -55,7 +55,6 @@ Then replace the generated project file and `App.xaml` with the ones below, add 
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="ShellWindow.xaml">
   <Application.Resources>
-    <FontFamily x:Key="TextFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
   </Application.Resources>
@@ -534,7 +533,8 @@ so the scene covers the whole window. A caption capsule reports what was chosen.
     </lg:GlassScene.Content>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,24,0">
-      <lg:GlassMenu x:Name="SortMenu" Header="Sort by name" AutomationProperties.Name="Sort">
+      <!-- No fixed automation name: the header, which changes with the sort order, names the menu. -->
+      <lg:GlassMenu x:Name="SortMenu" Header="Sort by name">
         <lg:GlassMenuItem x:Name="SortName" Header="Name" IsCheckable="True" IsChecked="True" Click="OnSort" />
         <lg:GlassMenuItem x:Name="SortDate" Header="Date modified" IsCheckable="True" Click="OnSort" />
         <lg:GlassMenuItem x:Name="SortSize" Header="Size" IsCheckable="True" Click="OnSort" />
@@ -542,16 +542,13 @@ so the scene covers the whole window. A caption capsule reports what was chosen.
         <lg:GlassMenuItem Header="Show hidden files" IsCheckable="True" StaysOpenOnClick="True" Click="OnAction" />
       </lg:GlassMenu>
 
-      <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="{StaticResource IconFont}" FontWeight="Normal"
+      <!-- The icon font styles only the trigger: items draw in the glass text font. -->
+      <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="{StaticResource IconFont}"
                     Margin="10,0,0,0" AutomationProperties.Name="More">
-        <!-- Items inherit the menu's icon font, so each one gets the text font back. -->
-        <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" FontFamily="{StaticResource TextFont}"
-                          Click="OnAction" />
-        <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" FontFamily="{StaticResource TextFont}"
-                          Click="OnAction" />
+        <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" Click="OnAction" />
+        <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" Click="OnAction" />
         <Separator />
-        <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" FontFamily="{StaticResource TextFont}"
-                          Click="OnAction" />
+        <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" Click="OnAction" />
       </lg:GlassMenu>
     </StackPanel>
 

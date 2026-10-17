@@ -77,12 +77,12 @@ public enum GlassLensMode { Shader, Fallback, Opaque, HighContrast }
 | `GlassMaterial` | `Clear` | The refracted backdrop with a light tone curve and veil. Default everywhere except menu panels. |
 | | `Regular` | Frosted: the backdrop is blurred (σ 7.33) and toned before refraction. |
 | `GlassMotion` | `Full` | Springs with grow, stretch and overshoot. Windows' *Animation effects* off turns it into `Reduced`. |
-| | `Reduced` | No grow, stretch or overshoot; springs become critically damped crossfades. |
+| | `Reduced` | Every transition is kept as a critically damped spring, without grow, stretch or overshoot: the tab lens slides, the switch thumb travels, the menu grows out of its trigger, fluid outlines flow, thumbs crossfade into glass at their resting size. |
 | | `None` | No transitions; every change applies immediately. |
 | `GlassAppearance` | `Automatic` | Follows the Windows app mode (Settings › Personalization › Colors), live. |
 | | `Light` / `Dark` | Light glass with `#111113` foreground / dark glass with white foreground. |
-| `GlassRenderMode` | `Automatic` | The pixel shader where pixel shader 3.0 runs in hardware, otherwise the fallback material. |
-| | `Shader` | Always try the shader; still falls back where it cannot run. |
+| `GlassRenderMode` | `Automatic` | The pixel shader where it can run (pixel shader 3.0 in hardware, render tier 2, a window that does not render in software, a shader the driver accepted), otherwise the fallback material. |
+| | `Shader` | The same as `Automatic` (an alias): glass never forces the shader where it cannot run. Use it to state the intent in a style or to undo an inherited `Fallback`. |
 | | `Fallback` | Always the fallback material (platform blur, fitted veil, exact rim light). |
 | `GlassButtonSize` | `Small` / `Regular` / `Large` | Heights 24 / 32 / 40 units. |
 | `GlassEdge` | `Top`, `Bottom`, `Left`, `Right` | The edge a progressive blur is strongest at. |
@@ -232,6 +232,7 @@ are circles. Everything else is `Button`: `Click`, `Command`, `CommandParameter`
 public GlassButton()
 public GlassMaterial Material { get; set; }        // inherited, default Clear
 public GlassAppearance Appearance { get; set; }    // inherited, default Automatic
+public GlassMotion Motion { get; set; }            // inherited, default Full
 public GlassRadius Radius { get; set; }            // default GlassRadius.Capsule (style sets circle when IsIconOnly)
 public double Refraction { get; set; }             // default 60
 public Color? Tint { get; set; }                   // default null
@@ -241,8 +242,10 @@ public bool IsIconOnly { get; set; }               // default false: square, cir
 public override void OnApplyTemplate()
 ```
 
-Default style: font `Segoe UI Variable Text, Segoe UI`, SemiBold, Cursor Hand, focus ring on keyboard focus,
-opacity 0.45 when disabled.
+Default style: font `Segoe UI Variable Text, Segoe UI`, SemiBold (Normal when `Content` is only icon glyphs, that
+is private-use characters such as `&#xE734;`, so `FontWeight="Normal"` is not needed), Cursor Hand, focus ring on
+keyboard focus, opacity 0.45 when disabled. Inside a `GlassToolbar` a `GlassButton` takes the toolbar button look
+(no glass of its own: the cluster is its glass).
 
 | `Size` | Height / MinWidth | FontSize | Padding |
 | --- | --- | --- | --- |
@@ -266,18 +269,22 @@ share.Click += (_, _) => Share();
 
 `[ContentProperty(nameof(Items))] public class GlassToolbar : Control`: a floating toolbar. Items between spacers are
 grouped into capsule glass clusters (each a `GlassSurface` with `IsFluid = true`, 40 units tall when horizontal) that
-spring to their new size when items come and go. Plain `Button`s and `ToggleButton`s inside get the toolbar button
-style (no glass of their own, a soft highlight in the foreground color) through implicit styles keyed to exactly those
-two types: a `RadioButton`, `RepeatButton` or `Button` subclass keeps its Windows look unless its style is based on
-the exported `ButtonStyle` key (see [Theme resources](#theme-resources-and-default-styles)). There is no `ItemsSource`
-or `ItemTemplate`: add elements to `Items`. Pressing anywhere on a cluster presses its glass. Not focusable; `KeyboardNavigation.TabNavigation` = `Continue`. Template part: `PART_Host` (`Grid`). UI
-Automation: `ToolBar`.
+spring to their new size when items come and go. Plain `Button`s, `ToggleButton`s and `GlassButton`s inside (a
+`GlassMenu`'s trigger too) get the toolbar button style (no glass of their own, a soft highlight in the foreground
+color) through implicit styles in the toolbar's resources keyed to exactly those three types: a `RadioButton`,
+`RepeatButton` or another `Button` subclass keeps its Windows look unless its style is based on the exported
+`ButtonStyle` key (see [Theme resources](#theme-resources-and-default-styles)). There is no `ItemsSource` or
+`ItemTemplate`: add elements to `Items`. Pressing anywhere on a cluster presses its glass. Not focusable; a focus scope
+(as WPF's `ToolBar`), so a routed command on a toolbar button goes on to the window's focused element;
+`KeyboardNavigation.TabNavigation` = `Continue`. Template part: `PART_Host` (`Grid`). UI Automation:
+`ToolBar`.
 
 ```csharp
 public GlassToolbar()
 public ObservableCollection<UIElement> Items { get; }   // controls and spacers, in order
 public GlassMaterial Material { get; set; }       // inherited, default Clear
 public GlassAppearance Appearance { get; set; }   // inherited, default Automatic
+public GlassMotion Motion { get; set; }           // inherited, default Full
 public GlassRadius Radius { get; set; }           // default GlassRadius.Capsule
 public double Refraction { get; set; }            // default 60
 public Color? Tint { get; set; }                  // default null (tints every cluster; rarely wanted)
@@ -289,8 +296,10 @@ public override void OnApplyTemplate()
 ```
 
 Default style: `HorizontalAlignment="Center"`, `VerticalAlignment="Center"`. Toolbar button style: Height 32,
-MinWidth 32, Padding `8,0`, FontSize 14 SemiBold; highlight opacity 0.08 hover, 0.14 checked, 0.16 pressed; 0.45
-disabled.
+MinWidth 32, Padding `8,0`, FontSize 14 SemiBold (Normal when the content is only icon glyphs); highlight opacity 0.08
+hover, 0.14 checked, 0.16 pressed; 0.45 disabled. The template draws its own 2-unit focus ring in the glass
+foreground color (not the window's focus visual), shown for keyboard focus only. In a contrast theme, hover, press
+and the checked state are a solid `Highlight` fill with `HighlightText`.
 
 ```csharp
 public class GlassToolbarSpacer : FrameworkElement
@@ -320,21 +329,24 @@ toolbar.Items.Insert(2, new GlassToolbarSpacer { Sizing = GlassSpacerSizing.Fixe
 spring, stretches with its speed and can be dragged across the bar. Arrow keys move the selection
 (`DirectionalNavigation` = `Contained`); `SelectionMode` = `Single`. `ItemsSource`, `SelectedIndex`,
 `SelectedItem`, `SelectionChanged`, `ItemTemplate` and `ItemsPanel` work as on any `ListBox`. `SelectedIndex`
-defaults to -1, which draws no selection lens: set it, and handle -1 in `SelectionChanged` (Ctrl+click deselects).
-Template parts:
+defaults to -1, which draws no selection lens: set it. Once an item is selected, one always is: Ctrl+click on the
+selected item and `SelectedIndex = -1` keep the selection, and removing the selected item selects a neighbor. While
+dragged, the lens follows the pointer on the track spring lengthened by its size (0.18 s + 0.0005 s per unit of its
+longer side, `GlassSprings.TrackWhileDragging`), taking on the size of the item beneath it. Template parts:
 `PART_Surface` (`GlassSurface`, the bar), `PART_Lens` (`GlassSurface`, the selection lens, always Clear),
-`PART_LensHost` (`Canvas`). UI Automation: `Tab` with `TabItem` children and the Selection pattern.
+`PART_LensHost` (`Canvas`). UI Automation: `Tab` with `TabItem` children and the Selection pattern (single selection,
+selection required).
 
 ```csharp
 public GlassTabBar()
 public GlassMaterial Material { get; set; }       // inherited, default Clear (the selection lens stays Clear)
 public GlassAppearance Appearance { get; set; }   // inherited, default Automatic
+public GlassMotion Motion { get; set; }           // inherited, default Full
 public GlassRadius Radius { get; set; }           // default GlassRadius.Capsule
 public double Refraction { get; set; }            // default 60
 public Color? Tint { get; set; }                  // default null; tints the bar and its lens
 public bool IsInteractive { get; set; }           // default true
 public override void OnApplyTemplate()
-public bool Tick(double dt)                       // frame-loop callback used by the library; do not call
 
 public class GlassTabBarItem : ListBoxItem
 public GlassTabBarItem()
@@ -375,7 +387,9 @@ public override void OnApplyTemplate()
 ```
 
 Default style: MinWidth 80, MinHeight 28 (vertical: MinWidth 28, MinHeight 80); track `#4D808080`; focus ring on
-keyboard focus; opacity 0.45 when disabled. No `Material` property: the thumb glass is always Clear.
+keyboard focus; opacity 0.45 when disabled. No `Material` property: the thumb glass is always Clear. In a contrast
+theme the fill is `Highlight`, the rest of the track is `ControlBrush` outlined in `ControlText`, and the thumb is a
+solid `ControlText` capsule that does not turn into glass. UI Automation: WPF's own `SliderAutomationPeer`.
 
 ```xml
 <lg:GlassSlider Minimum="0" Maximum="100" Value="64" AutomationProperties.Name="Volume" />
@@ -388,18 +402,21 @@ keyboard focus; opacity 0.45 when disabled. No `Material` property: the thumb gl
 (response 0.47 s, damping 0.7) and lifts into Clear glass while pressed (refraction 7.75, growing 9 × 5.5 per side).
 Drag the thumb, click, or press Space. `Content` is the label, drawn before the track (column `*`, then the track),
 so a stretched switch puts the label left and the track right. `IsChecked`, `Checked`, `Unchecked`, `Command` work as
-on `ToggleButton`; `IsChecked = null` parks the thumb in the middle. Template parts: `PART_Track` (`Border`),
-`PART_Thumb` (`GlassValueThumb`). UI Automation: Toggle.
+on `ToggleButton`; `IsChecked = null` parks the thumb in the middle. Under reduced motion the thumb travels with the
+same response, critically damped. Template parts: `PART_Track` (`Border`), `PART_Thumb` (`GlassValueThumb`). UI
+Automation: a toggle switch (`GlassSwitchAutomationPeer`): ControlType Button with the Toggle pattern, localized
+control type "toggle switch" in English and WPF's localized button type in other display languages.
 
 ```csharp
 public GlassSwitch()
 public Color? Tint { get; set; }    // track color when on, alpha included; null or A = 0: the Windows accent color
 public override void OnApplyTemplate()
-public bool Tick(double dt)         // frame-loop callback used by the library; do not call
 ```
 
 Default style: font `Segoe UI Variable Text, Segoe UI`, FontSize 14, `HorizontalContentAlignment="Left"`,
 label margin 12 before the track, off track `#66808080`, track color crossfade 200 ms, opacity 0.45 when disabled.
+In a contrast theme the track is outlined in `ControlText`: on, a `Highlight` track with a `HighlightText` thumb; off,
+a `ControlBrush` track with a `ControlText` thumb.
 
 ```xml
 <lg:GlassSwitch Content="Wi-Fi" IsChecked="True" />
@@ -410,18 +427,23 @@ label margin 12 before the track, off track `#66808080`, track color crossfade 2
 
 `public class GlassMenu : HeaderedItemsControl`: a glass button (`Header` is its content) that opens a menu. The
 panel is a Regular `GlassSurface` (inset 4, min width 160, 6 units from the trigger) that grows out of the trigger on
-the morph spring and collapses back into it. It closes when an item is chosen, on Escape, Alt+F4 and a click outside;
-Down or Enter on the trigger opens it with the first item focused; arrow keys and Tab cycle through items. The panel
-floats in the enclosing scene's top layer, clamped inside the scene (it cannot leave the window); outside a scene, or
-when the menu sits in the scene's `Content`, it opens in a `Popup` with the opaque material. Template part:
-`PART_Trigger` (`GlassButton`). Not focusable itself (the trigger is). UI Automation: Button with ExpandCollapse.
+the morph spring and collapses back into it. It closes when an item is chosen, on Escape, Alt+F4, a click outside and
+when the window deactivates; Down or Enter on the trigger opens it with the first item focused; arrow keys and Tab
+cycle through items. The panel floats in the enclosing scene's top layer, clamped inside the scene (it cannot leave
+the window), and lines up with the trigger's start edge (in right-to-left layouts too); outside a scene, or when the
+menu sits in the scene's `Content`, it opens in a `Popup` with the opaque material. `IsOpen="True"` set before the
+menu is loaded (in XAML, or from a binding whose source starts true) opens it once it is loaded. Template part:
+`PART_Trigger` (`GlassButton`). Not focusable itself (the trigger is). The menu and its panel are focus scopes, as
+WPF's menus are: a routed command on an item (`ApplicationCommands.Copy`) that nothing in the menu handles goes on to
+the element that has focus in the window (the text box whose selection it copies).
 
 ```csharp
 public GlassMenu()
 public bool IsOpen { get; set; }                     // default false, BindsTwoWayByDefault
 public GlassMenuPlacement Placement { get; set; }    // default GlassMenuPlacement.Bottom
 public GlassMaterial PanelMaterial { get; set; }     // default GlassMaterial.Regular
-public double PanelRadius { get; set; }              // default 28.0, must be >= 0 (a double, not a GlassRadius)
+public GlassRadius PanelRadius { get; set; }         // default GlassRadius.FromValue(28); capsule and circle work too
+public GlassMotion Motion { get; set; }              // inherited, default Full; Reduced: morph critically damped; None: opens and closes at once
 public Color? Tint { get; set; }                     // default null; tints the trigger and the panel
 public GlassButtonSize Size { get; set; }            // trigger size, default GlassButtonSize.Regular
 public bool IsIconOnly { get; set; }                 // circular icon trigger, default false
@@ -429,43 +451,57 @@ public event RoutedEventHandler Opened               // OpenedEvent, bubbling, a
 public event RoutedEventHandler Closed               // ClosedEvent, bubbling, after the menu closed
 public void Close()                                  // morph back into the trigger, focus returns to it
 public override void OnApplyTemplate()
-public bool Tick(double dt)                          // frame-loop callback used by the library; do not call
 ```
 
-The trigger receives `Header`, `HeaderTemplate`, `Size`, `IsIconOnly`, `Tint`, `FontFamily`, `FontWeight` and
-`AutomationProperties.Name` from the menu; its `FontSize` comes from `Size`, so `FontSize` on the menu sizes only the
-items. Items declared inside the menu are its logical children, so they inherit its `FontFamily` too: an icon-only
-menu with an icon font needs `FontFamily` set back to a text font on each item. The panel copies the menu's resolved
-appearance, motion, render mode and accessibility options. `Separator`s inside a menu get a 1-unit line at 0.14
-opacity with margin `10,4`.
+The trigger receives `Header`, `HeaderTemplate`, `Size`, `IsIconOnly`, `Tint`, `FontFamily`, `FontWeight`,
+`Foreground` and `AutomationProperties.Name` from the menu. Its `FontSize` is the menu's when the application sets
+one (then the trigger and the items share it); otherwise it follows `Size` (12 / 14 / 15) while the items use the
+menu's default 14. An icon-glyph `Header` (only private-use characters) draws at FontWeight Normal automatically.
+Items draw in the glass text font (`Segoe UI Variable Text, Segoe UI`) whatever font the trigger uses, so an
+icon-only menu's icon font does not reach them; set `FontFamily` on an item, or in `ItemContainerStyle`, to change
+it. The panel copies the menu's resolved appearance, motion, render mode, accessibility options, text size and flow
+direction. `Separator`s inside a menu get a 1-unit line at 0.14 opacity with margin `10,4`.
 
-Only `UIElement` items are supported: declare `GlassMenuItem` and `Separator` children (or add them to `Items` in
-code). `ItemsSource` of data objects, `ItemTemplate` and `ItemContainerStyle` are not applied to the panel, whose rows
-then show plain text with no highlight, no click and no close-on-choose. To build a menu from data, create a
-`GlassMenuItem` per item in code: `menu.Items.Add(new GlassMenuItem { Header = name, Command = open })`.
+Items are `GlassMenuItem` and `Separator` elements declared inside the menu (or added to `Items` in code), or data
+objects from `ItemsSource`: each data item gets a `GlassMenuItem` container (its `Content` and `DataContext` are the
+item) shown with the menu's `ItemTemplate` or `ItemTemplateSelector` and `ItemStringFormat`. `ItemContainerStyle`
+and `ItemContainerStyleSelector` apply to every `GlassMenuItem`; separators and other elements keep their own style.
+`DisplayMemberPath` is not passed on to the panel: use an `ItemTemplate`. Items' routed events (`Click`, `Checked`)
+bubble through the panel in the scene's top layer, not through the menu: handle them on the item (an `EventSetter`
+in `ItemContainerStyle` for data items), or use commands.
 
 ```csharp
 public class GlassMenuItem : ButtonBase
 public GlassMenuItem()
-public object? Header { get; set; }             // initial label (AddOwner of HeaderedContentControl.HeaderProperty), see below
+public object? Header { get; set; }             // the label (AddOwner of HeaderedContentControl.HeaderProperty), see below
 public object? Icon { get; set; }               // drawn before the label; a glyph string renders in the icon font automatically
 public string InputGestureText { get; set; }    // default "": shortcut text after the label, at 0.55 opacity
 public bool IsCheckable { get; set; }           // default false: choosing toggles IsChecked
 public bool IsChecked { get; set; }             // default false, BindsTwoWayByDefault; shows a check mark (glyph E73E)
 public bool StaysOpenOnClick { get; set; }      // default false
+public event RoutedEventHandler Checked         // CheckedEvent = MenuItem.CheckedEvent.AddOwner, bubbling
+public event RoutedEventHandler Unchecked       // UncheckedEvent = MenuItem.UncheckedEvent.AddOwner, bubbling
 ```
 
-The template shows `Content`, not `Header`. A non-`UIElement` `Header` is copied into `Content` the first time it is
-set; later `Header` changes do not update the label (the automation name does follow `Header`), and a `UIElement`
-`Header` is never shown. Set `Content` for a label that changes or for a `UIElement` label. `InputGestureText` is
-display only: register the shortcut yourself with a `KeyBinding` in `Window.InputBindings`.
+The template shows `Content`. `Header` fills `Content` and keeps it current when the header changes; `Content` set by
+the application takes over from the header. `Checked` and `Unchecked` (the same routed events as WPF's `MenuItem`)
+are raised however `IsChecked` changes: a click, UI Automation or code. `InputGestureText` is display only: register
+the shortcut yourself with a `KeyBinding` in `Window.InputBindings`.
 
 `Click`, `Command`, `CommandParameter` come from `ButtonBase`; Enter clicks the focused item; hovering focuses it.
 Item style: MinHeight 32, Padding `10,6,12,6`, FontWeight Normal, highlight 0.08 on hover or focus, 0.14 pressed,
-0.4 opacity when disabled. UI Automation: MenuItem with Invoke (and Toggle when checkable).
+0.4 opacity when disabled. In a contrast theme, hover, keyboard focus and press are a solid `Highlight` fill with
+`HighlightText` (keyboard focus adds a `ControlText` border).
+
+UI Automation: the trigger button, which takes keyboard focus, is a Button with ExpandCollapse and the menu's state;
+the `GlassMenu` element itself (`GlassMenuAutomationPeer`) is in the raw view only, out of the control and content
+views. The open panel is a Menu named after the menu's automation name or else its current header, raising
+MenuOpened and MenuClosed; its items are MenuItems with Invoke and, when checkable, Toggle, and both choose the item
+exactly as a click does (toggle, `Click`, command, close unless `StaysOpenOnClick`). On a menu whose label changes,
+let the header name it rather than a fixed `AutomationProperties.Name`.
 
 ```xml
-<lg:GlassMenu Header="Sort" Placement="Bottom" AutomationProperties.Name="Sort">
+<lg:GlassMenu Header="Sort" Placement="Bottom">
   <lg:GlassMenuItem Header="Name" IsCheckable="True" IsChecked="True" Click="OnSort" />
   <lg:GlassMenuItem Header="Date modified" IsCheckable="True" Click="OnSort" />
   <Separator />
@@ -473,8 +509,20 @@ Item style: MinHeight 32, Padding `10,6,12,6`, FontWeight Normal, highlight 0.08
 </lg:GlassMenu>
 
 <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-              FontWeight="Normal" AutomationProperties.Name="More">
-  <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" FontFamily="Segoe UI Variable Text, Segoe UI" />
+              AutomationProperties.Name="More">
+  <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
+</lg:GlassMenu>
+
+<!-- Items from data: each becomes a GlassMenuItem showing the item with ItemTemplate. -->
+<lg:GlassMenu Header="Open recent" ItemsSource="{Binding RecentFiles}">
+  <lg:GlassMenu.ItemTemplate>
+    <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+  </lg:GlassMenu.ItemTemplate>
+  <lg:GlassMenu.ItemContainerStyle>
+    <Style TargetType="lg:GlassMenuItem">
+      <EventSetter Event="Click" Handler="OnOpenRecent" />   <!-- sender's DataContext is the data item -->
+    </Style>
+  </lg:GlassMenu.ItemContainerStyle>
 </lg:GlassMenu>
 ```
 
@@ -495,9 +543,15 @@ edge should blur (it draws only the band). Not hit-test visible. Desired size is
 public GlassProgressiveBlur()
 public GlassEdge Edge { get; set; }        // default GlassEdge.Top
 public double Size { get; set; }           // default 80 (GlassProgressive.DefaultSize); >= 0 and finite
-public double Blur { get; set; }           // default 20 (GlassProgressive.DefaultBlur); 0..33, larger throws ArgumentException
+public double Blur { get; set; }           // default 20 (GlassProgressive.DefaultBlur); 0..MaxBlur, larger throws ArgumentException
+public const double MaxBlur = 33;
 public UIElement? Source { get; set; }     // default null = the enclosing scene's backdrop; set it to blur an element outside a scene
 ```
+
+`Blur` renders exactly at every display scale. WPF draws one blur of at most 100 device pixels of radius, so where a
+level needs more (its strongest levels on high-DPI displays) it is drawn in several passes whose variances add up to
+the level's σ; each pass after the first reads the one before through a brush. `MaxBlur` keeps the strongest level
+to a few passes even at 300%.
 
 ```xml
 <lg:GlassProgressiveBlur Edge="Top" Size="120" Blur="20" />
@@ -560,7 +614,8 @@ public GlassLensMode Mode { get; }               // starts as GlassLensMode.Fall
 
 `public sealed class GlassValueThumb : FrameworkElement`: the slider/switch thumb (`PART_Visual` in the slider thumb
 template, `PART_Thumb` in the switch template). An opaque white capsule with a soft shadow that crossfades into Clear
-glass while lifted.
+glass while lifted (growing only under full motion; reduced motion crossfades at the resting size). In a contrast
+theme it is a solid system-color capsule.
 
 ```csharp
 public GlassValueThumb()
@@ -569,8 +624,10 @@ public double GrowX { get; set; }           // default 2.5 (slider); the switch 
 public double GrowY { get; set; }           // default 2 (slider); the switch template sets 5.5
 public double LensRefraction { get; set; }  // default 5 (slider); the switch template sets 7.75
 public UIElement? Backdrop { get; set; }    // default null: the track the lifted glass refracts
-public bool Tick(double dt)                 // frame-loop callback used by the library; do not call
 ```
+
+`GlassMenu`, `GlassSwitch`, `GlassTabBar` and `GlassValueThumb` are advanced by the library's frame loop through an
+internal interface; they have no public `Tick` method.
 
 Named parts per control: `GlassSurface` → `PART_Root`, `PART_Lens`; `GlassButton` → `PART_Surface`; `GlassTabBar` →
 `PART_Surface`, `PART_Lens`, `PART_LensHost`; `GlassToolbar` → `PART_Host`; `GlassSlider` → `PART_Track`,
@@ -584,11 +641,13 @@ public sealed class GlassSurfaceAutomationPeer : FrameworkElementAutomationPeer 
 public GlassSurfaceAutomationPeer(GlassSurface owner)
 public sealed class GlassToolbarAutomationPeer : FrameworkElementAutomationPeer          // ToolBar
 public GlassToolbarAutomationPeer(GlassToolbar owner)
-public sealed class GlassTabBarAutomationPeer : ListBoxAutomationPeer                    // Tab
+public sealed class GlassTabBarAutomationPeer : ListBoxAutomationPeer, ISelectionProvider   // Tab; single selection, IsSelectionRequired = true
 public GlassTabBarAutomationPeer(GlassTabBar owner)
 public sealed class GlassTabBarItemAutomationPeer : ListBoxItemAutomationPeer            // TabItem
 public GlassTabBarItemAutomationPeer(object owner, SelectorAutomationPeer selectorAutomationPeer)
-public sealed class GlassMenuAutomationPeer : FrameworkElementAutomationPeer, IExpandCollapseProvider
+public sealed class GlassSwitchAutomationPeer : ToggleButtonAutomationPeer               // Button with Toggle; "toggle switch" in English
+public GlassSwitchAutomationPeer(GlassSwitch owner)
+public sealed class GlassMenuAutomationPeer : FrameworkElementAutomationPeer, IExpandCollapseProvider   // raw view only
 public GlassMenuAutomationPeer(GlassMenu owner)
 public ExpandCollapseState ExpandCollapseState { get; }
 public void Expand()
@@ -600,7 +659,12 @@ public void Invoke()
 public void Toggle()                                                                      // pattern exposed only when IsCheckable
 ```
 
-`GlassButton`, `GlassSlider` and `GlassSwitch` use WPF's own `Button`, `Slider` and `ToggleButton` peers.
+`GlassButton` and `GlassSlider` use WPF's own `ButtonAutomationPeer` and `SliderAutomationPeer`; a `GlassMenu`'s
+trigger button uses an internal `ButtonAutomationPeer` subclass that adds the menu's ExpandCollapse state (it has
+keyboard focus, so screen readers announce the change from it), and the open panel and its item host have internal
+peers (a Menu; the host adds no element of its own). `GlassSwitchAutomationPeer` reports ControlType Button with the
+Toggle pattern; its localized control type is "toggle switch" in English and WPF's localized button type in other
+display languages.
 
 ## Theme resources and default styles
 
@@ -612,11 +676,11 @@ any WPF control. Setting `Style` on a control keeps its theme template. Shared r
 | --- | --- | --- |
 | `{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}` | `FontFamily` | `Segoe UI Variable Text, Segoe UI` |
 | `{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}` | `FontFamily` | `Segoe Fluent Icons, Segoe MDL2 Assets` |
-| `{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}` | `Style` (`ButtonBase`) | the toolbar button style |
-| `{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=FocusVisual}` | `Style` (`Control`) | the toolbar button focus visual |
+| `{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}` | `Style` (`ButtonBase`) | the toolbar button style (its template draws its own focus ring) |
 
 Every glass control's style binds `Foreground` to its own `GlassScene.ContentForeground`; a local `Foreground`
-overrides it.
+overrides it. The `GlassButton`, toolbar button and `GlassMenu` styles set FontWeight Normal on content (or a
+header) that is only icon-font glyphs (private-use characters).
 
 ## Optical model (LiquidGlass namespace)
 
@@ -703,7 +767,7 @@ public static class GlassSprings
     public static SpringOptions Morph { get; }     // (0.42, 0.18)
     public static SpringOptions Layout { get; }    // (0.4, 0.16)
     public static SpringOptions Track { get; }     // (0.18, 0)
-    public static SpringOptions TrackWhileDragging(double width, double height)
+    public static SpringOptions TrackWhileDragging(double width, double height)   // (0.18 + 0.0005 · max(width, height), 0)
     public static SpringOptions Reduced(SpringOptions spring)   // same duration, bounce 0
 }
 

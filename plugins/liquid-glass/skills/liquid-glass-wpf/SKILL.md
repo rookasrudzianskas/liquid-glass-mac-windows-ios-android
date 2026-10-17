@@ -188,14 +188,14 @@ Full signatures, every default and template part: [references/api.md](references
 | --- | --- | --- |
 | `GlassScene` (`FrameworkElement`) | Region glass refracts; holds the backdrop | `Content` (null), `Children`; attached inherited `Material` (`Clear`), `Appearance` (`Automatic`), `Motion` (`Full`), `RenderMode` (`Automatic`), `ReduceTransparency` (`null` = follow Windows), `IncreaseContrast` (false); read-only `IsDark`, `ContentForeground`, `IsFocusVisible`; `InvalidateGlass()`, `FindScene(element)` |
 | `GlassSurface` (`ContentControl`) | Glass container for cards, panels, captions, draggable lenses | `Material`, `Appearance`, `Motion` (inherited), `Radius` (16), `Refraction` (60), `Tint` (null), `IsInteractive` (false), `IsFluid` (false), `IsFocusRingVisible` (false), read-only `IsPressed`, `RenderedMode` |
-| `GlassButton` (`Button`) | Interactive glass button; capsule, or circle when icon-only | `Size` (`Regular` = 32; `Small` 24, `Large` 40), `IsIconOnly` (false), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance` |
-| `GlassToolbar` (`Control`) | Floating toolbar of capsule glass clusters, 40 tall | `Items` (content, `ObservableCollection<UIElement>`; no `ItemsSource`), `Orientation` (`Horizontal`), `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance` |
+| `GlassButton` (`Button`) | Interactive glass button; capsule, or circle when icon-only | `Size` (`Regular` = 32; `Small` 24, `Large` 40), `IsIconOnly` (false), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` (inherited); takes the toolbar button look inside a `GlassToolbar` |
+| `GlassToolbar` (`Control`) | Floating toolbar of capsule glass clusters, 40 tall | `Items` (content, `ObservableCollection<UIElement>`; no `ItemsSource`), `Orientation` (`Horizontal`), `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` |
 | `GlassToolbarSpacer` (`FrameworkElement`) | Splits a toolbar into clusters | `Sizing` (`Flexible` fills; `Fixed` = 8-unit gap) |
-| `GlassTabBar` (`ListBox`) / `GlassTabBarItem` (`ListBoxItem`) | Capsule tab bar with a sliding, draggable Clear selection lens | `SelectedIndex` (-1: always set it), `ItemsSource`, `SelectionChanged`, `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`; items 28 tall |
+| `GlassTabBar` (`ListBox`) / `GlassTabBarItem` (`ListBoxItem`) | Capsule tab bar with a sliding, draggable Clear selection lens | `SelectedIndex` (-1: always set it; once an item is selected one always is), `ItemsSource`, `SelectionChanged`, `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion`; items 28 tall |
 | `GlassSlider` (`Slider`) | 6-unit track, accent fill, white thumb lifting into glass while dragged | All `Slider` members; `Tint` (null = Windows accent); `IsMoveToPointEnabled` (true) |
 | `GlassSwitch` (`ToggleButton`) | 54 × 24 switch, thumb lifts into glass while pressed; `Content` is the label | `IsChecked`, `Checked`/`Unchecked`; `Tint` (null = Windows accent) |
-| `GlassMenu` (`HeaderedItemsControl`) | Glass trigger button whose Regular panel grows out of it | `Header`, `IsOpen` (false, two-way), `Placement` (`Bottom`), `PanelMaterial` (`Regular`), `PanelRadius` (28.0, a double), `Size` (`Regular`), `IsIconOnly` (false), `Tint` (null), `Opened`/`Closed`, `Close()`; items are `GlassMenuItem` and `Separator` elements only |
-| `GlassMenuItem` (`ButtonBase`) | A menu command | `Header` (initial label), `Content`, `Icon` (glyph string ok), `InputGestureText` (""), `IsCheckable` (false), `IsChecked` (false), `StaysOpenOnClick` (false), `Click`, `Command`; `Separator` between items |
+| `GlassMenu` (`HeaderedItemsControl`) | Glass trigger button whose Regular panel grows out of it | `Header`, `IsOpen` (false, two-way), `Placement` (`Bottom`), `PanelMaterial` (`Regular`), `PanelRadius` (28, a `GlassRadius`), `Size` (`Regular`), `IsIconOnly` (false), `Tint` (null), `Motion` (inherited), `Opened`/`Closed`, `Close()`; items are `GlassMenuItem` and `Separator` elements, or data from `ItemsSource` (with `ItemTemplate`, `ItemContainerStyle`) |
+| `GlassMenuItem` (`ButtonBase`) | A menu command | `Header` (the label, kept current), `Content`, `Icon` (glyph string ok), `InputGestureText` (""), `IsCheckable` (false), `IsChecked` (false), `StaysOpenOnClick` (false), `Click`, `Command`, `Checked`/`Unchecked`; `Separator` between items |
 | `GlassProgressiveBlur` (`FrameworkElement`) | Edge blur band over the backdrop for scrolling content | `Edge` (`Top`), `Size` (80), `Blur` (σ 20, max 33), `Source` (null = scene backdrop) |
 | `GlassGeometry` (static) | Exact continuous-corner outlines as frozen `Geometry` | `Create(Size, GlassRadius)`, `Create(Rect, GlassRadius)`, `Inflate(Rect, GlassRadius, double)`, `InflateRadius(GlassRadius, double)` |
 | `GlassDiagnostics` (static) | Which render path is active | `ShaderSource`, `ShaderStatus`, `CanUseShader(Visual)`, `Describe()` |
@@ -227,8 +227,8 @@ Regular when the page is text.
 Tabs.SelectionChanged += (_, _) => ShowPage(Tabs.SelectedIndex);   // PageHost.Content = ...; GlassScene.SetMaterial(Scene, ...)
 ```
 
-**Toolbar over a photo.** Clusters split by spacers; plain `Button`/`ToggleButton` items, icon glyphs with
-`FontWeight="Normal"`, an automation name on each icon.
+**Toolbar over a photo.** Clusters split by spacers; plain `Button`/`ToggleButton` items, icon glyphs in the icon
+font, an automation name on each icon.
 
 ```xml
 <lg:GlassToolbar VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="24,20,24,0">
@@ -275,11 +275,11 @@ Opaque.Checked += (_, _) => GlassScene.SetReduceTransparency(this, true);
 Opaque.Unchecked += (_, _) => ClearValue(GlassScene.ReduceTransparencyProperty);   // back to the Windows setting
 ```
 
-**Glass menu from a button.** Standalone in the scene (not inside a toolbar); checkable items, a separator, shortcut
-text (display only: add a `KeyBinding` for the real shortcut).
+**Glass menu from a button.** Standalone in the scene; checkable items, a separator, shortcut text (display only:
+add a `KeyBinding` for the real shortcut). The header changes with the choice, so it also names the menu.
 
 ```xml
-<lg:GlassMenu Header="Sort by name" AutomationProperties.Name="Sort">
+<lg:GlassMenu Header="Sort by name">
   <lg:GlassMenuItem Header="Name" IsCheckable="True" IsChecked="True" Click="OnSort" />
   <lg:GlassMenuItem Header="Date modified" IsCheckable="True" Click="OnSort" />
   <Separator />
@@ -385,70 +385,104 @@ buttons; the glass re-aligns by itself.
 
 **Toolbars, tab bars and menus**
 
-- Inside a `GlassToolbar` use plain `Button`/`ToggleButton`: the cluster already is the glass, and a `GlassButton` or
-  `GlassMenu` there doubles the rim and the cost. Glass controls inside a Regular card are allowed nested glass (they
-  refract the card); keep it to one level.
+- Inside a `GlassToolbar` the cluster is the glass: plain `Button`/`ToggleButton`, a `GlassButton` and a
+  `GlassMenu`'s trigger all take the toolbar button look (no glass of their own, through an implicit `GlassButton`
+  style in the toolbar's resources); the menu's panel is still glass. Glass controls inside a Regular card are
+  allowed nested glass (they refract the card); keep it to one level.
 - `GlassToolbar` has no `ItemsSource`: declare items in XAML or add `UIElement`s to `toolbar.Items` in code. Only
-  exact `Button` and `ToggleButton` get the toolbar look automatically (implicit styles). For `RadioButton`,
-  `RepeatButton`, a `Button` subclass or your own `Style`, base the style on the exported one (`TargetType`
-  `ButtonBase`): `BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}"`.
+  exact `Button`, `ToggleButton` and `GlassButton` get the toolbar look automatically (implicit styles). For
+  `RadioButton`, `RepeatButton`, another `Button` subclass or your own `Style`, base the style on the exported one
+  (`TargetType` `ButtonBase`): `BasedOn="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassToolbar}, ResourceId=ButtonStyle}}"`.
   For font changes alone, set `FontFamily`/`FontSize`/`FontWeight` inline. A text field in a toolbar needs a
   transparent, borderless template.
-- Always set `SelectedIndex` on a `GlassTabBar` (the default -1 draws no lens) and handle `SelectedIndex < 0` in
-  `SelectionChanged`: Ctrl+click deselects, as in any single-selection `ListBox`. Tab items are 28 tall: use a text
-  label or a single glyph, not an icon above a label. Button, toolbar and tab heights are fixed by their styles;
-  change `Size`, or `Height` together with `FontSize`, rather than `FontSize` alone.
-- Icon glyphs: `FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"` (Windows 10 has only the MDL2 font),
-  `FontWeight="Normal"`, FontSize 15 in toolbars, 14 to 16 on icon buttons, plus `AutomationProperties.Name` and a
-  `ToolTip`.
+- Always set `SelectedIndex` on a `GlassTabBar` (the default -1 draws no lens). Once an item is selected, one always
+  is: Ctrl+click on the selected tab and `SelectedIndex = -1` keep the selection, and removing the selected item
+  selects a neighbor. `SelectedIndex < 0` remains only before the first selection or when the bar has no items, so a
+  guard in `SelectionChanged` is enough. Tab items are 28 tall: use a text label or a single glyph, not an icon above
+  a label. Button, toolbar and tab heights are fixed by their styles; change `Size`, or `Height` together with
+  `FontSize`, rather than `FontSize` alone.
+- Icon glyphs: `FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"` (Windows 10 has only the MDL2 font), FontSize 15
+  in toolbars, 14 to 16 on icon buttons, plus `AutomationProperties.Name` and a `ToolTip`. `FontWeight="Normal"` is
+  not required: `GlassButton`, `GlassMenu` triggers and toolbar buttons draw content that is only private-use
+  characters (`&#xE72B;`) at normal weight automatically (icon fonts have one weight; SemiBold would smear them). Set
+  it yourself only for a glyph elsewhere, such as a `TextBlock` or a `GlassTabBarItem`.
 - A `GlassMenu` panel lives in the scene's top layer and is clamped inside the scene: it cannot leave the window, so
-  make the scene cover the window. Outside a scene it opens in a `Popup` with the opaque material.
-- Items inherit the menu's `FontFamily`: on an icon-only menu (`Header="&#xE712;"` with the icon font), set a text
-  `FontFamily` on each `GlassMenuItem`. `Icon` glyph strings already use the icon font. The trigger's font size
-  follows `Size` (12 / 14 / 15); `FontSize` on the menu sizes the items.
-- Menu items are `GlassMenuItem` and `Separator` elements only. `ItemsSource` of data objects, `ItemTemplate` and
-  `ItemContainerStyle` are not applied to the panel: data rows render as plain text that cannot be chosen. For a menu
-  built from data, add a `GlassMenuItem` per item in code: `menu.Items.Add(new GlassMenuItem { Header = name })`.
-- `GlassMenuItem.Header` is the initial label: a non-`UIElement` header is copied into `Content` the first time it is
-  set. For a label that changes later, or a `UIElement` label, set `Content`.
+  make the scene cover the window. Outside a scene it opens in a `Popup` with the opaque material. It lines up with
+  the trigger's start edge, also in right-to-left layouts.
+- Items draw in the glass text font whatever font the trigger uses: an icon-only menu (`Header="&#xE712;"` with the
+  icon font) needs nothing on its items. Set `FontFamily` on an item, or in `ItemContainerStyle`, to change it. `Icon`
+  glyph strings already use the icon font. The trigger takes the menu's `Foreground`, and the menu's `FontSize` when
+  the application sets one (items and trigger then share it); otherwise the trigger follows `Size` (12 / 14 / 15).
+- Menu items are `GlassMenuItem` and `Separator` elements, or data: with `ItemsSource`, each data item gets a
+  `GlassMenuItem` container that shows it with `ItemTemplate` (or `ItemTemplateSelector`); `ItemContainerStyle`
+  applies to every `GlassMenuItem` (separators keep their own style), for example to set `Command` and
+  `CommandParameter`.
+- Items' routed events (`Click`, `Checked`) bubble through the panel in the scene's top layer, not through the menu:
+  handle them on the item (or in `ItemContainerStyle`), or use commands. `GlassMenuItem.Header` is the label and keeps
+  it current when it changes; `Content` set by the application takes over from it.
 - `InputGestureText` only displays the shortcut. Register it yourself with a `KeyBinding` in `Window.InputBindings`.
-- `PanelRadius` is a `double`, not a `GlassRadius`. A routed `Command` (`ApplicationCommands.Copy`) on a
-  `GlassMenuItem` or `GlassButton` is disabled unless a `CommandBinding` handles it; use `Click` or a bound `ICommand`.
+- The menu, its panel and the toolbar are focus scopes, as WPF's menus and toolbars are: a routed `Command`
+  (`ApplicationCommands.Copy`) on a `GlassMenuItem` or a toolbar button that nothing in the menu or toolbar handles
+  goes on to the element that has focus in the window (the text box whose selection it copies). A routed command on a
+  standalone `GlassButton` routes from the button itself, as on any WPF `Button`, and is disabled unless a
+  `CommandBinding` on its ancestors handles it; use `Click` or a bound `ICommand` there.
+- `IsOpen="True"` set before the menu loads (in XAML, or from a binding whose source starts true) opens it once it is
+  loaded.
 
 **Rendering, fallbacks and limits**
 
 - Render path per lens (`surface.RenderedMode`): `Shader` normally; `Fallback` without pixel shader 3.0 in hardware,
-  with `RenderOptions.ProcessRenderMode = SoftwareOnly`, in a software-rendered window, over Remote Desktop without
-  GPU acceleration or a VM without a GPU; `Opaque` when transparency effects are off, `ReduceTransparency` is true,
-  there is no scene, or the glass sits in `Content`; `HighContrast` under a Windows contrast theme.
-- `RenderTargetBitmap` renders in software: set `lg:GlassScene.RenderMode="Fallback"` on what you snapshot.
+  with a render tier below 2 or fewer than 1024 shader instruction slots, with
+  `RenderOptions.ProcessRenderMode = SoftwareOnly`, in a software-rendered window, over Remote Desktop that renders
+  in software, or after the driver rejected the shader; `Opaque` when transparency effects are off,
+  `ReduceTransparency` is true, there is no scene, or the glass sits in `Content`; `HighContrast` under a Windows
+  contrast theme. Virtual machines without a GPU usually still run the shader, through WARP.
+- `GlassRenderMode.Shader` is the same as `Automatic` (an alias for stating the intent or undoing an inherited
+  `Fallback`); only `Fallback` changes the path.
+- `RenderTargetBitmap` snapshots: WPF renders them in software, where the shader cannot run, so glass in `Automatic`
+  mode is missing from the image. Set `lg:GlassScene.RenderMode="Fallback"` on what you snapshot.
+- A shader the graphics driver rejects switches glass to the fallback material in every window of the process; it
+  never crashes. The library handles `PixelShader.InvalidPixelShaderEncountered` on each UI thread that shows glass,
+  so a rejected pixel shader of the application's own on that thread also switches glass to the fallback (and no
+  longer throws).
 - Log `GlassDiagnostics.Describe()` when glass looks like plain translucency.
 - No fixed surface limit, but each surface costs one live copy of everything beneath it plus a shader pass over its
   area and refraction margin, and only while something beneath or on it changes. Up to 16 surfaces per scene is
   comfortable. Count one per `GlassButton`, `GlassSurface`, toolbar cluster and open menu, and two per `GlassTabBar`
   (bar and lens). Group toolbar items into clusters instead of one glass button each.
 - Each `GlassProgressiveBlur` adds six blurred copies of its band (`BlurEffect` radius up to 3 × `Blur`); use at most
-  one per edge.
+  one per edge. `Blur` (0 to `MaxBlur` = 33) renders exactly at every display scale: where one WPF blur pass is not
+  wide enough (high-DPI displays), a level uses several passes that read each other through brushes, so the
+  strongest levels cost more there.
 - Regular glass also blurs its copy (`BlurEffect`, σ 7.33) and samples a 9 × 9 grid; prefer Clear for large glass that
   animates continuously.
 - The backdrop is drawn once per surface copy. For a costly `Content` (many elements, much text), set
   `CacheMode="BitmapCache"` on it so copies reuse one bitmap.
-- Copies are limited to the GPU's maximum texture size (16384). `GlassProgressiveBlur.Blur` above 33 and negative
-  `Size`, `Refraction`, radius or `PanelRadius` throw.
+- Copies are limited to the GPU's maximum texture size (16384). `GlassProgressiveBlur.Blur` above 33 and a negative
+  `Size`, `Refraction` or radius (`PanelRadius` included) throw.
 
 **Accessibility**
 
-- Controls expose UI Automation: Button, Toggle (switch), RangeValue (slider), Tab/TabItem with Selection (tab bar),
-  ToolBar, ExpandCollapse (menu) and MenuItem with Invoke/Toggle. Give every icon-only control
-  `AutomationProperties.Name`; name standalone surfaces that group content.
+- Controls expose UI Automation: Button (`GlassButton`), a toggle switch (`GlassSwitch`: a Button with Toggle),
+  RangeValue (slider), Tab/TabItem with Selection, single and required (tab bar), ToolBar, menus (the focused trigger
+  button with ExpandCollapse; the open panel a Menu named after the current header, raising MenuOpened and
+  MenuClosed) and MenuItem with Invoke and, when checkable, Toggle (both choose the item exactly as a click does).
+  Give every icon-only control `AutomationProperties.Name`; on a menu whose label changes, let the header name it
+  rather than a fixed name; name standalone surfaces that group content.
 - Keyboard: Tab, Space/Enter, arrows (tabs, slider, menu), Escape (menu). A 2-unit focus ring follows the outline and
   appears only for keyboard focus (`lg:GlassScene.IsFocusVisible`).
 - Windows *Transparency effects* off → opaque fill (`#F2F2F7`/`#1C1C1E` at 0.94) with the rim light; override with
   `lg:GlassScene.ReduceTransparency` (`null` follows Windows).
-- Windows *Animation effects* off → `Motion="Full"` behaves as `Reduced`. `lg:GlassScene.Motion="None"` removes
-  transitions entirely.
+- Windows *Animation effects* off → `Motion="Full"` behaves as `Reduced`. `Reduced` keeps every transition as a
+  critically damped spring without grow, stretch or overshoot (the tab lens slides, the switch thumb travels, the
+  menu grows out of its trigger, fluid outlines flow, thumbs crossfade into glass at their resting size);
+  `lg:GlassScene.Motion="None"` removes transitions entirely.
 - `lg:GlassScene.IncreaseContrast="True"` adds a 1-unit inner border and switches to Regular.
-- Contrast themes draw system colors automatically. Never encode meaning only in glass or tint.
+- Contrast themes draw system colors automatically, following the theme live: `ControlBrush` glass with
+  `ControlTextBrush` border and text; menu items and toolbar buttons show hover, press, keyboard focus (menu items)
+  and the checked state (toolbar buttons) as a solid `Highlight` fill with `HighlightText`; slider fills and switches
+  that are on use `Highlight`, with the slider's rest and the switch track outlined in `ControlText`; thumbs are solid
+  system colors. Never encode meaning only in glass or tint.
 
 ## Checklist
 
