@@ -1,0 +1,58 @@
+<Window x:Class="HelloGlass.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lg="https://liquid-glass-engineering.vercel.app/wpf"
+        Title="Hello, Glass" Width="960" Height="700" MinWidth="480" MinHeight="520"
+        UseLayoutRounding="True">
+  <lg:GlassScene>
+    <!-- What the glass refracts. -->
+    <lg:GlassScene.Content>
+      <Image Source="/Assets/aurora.jpg" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+    </lg:GlassScene.Content>
+
+    <!-- The bars float over the wallpaper's dark top and bottom, so they are dark glass in either appearance. -->
+    <lg:GlassToolbar Appearance="Dark" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="20,16,20,0">
+      <Button Content="&#xE706;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+              AutomationProperties.Name="Switch appearance" ToolTip="Switch between light and dark"
+              Click="OnSwitchAppearance" />
+      <lg:GlassToolbarSpacer />
+      <Button Content="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+              AutomationProperties.Name="Profile" ToolTip="Profile" Click="OnProfile" />
+    </lg:GlassToolbar>
+
+    <!-- The card follows the Windows app mode (light glass with dark text, dark glass with white text) until the
+         toolbar switches it. "Frosted" picks its material: Regular when on, Clear when off. -->
+    <lg:GlassSurface x:Name="Card" Radius="32" Width="400" Padding="24"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Hello, Glass">
+      <lg:GlassSurface.Style>
+        <Style TargetType="lg:GlassSurface">
+          <Setter Property="Material" Value="Clear" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsChecked, ElementName=Frosted}" Value="True">
+              <Setter Property="Material" Value="Regular" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </lg:GlassSurface.Style>
+      <!-- Material is inherited: the controls on the card stay Clear glass over it. -->
+      <StackPanel lg:GlassScene.Material="Clear">
+        <TextBlock Text="Hello, Glass" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34"
+                   FontWeight="SemiBold" AutomationProperties.HeadingLevel="Level1" />
+        <TextBlock Text="Native glass for WPF." FontSize="15" Opacity="0.75" TextTrimming="CharacterEllipsis"
+                   Margin="0,6,0,20" />
+        <StackPanel Orientation="Horizontal">
+          <lg:GlassButton Content="Get started" Size="Large" Tint="#0A84FF" Click="OnGetStarted" />
+          <lg:GlassButton Content="Learn more" Size="Large" Margin="12,0,0,0" Click="OnLearnMore" />
+        </StackPanel>
+        <lg:GlassSwitch x:Name="Frosted" Content="Frosted" IsChecked="True" Margin="0,20,0,0" />
+      </StackPanel>
+    </lg:GlassSurface>
+
+    <lg:GlassTabBar x:Name="Tabs" Appearance="Dark" VerticalAlignment="Bottom" Margin="0,0,0,24" SelectedIndex="0"
+                    AutomationProperties.Name="Sections">
+      <lg:GlassTabBarItem Content="Home" />
+      <lg:GlassTabBarItem Content="Explore" />
+      <lg:GlassTabBarItem Content="Settings" />
+    </lg:GlassTabBar>
+  </lg:GlassScene>
+</Window>

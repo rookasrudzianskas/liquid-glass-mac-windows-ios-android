@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The library from this repository. -->
+    <ProjectReference Include="..\..\..\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj" />
+  </ItemGroup>
+
+  <!-- To build against the published package instead, delete the ProjectReference above and uncomment this. The feed
+       is the project's own NuGet feed (docs/windows.md, Install); LiquidGlassEngineering.Core comes with the package.
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>https://liquid-glass-engineering.vercel.app/nuget/index.json</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
+  </ItemGroup>
+  -->
+
+  <ItemGroup>
+    <!-- The wallpaper the glass refracts, embedded as a WPF resource. -->
+    <Resource Include="Assets\aurora.jpg" />
+  </ItemGroup>
+
+</Project>
