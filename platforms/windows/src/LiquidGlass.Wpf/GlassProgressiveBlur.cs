@@ -54,7 +54,11 @@ public class GlassProgressiveBlur : FrameworkElement
     private const int GradientStops = 32;
 
     private readonly Grid _host = new() { IsHitTestVisible = false };
+    // The earlier passes of levels that need several: laid out over the band like the level they feed, never drawn
+    // (an ancestor at zero opacity is skipped, while a brush still renders its target).
+    private readonly Grid _stages = new() { Opacity = 0, IsHitTestVisible = false };
     private readonly List<Level> _levels = new();
+    private bool _nestPasses;
     private GlassScene? _scene;
     private double? _scaleOverride;
 
@@ -113,6 +117,21 @@ public class GlassProgressiveBlur : FrameworkElement
         }
     }
 
+    /// <summary>
+    /// Nests a level's passes inside one another instead of chaining them through brushes (tests compare the two). On
+    /// screen WPF realizes a nested effect only as far as the clip around the level reaches, so the inner passes lose
+    /// what lies beyond the band and the edge shows a weaker blur; through a brush each pass sees all of its input.
+    /// </summary>
+    internal bool NestPasses
+    {
+        get => _nestPasses;
+        set
+        {
+            _nestPasses = value;
+            Rebuild();
+        }
+    }
+
     /// <summary>The <c>BlurEffect</c> radii of each level, strongest last.</summary>
     internal IReadOnlyList<IReadOnlyList<double>> LevelRadii
     {
@@ -151,6 +170,16 @@ public class GlassProgressiveBlur : FrameworkElement
             {
                 level.MaskSize = band.Size;
                 level.Clip.OpacityMask = Mask(level.Index, band.Size);
+            }
+            // Earlier passes cover the band and the reach around it, exactly where the pass that reads them lies.
+            var reach = level.Reach;
+            var covered = new Rect(band.X - reach, band.Y - reach, band.Width + 2 * reach, band.Height + 2 * reach);
+            foreach (var stage in level.Stages)
+            {
+                stage.Margin = new Thickness(covered.X, covered.Y, 0, 0);
+                stage.Width = covered.Width;
+                stage.Height = covered.Height;
+                stage.Brush.Viewbox = new Rect(covered.Size);
             }
         }
         return finalSize;
@@ -207,8 +236,13 @@ public class GlassProgressiveBlur : FrameworkElement
 
     private void Clear()
     {
-        foreach (var level in _levels) level.Copy.Detach();
+        foreach (var level in _levels)
+        {
+            level.Copy.Detach();
+            foreach (var stage in level.Stages) stage.Brush.Visual = null;
+        }
         _levels.Clear();
+        _stages.Children.Clear();
         _host.Children.Clear();
     }
 
@@ -218,21 +252,32 @@ public class GlassProgressiveBlur : FrameworkElement
         var source = Source ?? _scene?.BackdropHost;
         if (source is null || !IsLoaded) return;
         var scale = _scaleOverride ?? GlassResolve.Scale(this);
+        _host.Children.Add(_stages);
         for (var i = 1; i <= GlassProgressive.Levels; i++)
         {
             // WPF renders one blur of at most 100 device pixels of radius (σ = radius / 3): a level wider than that at
-            // this display scale is drawn by nested passes, innermost on the copy itself.
+            // this display scale is drawn in several passes whose variances add up. Each pass after the first reads
+            // the one before through a brush; the copy (the first pass) and every pass reach past the band as far as
+            // the passes together read.
             var radii = BlurPasses.Radii(GlassProgressive.LevelBlur(i, Blur), scale);
+            var reach = BlurPasses.Reach(radii) + 1;
             var copy = new BackdropCopy(source);
+            var stages = new List<Stage>();
             FrameworkElement content = copy.Rectangle;
             for (var pass = 0; pass < radii.Length; pass++)
             {
                 var blur = new BlurEffect { Radius = radii[pass], KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Quality };
-                if (pass == 0) copy.Rectangle.Effect = blur;
-                else content = new Border { Child = content, Effect = blur, IsHitTestVisible = false };
+                if (pass > 0 && _nestPasses) content = new Border { Child = content, IsHitTestVisible = false };
+                else if (pass > 0)
+                {
+                    var stage = new Stage(content);
+                    stages.Add(stage);
+                    _stages.Children.Add(stage);
+                    content = new System.Windows.Shapes.Rectangle { Fill = stage.Brush, IsHitTestVisible = false };
+                }
+                content.Effect = blur;
             }
-            // The copy reaches past the band as far as the passes together read.
-            content.Margin = new Thickness(-(BlurPasses.Reach(radii) + 1));
+            content.Margin = new Thickness(-reach);
             var clip = new Border
             {
                 ClipToBounds = true,
@@ -240,7 +285,7 @@ public class GlassProgressiveBlur : FrameworkElement
                 VerticalAlignment = VerticalAlignment.Top,
                 Child = content,
             };
-            _levels.Add(new Level(i, clip, copy, radii));
+            _levels.Add(new Level(i, clip, copy, radii, reach, stages));
             _host.Children.Add(clip);
         }
         InvalidateArrange();
@@ -273,15 +318,49 @@ public class GlassProgressiveBlur : FrameworkElement
         return brush;
     }
 
+    /// <summary>
+    /// An earlier pass of a level, off screen in the stages: its target sits at its origin, so a brush with the
+    /// stage's size as its viewbox maps it exactly onto the pass that reads it.
+    /// </summary>
+    private sealed class Stage : Border
+    {
+        public Stage(FrameworkElement pass)
+        {
+            HorizontalAlignment = HorizontalAlignment.Left;
+            VerticalAlignment = VerticalAlignment.Top;
+            IsHitTestVisible = false;
+            Child = pass;
+            Brush = new VisualBrush(pass)
+            {
+                ViewboxUnits = BrushMappingMode.Absolute,
+                ViewportUnits = BrushMappingMode.RelativeToBoundingBox,
+                Viewport = new Rect(0, 0, 1, 1),
+                Stretch = Stretch.Fill,
+                TileMode = TileMode.None,
+                AutoLayoutContent = false,
+            };
+        }
+
+        public VisualBrush Brush { get; }
+    }
+
     private sealed class Level
     {
-        public Level(int index, Border clip, BackdropCopy copy, double[] radii)
+        public Level(int index, Border clip, BackdropCopy copy, double[] radii, double reach, List<Stage> stages)
         {
             Index = index;
             Clip = clip;
             Copy = copy;
             Radii = radii;
+            Reach = reach;
+            Stages = stages;
         }
+
+        /// <summary>How far the level's passes reach past the band, in units.</summary>
+        public double Reach { get; }
+
+        /// <summary>The level's earlier passes, read through brushes (none for a single pass).</summary>
+        public List<Stage> Stages { get; }
 
         /// <summary>The blur level, 1 to 6.</summary>
         public int Index { get; }
