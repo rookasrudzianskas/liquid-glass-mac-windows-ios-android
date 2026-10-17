@@ -212,17 +212,31 @@ jobs:
                 $text = $reader.ReadToEnd()
                 $reader.Close()
                 if ($text.Contains($env:GITHUB_WORKSPACE)) { $failures += "$($dll.FullName) in $($package.Name) records the build path" }
-                if (-not $text.Contains("/_/")) { $failures += "$($dll.FullName) in $($package.Name) has no mapped source path" }
-                # The symbols travel inside the library (the project feed has no symbol server).
+                # The symbols travel inside the library (the project feed has no symbol server); the embedded PDB is
+                # compressed, so its source paths are read from it: every one mapped to /_/.
                 $memory = New-Object IO.MemoryStream
                 $entry = $dll.Open()
                 $entry.CopyTo($memory)
                 $entry.Close()
                 $memory.Position = 0
                 $pe = New-Object System.Reflection.PortableExecutable.PEReader($memory)
-                $embedded = @($pe.ReadDebugDirectory() | Where-Object { $_.Type -eq [System.Reflection.PortableExecutable.DebugDirectoryEntryType]::EmbeddedPortablePdb })
-                $pe.Dispose()
-                if ($embedded.Count -eq 0) { $failures += "$($dll.FullName) in $($package.Name) has no embedded PDB" }
+                try {
+                  $embedded = @($pe.ReadDebugDirectory() | Where-Object { $_.Type -eq [System.Reflection.PortableExecutable.DebugDirectoryEntryType]::EmbeddedPortablePdb })
+                  if ($embedded.Count -eq 0) { $failures += "$($dll.FullName) in $($package.Name) has no embedded PDB" }
+                  else {
+                    $provider = $pe.ReadEmbeddedPortablePdbDebugDirectoryData($embedded[0])
+                    try {
+                      $pdb = $provider.GetMetadataReader()
+                      $documents = @($pdb.Documents | ForEach-Object { $pdb.GetString($pdb.GetDocument($_).Name) })
+                      $unmapped = @($documents | Where-Object { -not $_.StartsWith("/_/") })
+                      if ($documents.Count -eq 0) { $failures += "$($dll.FullName) in $($package.Name) has a PDB without sources" }
+                      if ($unmapped.Count -gt 0) { $failures += "$($dll.FullName) in $($package.Name) has unmapped source paths ($($unmapped[0]))" }
+                      "  $($dll.FullName): embedded PDB, $($documents.Count) sources under /_/" | Add-Content $log
+                    }
+                    finally { $provider.Dispose() }
+                  }
+                }
+                finally { $pe.Dispose() }
               }
             }
             finally { $zip.Dispose() }
