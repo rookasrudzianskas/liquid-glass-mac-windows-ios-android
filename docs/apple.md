@@ -81,6 +81,8 @@ struct ContentView: View {
 
 Everything glass lives inside a `GlassScene`. The scene's first element, `GlassContent`, is the backdrop glass refracts; everything after it is the foreground, where glass can sit at any depth: in stacks, in a native `ScrollView`, in your own views.
 
+For a complete app, open [`examples/swiftui/HelloGlass`](../examples/swiftui/HelloGlass): one multiplatform iOS and macOS target with a Regular glass card, a toolbar, a tab bar and a switch between Regular and Clear, the same screen as the Compose and WPF examples.
+
 ## Concepts
 
 | Concept | API |
