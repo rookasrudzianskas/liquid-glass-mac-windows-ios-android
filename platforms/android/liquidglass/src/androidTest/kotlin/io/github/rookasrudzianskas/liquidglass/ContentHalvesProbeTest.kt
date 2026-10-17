@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -37,25 +38,30 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
-/** Temporary probe: which half of backdropDrawnByTheContentModifierIsRefracted's scene differs, and how. */
+/**
+ * Temporary probe: on the Android 14 CI emulator the left of two side-by-side scenes draws its
+ * content's first column across its whole width. Each case lays scenes ("G" with glass, "S" without,
+ * "-" an empty slot) in a row or a column of 160 x 260 slots and reports, per slot, whether row 5
+ * shows the stripes ("ok") or what it shows instead.
+ */
 @RunWith(AndroidJUnit4::class)
 class ContentHalvesProbeTest {
 
-    @Test fun probeModLam() = probe(leftModifier = true, rightModifier = false)
+    @Test fun probe1SingleAtLeft() = probe("G-")
 
-    @Test fun probeModLamEdges() = probe(leftModifier = true, rightModifier = false, edges = true)
+    @Test fun probe2SingleAtRight() = probe("-G")
 
-    @Test fun probeLamMod() = probe(leftModifier = false, rightModifier = true)
+    @Test fun probe3Three() = probe("GGG")
 
-    @Test fun probeLamLam() = probe(leftModifier = false, rightModifier = false)
+    @Test fun probe4PlainThenGlass() = probe("SG")
 
-    @Test fun probeModMod() = probe(leftModifier = true, rightModifier = true)
+    @Test fun probe5GlassThenPlain() = probe("GS")
 
-    private fun probe(leftModifier: Boolean, rightModifier: Boolean, edges: Boolean = false) {
+    @Test fun probe6Stacked() = probe("GG", vertical = true)
+
+    private fun probe(slots: String, vertical: Boolean = false) {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        val half = 160
         val stripes = Modifier.drawBehind {
             for (i in 0 until (size.width / 8f).toInt() + 1) {
                 drawRect(Stripes[i % Stripes.size], topLeft = Offset(i * 8f, 0f), size = Size(8f, size.height))
@@ -63,29 +69,27 @@ class ContentHalvesProbeTest {
         }
 
         @Composable
-        fun Half(drawnByModifier: Boolean) {
-            Box(Modifier.size(half.dp, 260.dp)) {
+        fun Slot(kind: Char) {
+            Box(Modifier.size(SlotWidth.dp, SlotHeight.dp)) {
+                if (kind == '-') return@Box
                 GlassScene(Modifier.fillMaxSize(), appearance = GlassAppearance.Light, increaseContrast = false) {
-                    if (drawnByModifier) {
-                        GlassContent(Modifier.fillMaxSize().background(Backdrop).then(stripes)) {}
-                    } else {
-                        GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(Backdrop).then(stripes)) }
+                    GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(Backdrop).then(stripes)) }
+                    if (kind == 'G') {
+                        Box(Modifier.offset(10.dp, 40.dp).size(140.dp, 90.dp).liquidGlass(GlassShape(24.dp), material = GlassMaterial.Regular))
+                        Box(Modifier.offset(10.dp, 150.dp).size(140.dp, 70.dp).liquidGlass(GlassShape(24.dp), tint = Color(0xFF0A84FF)))
                     }
-                    Box(Modifier.offset(10.dp, 40.dp).size(140.dp, 90.dp).liquidGlass(GlassShape(24.dp), material = GlassMaterial.Regular))
-                    Box(Modifier.offset(10.dp, 150.dp).size(140.dp, 70.dp).liquidGlass(GlassShape(24.dp), tint = Color(0xFF0A84FF)))
                 }
             }
         }
+        val width = if (vertical) SlotWidth else SlotWidth * slots.length
+        val height = if (vertical) SlotHeight * slots.length else SlotHeight
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             var bounds = Rect.Zero
             scenario.onActivity { activity ->
                 activity.setContent {
                     CompositionLocalProvider(LocalDensity provides Density(1f)) {
-                        Box(Modifier.size(320.dp, 260.dp).onGloballyPositioned { bounds = it.boundsInWindow() }) {
-                            Row {
-                                Half(leftModifier)
-                                Half(rightModifier)
-                            }
+                        Box(Modifier.size(width.dp, height.dp).onGloballyPositioned { bounds = it.boundsInWindow() }) {
+                            if (vertical) Column { slots.forEach { Slot(it) } } else Row { slots.forEach { Slot(it) } }
                         }
                     }
                 }
@@ -94,53 +98,42 @@ class ContentHalvesProbeTest {
             Thread.sleep(1500)
             awaitFrames(scenario, 6)
             var image: Bitmap? = null
-            repeat(10) { if (image == null) image = copy(scenario, bounds) }
+            repeat(10) { if (image == null) image = copy(scenario, bounds, width, height) }
             val pixels = image ?: run { fail("no PixelCopy"); return }
-            var worst = 0
-            var wx = 0
-            var wy = 0
-            for (y in listOf(40, 41, 85, 128, 150, 151, 185, 218)) {
-                for (x in 0 until half) {
-                    val a = pixels.getPixel(x, y)
-                    val b = pixels.getPixel(x + half, y)
-                    val e = maxOf(abs(((a shr 16) and 255) - ((b shr 16) and 255)), abs(((a shr 8) and 255) - ((b shr 8) and 255)), abs((a and 255) - (b and 255)))
-                    if (e > worst) {
-                        worst = e
-                        wx = x
-                        wy = y
-                    }
-                }
-            }
             fun hex(p: Int) = "%06x".format(p and 0xFFFFFF)
-            fun row(y: Int, from: Int, to: Int, offset: Int) = (from..to).joinToString(",") { hex(pixels.getPixel(it + offset, y)) }
-            // Where the color changes along a row, from x = 0 to 47: "x:color".
-            fun transitions(y: Int, offset: Int): String {
+            fun transitions(x0: Int, y: Int): String {
                 var last = -1
                 return buildList {
                     for (x in 0 until 48) {
-                        val p = pixels.getPixel(x + offset, y) and 0xFFFFFF
+                        val p = pixels.getPixel(x0 + x, y) and 0xFFFFFF
                         if (p != last) add("$x:${hex(p)}")
                         last = p
                     }
                 }.joinToString(",")
             }
-            val message = if (edges) {
-                "L5=${transitions(5, 0)} R5=${transitions(5, half)} L185=${transitions(185, 0)} R185=${transitions(185, half)}"
-            } else {
-                "api=${Build.VERSION.SDK_INT} win=(${bounds.left.toInt()},${bounds.top.toInt()}) worst=$worst@($wx,$wy) " +
-                    "L185[6..14]=${row(185, 6, 14, 0)} R185=${row(185, 6, 14, half)} Lw=${hex(pixels.getPixel(wx, wy))} Rw=${hex(pixels.getPixel(wx + half, wy))}"
+            val report = slots.indices.joinToString(" ") { i ->
+                val x0 = if (vertical) 0 else i * SlotWidth
+                val y0 = if (vertical) i * SlotHeight else 0
+                val row5 = transitions(x0, y0 + 5)
+                val glass = hex(pixels.getPixel(x0 + 80, y0 + 85)) + "/" + hex(pixels.getPixel(x0 + 80, y0 + 185))
+                "${slots[i]}$i=" + when {
+                    slots[i] == '-' -> "empty:" + hex(pixels.getPixel(x0 + 80, y0 + 5))
+                    row5 == Expected -> "ok,$glass"
+                    else -> "BAD[$row5],$glass"
+                }
             }
-            Log.i("GlassRenderingTest", "probe left=$leftModifier right=$rightModifier $message")
+            val message = "api=${Build.VERSION.SDK_INT} ${if (vertical) "col" else "row"} $slots: $report"
+            Log.i("GlassRenderingTest", "probe $message")
             fail(message)
         }
     }
 
-    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Bitmap? {
-        val bitmap = Bitmap.createBitmap(320, 260, Bitmap.Config.ARGB_8888)
+    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect, width: Int, height: Int): Bitmap? {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val done = CountDownLatch(1)
         var result = -1
         scenario.onActivity { activity ->
-            val area = android.graphics.Rect(bounds.left.toInt(), bounds.top.toInt(), bounds.left.toInt() + 320, bounds.top.toInt() + 260)
+            val area = android.graphics.Rect(bounds.left.toInt(), bounds.top.toInt(), bounds.left.toInt() + width, bounds.top.toInt() + height)
             PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
         }
         assertTrue(done.await(30, TimeUnit.SECONDS))
@@ -162,6 +155,9 @@ class ContentHalvesProbeTest {
     }
 
     private companion object {
+        const val SlotWidth = 160
+        const val SlotHeight = 260
+        const val Expected = "0:e53935,8:fdd835,16:43a047,24:1e88e5,32:8e24aa,40:e53935"
         val Backdrop = Color(0.5f, 0.5f, 0.6f)
         val Stripes = listOf(Color(0xFFE53935), Color(0xFFFDD835), Color(0xFF43A047), Color(0xFF1E88E5), Color(0xFF8E24AA))
     }
