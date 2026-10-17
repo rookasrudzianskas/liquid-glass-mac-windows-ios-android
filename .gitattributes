@@ -4,6 +4,17 @@
 *.png binary
 *.jpg binary
 *.webp binary
+*.ico binary
 *.jar binary
 *.ttf binary
+# Compiled shader bytecode (fxc), not PostScript.
+*.ps binary
 spec/vectors.json linguist-generated=true
+# Copies of spec/, LICENSE and NOTICE.md written by scripts/sync-skill-references.mjs.
+plugins/liquid-glass/skills/*/references/** linguist-generated=true
+plugins/liquid-glass/LICENSE linguist-generated=true
+plugins/liquid-glass/NOTICE.md linguist-generated=true
+plugins/liquid-glass/skills/*/LICENSE linguist-generated=true
+plugins/liquid-glass/skills/*/NOTICE.md linguist-generated=true
+# The shared header of the Metal shaders.
+Sources/LiquidGlass/Shaders/*.h linguist-language=Metal

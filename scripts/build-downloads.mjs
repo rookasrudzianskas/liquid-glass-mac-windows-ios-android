@@ -6,7 +6,8 @@
 // website renders:
 //
 //   website/public/downloads/              Studio apps, libraries, source zip, agent skills
-//   website/public/downloads/manifest.json what the website renders (schema 1)
+//   website/public/downloads/manifest.json what the website renders (schema 1), including the commit it was
+//                                          built from (`commit`, and `modified` when the working tree had changes)
 //   website/public/downloads/SHA256SUMS    `sha256sum -c` compatible list of the downloads
 //   website/public/maven/                  static Maven repository for the Compose library
 //   website/public/nuget/                  static NuGet v3 feed for the WPF packages
@@ -84,7 +85,6 @@ const REQUIREMENTS = {
   xcframework: "iOS 17+ / macOS 14+",
   androidApp: "Android 7.0 (API 24) or later; glass rendering on Android 13 (API 33)+",
   androidLibrary: "Jetpack Compose, minSdk 24; glass rendering on Android 13 (API 33)+",
-  windows: "Windows 10 1809 or later, x64/ARM64; .NET 8 Desktop Runtime if framework-dependent",
   source: "Git snapshot of the repository; see the README for each platform's toolchain",
   skills: "Claude Code or any agent that supports Agent Skills (SKILL.md)",
 };
@@ -1749,7 +1749,19 @@ function readPreviousManifest(ctx) {
   }
 }
 
+// The commit the downloads are built from, and whether the working tree differs from it (tracked changes or
+// untracked files, which the skill zips would include). Both null when --root is not the top of a git checkout.
+function sourceState(ctx) {
+  try {
+    if (fs.realpathSync(git(ctx, ["rev-parse", "--show-toplevel"])) !== ctx.rootReal) return { commit: null, modified: null };
+    return { commit: git(ctx, ["rev-parse", "--verify", "HEAD^{commit}"]), modified: git(ctx, ["status", "--porcelain"]) !== "" };
+  } catch {
+    return { commit: null, modified: null };
+  }
+}
+
 function buildManifest(ctx, previous) {
+  const { commit, modified } = sourceState(ctx);
   const prevById = new Map((previous?.items ?? []).map((i) => [i.id, i]));
   const items = ctx.items.map((spec) => {
     let available = false;
@@ -1816,6 +1828,8 @@ function buildManifest(ctx, previous) {
     previous.schema === 1 &&
     previous.version === ctx.version &&
     previous.repository === REPOSITORY_URL &&
+    previous.commit === commit &&
+    previous.modified === modified &&
     typeof previous.generatedAt === "string" &&
     JSON.stringify(previous.items) === JSON.stringify(items);
   return {
@@ -1823,6 +1837,8 @@ function buildManifest(ctx, previous) {
     version: ctx.version,
     generatedAt: unchanged ? previous.generatedAt : iso(ctx.nowMs),
     repository: REPOSITORY_URL,
+    commit,
+    modified,
     items,
   };
 }

@@ -39,7 +39,7 @@ dist/
 !.env.example
 *.tsbuildinfo
 
-# Release artifacts are built, not committed (scripts/build-downloads.sh)
+# Release artifacts are built, not committed (scripts/build-downloads.mjs)
 /website/public/downloads/
 /website/public/maven/
 /website/public/nuget/
