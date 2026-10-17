@@ -17,7 +17,7 @@ Liquid Glass Engineering renders the same optical glass on four platforms: a bev
 | --- | --- | --- |
 | iOS 17+, macOS 14+ (SwiftUI) | Swift package `LiquidGlass` | `liquid-glass-swiftui` |
 | Android 7+ with glass on 13+ (Jetpack Compose) | `io.github.rookasrudzianskas:liquid-glass-compose` | `liquid-glass-compose` |
-| Windows 10/11 (WPF, .NET 8+) | NuGet `LiquidGlassEngineering.Wpf` | `liquid-glass-wpf` |
+| Windows 10 1809+ / 11 (WPF on .NET Framework 4.8, .NET 8 or .NET 10) | NuGet `LiquidGlassEngineering.Wpf` | `liquid-glass-wpf` |
 | Anything else (Flutter, Unity, web canvas, games) | the shared optical model | `liquid-glass-port` |
 
 Read the platform skill before writing code. If the project mixes platforms, keep the same material, radius and tint choices everywhere: the optical model is identical, so matching options give matching pixels.
@@ -35,7 +35,7 @@ Put floating controls in the scene, not in the content. Content that must stay r
 Follow [references/design.md](references/design.md) for the full rationale. The short version:
 
 - **Glass is the control layer, never the content.** Use it for things that float above content: tab bars, toolbars, floating buttons, menus, sliders over media, compact cards over imagery. Don't make list rows, paragraphs or every card glass.
-- **One layer of glass.** Don't stack glass on glass, except a menu or popover opening from a glass control.
+- **One layer of glass.** Don't stack glass on glass. Two exceptions: a menu or popover opening from a glass control, and glass controls (buttons, slider, switch) inside a Regular card, which is one level of nesting. Inside a glass toolbar or tab bar use plain items: the cluster already is the glass.
 - **Material:** Clear over rich imagery when you want the backdrop to sing; Regular (frosted) for legibility over text or busy content, for menus, sheets and any panel larger than about a third of the screen.
 - **Appearance** follows the system unless the backdrop dictates otherwise: dark appearance over dark imagery, light over light.
 - **Shape:** capsules for controls, circles for icon-only buttons, continuous corners for panels. Nested shapes are concentric: inner radius = outer radius − inset.
@@ -56,7 +56,7 @@ Follow [references/design.md](references/design.md) for the full rationale. The 
 ## 5. Performance
 
 - Keep scenes bounded: one scene per screen region that needs glass, not the whole app.
-- Keep the surface count modest (up to 16 per scene is comfortable). Group toolbar buttons into one glass cluster instead of one surface each.
+- Keep the surface count modest (up to 16 per scene is comfortable). Count one per button, surface, toolbar cluster and open menu, two per tab bar (bar and lens). Group toolbar buttons into one glass cluster instead of one surface each.
 - Regular glass costs blur passes; prefer Clear for many small controls.
 - Animate surfaces freely; avoid animating the entire content layer under many surfaces at once.
 

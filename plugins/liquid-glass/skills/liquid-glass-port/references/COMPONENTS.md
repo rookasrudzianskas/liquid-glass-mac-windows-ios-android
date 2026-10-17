@@ -4,7 +4,7 @@ Every platform ships the same concepts with the same names, adapted to its idiom
 
 ## Concepts
 
-| Concept | SwiftUI (iOS 17+, macOS 14+) | Jetpack Compose (Android 7+, glass on 13+) | WPF (.NET 8, Windows 10+) |
+| Concept | SwiftUI (iOS 17+, macOS 14+) | Jetpack Compose (Android 7+, glass on 13+) | WPF (.NET Framework 4.8, .NET 8, .NET 10; Windows 10 1809+) |
 | --- | --- | --- | --- |
 | Scene: the region glass may refract | `GlassScene { … }` | `GlassScene { … }` | `<lg:GlassScene>` |
 | Backdrop layer the glass refracts | `GlassContent { … }` | `GlassContent { … }` | `<lg:GlassScene.Content>` |

@@ -21,9 +21,9 @@ Avoid glass for:
 
 ## Hierarchy and layering
 
-- One glass layer at a time. A menu opening from a glass button is the exception: it is transient, Regular, and sits above.
+- One glass layer at a time, with two exceptions. A menu opening from a glass button is transient, Regular, and sits above. Glass controls inside a Regular card (a play button and a scrubber on a now-playing card) are one level of nesting and read well; never go deeper.
 - Keep glass at the edges and corners of the content: top and bottom bars, floating corner buttons. A glass element in the middle of content competes with it.
-- Group related controls into one glass cluster (a toolbar capsule with three buttons) rather than three separate glass buttons. Fewer, larger shapes read calmer and cost less.
+- Group related controls into one glass cluster (a toolbar capsule with three buttons) rather than three separate glass buttons. Fewer, larger shapes read calmer and cost less. Items inside a toolbar or tab bar are plain, not glass of their own: the cluster already is the glass.
 - Separate clusters with space, not dividers.
 
 ## Clear or Regular
@@ -46,7 +46,7 @@ When in doubt, use Regular for anything holding more than a short label.
 
 - Controls: capsule. Icon-only: circle.
 - Panels and cards: continuous corners, 16 to 28 depending on size.
-- Concentric nesting: a control inset by `i` inside a panel with radius `R` uses radius `R − i`, so the gaps stay even.
+- Concentric nesting: a control inset by `i` inside a panel with radius `R` uses radius `R − i`, so the gaps stay even. (The libraries' continuous corners reach 1.528 × radius along each edge, so the exact concentric radius of their outlines is `R − i/1.528`; the platform skills expose a helper where it exists.)
 - Keep shapes simple. The rim light follows the outline; complex silhouettes look busy.
 
 ## Tint
