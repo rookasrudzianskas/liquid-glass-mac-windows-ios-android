@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -390,6 +391,51 @@ class GlassRenderingTest {
             when {
                 worst > Tolerance -> "modifier-drawn backdrop differs by ${worst * 255}/255 at $where"
                 !glass.differsFrom(bare) -> "no glass over the modifier-drawn backdrop"
+                else -> null
+            }
+        }
+    }
+
+    @Test
+    fun glassDrawsNothingOutsideItsScene() {
+        // A scene drawn after other content (above it and to its left) leaves that content as it is.
+        // Android 14 ran the glass effect over the whole window, painting the backdrop's edge pixels over it.
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val half = SceneWidth / 2
+        val band = 60
+        val beside = Color(0.2f, 0.3f, 0.25f)
+        val scene = @Composable {
+            Column {
+                Box(Modifier.size(SceneWidth.dp, band.dp).background(beside))
+                Row {
+                    Box(Modifier.size(half.dp, (SceneHeight - band).dp).background(beside))
+                    GlassScene(Modifier.size(half.dp, (SceneHeight - band).dp), appearance = GlassAppearance.Light, increaseContrast = false) {
+                        GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                        Box(Modifier.offset(10.dp, 20.dp).size(140.dp, 90.dp).liquidGlass(GlassShape(Radius.dp), material = GlassMaterial.Regular))
+                        Box(Modifier.offset(10.dp, 130.dp).size(140.dp, 50.dp).liquidGlass(GlassShape(Radius.dp), tint = Color(0xFF0A84FF)))
+                    }
+                }
+            }
+        }
+        assertRendered(scene) { image ->
+            var worst = 0f
+            var where = ""
+            // Row 0 is left out: the Android 17 emulator reads the window's first row back 6/255 darker with no glass on screen.
+            for (y in 1 until SceneHeight) {
+                for (x in 0 until if (y < band) SceneWidth else half) {
+                    val c = image.color(x, y)
+                    val error = maxOf(abs(c.red - beside.red), abs(c.green - beside.green), abs(c.blue - beside.blue))
+                    if (error > worst) {
+                        worst = error
+                        where = "($x, $y)"
+                    }
+                }
+            }
+            val glass = image.color(half + 80, band + 65)
+            val bare = image.color(half + 80, band + 5)
+            when {
+                worst > Tolerance -> "content beside the scene changed by ${worst * 255}/255 at $where"
+                !glass.differsFrom(bare) -> "no glass in the scene"
                 else -> null
             }
         }

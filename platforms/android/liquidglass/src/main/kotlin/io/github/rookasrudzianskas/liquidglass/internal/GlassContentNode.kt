@@ -229,6 +229,11 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
             }
             else -> surfaces
         }
+        // Android 14 runs a layer's effect over the whole clip, not just the layer, and samples the content
+        // clamped to its edges there, so an unclipped glass layer paints its edge pixels across the window over
+        // whatever was drawn before it (another scene to its left or above, for one). Android 17 bounds the
+        // effect to the layer; clipped to it, every version draws the same.
+        glass.clip = glass.renderEffect != null
         drawLayer(glass)
         if (fallback.isEmpty()) return
         // The fallback material over the platform blur of the backdrop.
