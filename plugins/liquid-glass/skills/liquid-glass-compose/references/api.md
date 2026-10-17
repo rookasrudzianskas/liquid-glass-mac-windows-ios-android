@@ -65,7 +65,8 @@ Constants shared by every component (values from `spec/OPTICS.md`).
 
 ```kotlin
 public object GlassDefaults {
-    public val Refraction: Dp = DEFAULT_REFRACTION.dp          // 60.dp
+    public val Refraction: Dp = DEFAULT_REFRACTION.dp          // 60.dp, the full travel
+    public fun refraction(width: Dp, height: Dp): Dp           // min(60.dp, 0.75 × shorter side)
     public val SurfaceRadius: Dp = 16.dp
     public val MenuRadius: Dp = 28.dp
     public val LightContentColor: Color = Color(0xFF111113)
@@ -82,7 +83,8 @@ public object GlassDefaults {
 
 | Member | Value | Use |
 | --- | --- | --- |
-| `Refraction` | 60.dp | Optical travel at the rim; the default of `GlassScene(refraction)`. |
+| `Refraction` | 60.dp | The full optical travel at the rim: what a surface that sets none uses once its shorter side is 80 dp or more. |
+| `refraction(width, height)` | `min(60.dp, 0.75 × min(width, height))` | The refraction a surface of this resting size uses when neither it nor its scene sets one (spec/OPTICS.md §2): 25.5 dp for a 34 dp button, 33 dp for a 44 dp one, 39 dp for the 52 dp toolbar, 46.5 dp for the 62 dp tab bar. |
 | `SurfaceRadius` | 16.dp | Corner radius of a plain `GlassSurface` / `Modifier.liquidGlass()`. |
 | `MenuRadius` | 28.dp | Corner radius of a `GlassMenu` panel. |
 | `LightContentColor` | `#111113` | Text and icons on light glass. |
@@ -160,7 +162,7 @@ public fun GlassScene(
     modifier: Modifier = Modifier,
     material: GlassMaterial = GlassMaterial.Clear,
     appearance: GlassAppearance = GlassAppearance.Automatic,
-    refraction: Dp = GlassDefaults.Refraction,
+    refraction: Dp = Dp.Unspecified,
     motion: GlassMotion = GlassMotion.Full,
     reduceTransparency: Boolean = false,
     increaseContrast: Boolean = GlassDefaults.systemIncreaseContrast(),
@@ -173,7 +175,7 @@ public fun GlassScene(
 | `modifier` | `Modifier` | Modifier of the scene's `Box`; usually `Modifier.fillMaxSize()`. |
 | `material` | `Clear` | Default material of surfaces in the scene. |
 | `appearance` | `Automatic` | Light or dark glass; `Automatic` follows `isSystemInDarkTheme()` (not your Material theme). Outside any scene glass also follows it. Every option may change at runtime: glass already on screen follows in the same frame. |
-| `refraction` | 60.dp | Default optical travel at the rim. |
+| `refraction` | `Dp.Unspecified` | Optical travel at the rim of surfaces that set none. Unspecified, each follows its resting size, `min(60 dp, 0.75 × its shorter side)`; a value here is used as given by all of them. |
 | `motion` | `Full` | How much glass animates; the system "Remove animations" setting always lowers `Full` to `Reduced`. |
 | `reduceTransparency` | false | Replaces every material with an opaque fill (`#F2F2F7` light / `#1C1C1E` dark at 94%), keeping the rim light. Android has no system setting for it: expose it in your app. |
 | `increaseContrast` | system | Adds a 1 dp inner border (black 18% light, white 28% dark) and forces the Regular material. |
@@ -235,7 +237,7 @@ public fun Modifier.liquidGlass(
 | `material` | null (scene's) | `Clear` or `Regular`. |
 | `appearance` | null (scene's) | Light or dark. |
 | `tint` | `Color.Unspecified` | Colors the glass, never the content. Any specified color tints fully (its alpha is ignored), so use `Color.Unspecified`, never `Color.Transparent`, for "no tint". Converted to sRGB first. |
-| `refraction` | `Dp.Unspecified` (scene's, 60 dp) | Optical travel at the rim. |
+| `refraction` | `Dp.Unspecified` | Optical travel at the rim, used as given. Unspecified takes the scene's, or when the scene sets none `min(60 dp, 0.75 × the shorter side)` of the element's layout size, so press growth and stretch never change it. |
 | `interactive` | false | Press grow (by `min(16%, 8 dp / size)`), drag stretch toward the finger, glow under the pointer (35% on mouse hover). False keeps the glass fully static, also with an `interactionSource`. |
 | `motion` | null (scene's) | Overrides the scene's motion; the system setting still applies. |
 | `opacity` | 1f | Multiplies the glass, for fading it. Alpha on a layer between the scene and the surface (`AnimatedVisibility` fades, `Crossfade`, `AnimatedContent`, `NavHost` transitions) fades only the children, never the glass; alpha on a layer around the whole `GlassScene` fades everything. |
@@ -286,7 +288,7 @@ public fun GlassSurface(
 | `shape` | `GlassShape(16.dp)` | Outline. |
 | `material`, `appearance` | null (scene's) | |
 | `tint` | `Color.Unspecified` | Colors the glass; content turns `#111113` or white to stay legible. |
-| `refraction` | `Dp.Unspecified` | Scene's refraction. |
+| `refraction` | `Dp.Unspecified` | The scene's, else `min(60 dp, 0.75 × the shorter side)`. |
 | `interactive` | false | Press grow, drag stretch, glow. |
 | `motion` | null | Overrides the scene's motion. |
 | `contentAlignment` | `Alignment.TopStart` | Alignment of the content inside the surface. |
@@ -453,7 +455,7 @@ public fun GlassButton(
 | `shape` (content overload) | `GlassShape.Capsule` | The icon overload always uses `GlassShape.Circle`. |
 | `material`, `appearance` | null (scene's) | |
 | `tint` | `Color.Unspecified` | Makes a prominent button: the glass takes the color, the label turns white or `#111113`, whichever reads better. |
-| `refraction` (content overload) | `Dp.Unspecified` | |
+| `refraction` (content overload) | `Dp.Unspecified` | The scene's, else the button's size: 25.5 / 33 / 39 dp for the 34 / 44 / 52 dp heights. |
 | `interactive` (content overload) | true | Grow, stretch and glow under the finger. `false` gives a static glass button that still clicks. |
 | `motion` (content overload) | null | |
 | `interactionSource` | null | Source of the button's interactions; its press drives the glass. |
@@ -758,8 +760,8 @@ Internal constants that shape layout (not configurable; plan around them).
 | Component | Metric |
 | --- | --- |
 | `GlassButton` | Heights 34 / 44 / 52 dp (min; grows with font scale), min width = height, horizontal padding 14 / 18 / 22 dp, icon 18 / 22 / 24 dp, content spacing 6 dp, disabled alpha 0.45 (glass and content), focus ring 2 dp `#0A84FF` |
-| `GlassToolbar` | Height 52 dp (or tallest item + 8 dp), cluster inset 4 dp, items 44 dp tall with 12 dp horizontal padding (labeled) |
-| `GlassTabBar` | Height ≥ 62 dp, inset 4 dp, 4 dp horizontal padding per tab, icon 24 dp, label 10 sp semibold (15 sp label-only, one line), spacing 2 dp, unselected alpha 0.85 |
+| `GlassToolbar` | Height 52 dp (or tallest item + 8 dp), cluster inset 4 dp, items 44 dp tall with 12 dp horizontal padding (labeled); unless the scene sets one, cluster refraction 39 dp (0.75 × 52) |
+| `GlassTabBar` | Height ≥ 62 dp, inset 4 dp, 4 dp horizontal padding per tab, icon 24 dp, label 10 sp semibold (15 sp label-only, one line), spacing 2 dp, unselected alpha 0.85; unless the scene sets one, refraction 46.5 dp for the bar and 40.5 dp for its 54 dp lens (measured at rest) |
 | `GlassSlider` | Height 44 dp, track 6 dp (`#808080` at 30%), thumb 20 × 16 dp, grab radius 22 dp |
 | `GlassSwitch` | Box 54 × 44 dp, track 54 × 24 dp, thumb 32 × 20 dp, 2 dp inset |
 | `GlassMenu` | Panel 220 dp to the safe width (fits its widest item), 28 dp radius, 6 dp inset; item ≥ 44 dp, 22 dp corners, 17 sp text (wraps), 20 dp icon, 18 dp check mark |

@@ -139,7 +139,7 @@ One shader pass draws every surface: per pixel it finds the surfaces that cover 
 
 A surface's children (labels, icons) draw in their normal place, above the glass, and are not refracted. Uniforms are captured when a `RenderEffect` is created, so the shader passes are rebuilt whenever the content layer redraws: when its content changes, a surface moves (also when an ancestor's layer moves it without a relayout, as `Modifier.scale` or `graphicsLayer(translationX = …)` do, which the scene checks before each frame is drawn), a scene option changes, or a spring advances. Nothing runs while the scene is still.
 
-The output is checked on a real GPU in two ways. `ShaderVectorTest` runs the shader's own functions (shape field, edge profile, refraction offset, tone curves, tint, rim light and the full pixel composite) on the device GPU for every case in `spec/vectors.json`, at the spec's GPU tolerance of 2e-3, like the Metal and HLSL ports; the worst difference measured on an Android 17 emulator is 8.6e-5. `GlassRenderingTest` renders Clear, Regular, dark and tinted glass through the library's own scene, over a uniform backdrop and over the vectors' linear gradient (so refraction moves the color), and compares every pixel along the rims, edges and middle with the Kotlin port of `spec/reference.mjs`, at 2/255 for the 8-bit readback; it also covers Clear glass nested in Regular glass, glass under an ancestor's changing scale and translation, and scene options changing while glass is on screen. `GlassDensityTest` repeats the reference cases at a phone density (2.625), so the frost σ, the one-pixel antialiasing and the bevel run in real pixels. The worst difference measured is 1.5/255.
+The output is checked on a real GPU in two ways. `ShaderVectorTest` runs the shader's own functions (shape field, edge profile, refraction offset, tone curves, tint, rim light and the full pixel composite) on the device GPU for every case in `spec/vectors.json`, at the spec's GPU tolerance of 2e-3, like the Metal and HLSL ports; the worst difference measured on an Android 17 emulator is 8.6e-5. `GlassRenderingTest` renders Clear, Regular, dark and tinted glass through the library's own scene, over a uniform backdrop and over the vectors' linear gradient (so refraction moves the color), and compares every pixel along the rims, edges and middle with the Kotlin port of `spec/reference.mjs`, at 2/255 for the 8-bit readback; it also covers Clear glass nested in Regular glass, glass under an ancestor's changing scale and translation, scene options changing while glass is on screen, and the size-based default refraction (a small capsule travels 0.75 × its height, measured at rest while its glass is grown, and scene and surface values are used as given). `GlassDensityTest` repeats the reference cases at a phone density (2.625), so the frost σ, the one-pixel antialiasing and the bevel run in real pixels. The worst difference measured is 1.5/255.
 
 ### Nesting scenes
 
@@ -174,7 +174,7 @@ GlassSurface(
     material = GlassMaterial.Regular,   // null inherits the scene's
     appearance = null,                  // GlassAppearance.Light / Dark / Automatic; null inherits
     tint = Color.Unspecified,           // colors the glass, never the content
-    refraction = 60.dp,                 // optical travel at the rim; Dp.Unspecified inherits
+    refraction = 48.dp,                 // optical travel at the rim, used as given; Dp.Unspecified follows the size
     interactive = true,                 // press grow, drag stretch, glow
     contentAlignment = Alignment.Center,
 ) {
@@ -320,14 +320,14 @@ The band spans the full length of its edge and `size` deep, unless the modifier 
 | `material` | `GlassMaterial.Clear`, `Regular` | `Clear` (menus `Regular`) | |
 | `appearance` | `GlassAppearance.Automatic`, `Light`, `Dark` | `Automatic` | `Automatic` follows `isSystemInDarkTheme()`, inside a scene and outside any; the foreground color follows the appearance. |
 | shape | `GlassShape(radius)`, `GlassShape.Capsule`, `GlassShape.Circle` | surface 16 dp; buttons, toolbars, tab bars capsule; menus 28 dp | |
-| `refraction` | `Dp` ≥ 0 | 60 dp | |
+| `refraction` | `Dp` ≥ 0 | `min(60 dp, 0.75 × shorter side)` | Unset (`Dp.Unspecified`) on both the scene and the surface, each surface follows its own resting size: a 34 dp button travels 25.5 dp, a 44 dp one 33 dp, the 52 dp toolbar 39 dp, the 62 dp tab bar 46.5 dp and its lens 40.5 dp, anything 80 dp or more on both sides 60 dp, so small controls never pull in backdrop from far outside their outline. It is measured on the layout size, so press growth, stretch and a menu's morph do not change it. A value on the scene or on the surface is used as given, including the slider and switch thumbs' 5 and 7.75 dp. `GlassDefaults.refraction(width, height)` computes it. |
 | `tint` | `Color` | none | On sliders and switches it colors the fill and track. |
 | `interactive` | `Boolean` | `true` for buttons, toolbars, tab bars | |
 | `motion` | `GlassMotion.Full`, `Reduced`, `None` | `Full` | The system setting always applies, see below. |
 
 Options may change at any time: glass already on screen follows a scene's new appearance, material, refraction, motion, reduce transparency or increase contrast in the same frame, as it does a change of the system's contrast or animation settings. Outside any `GlassScene`, glass and controls use these defaults with the system's dark theme, "Remove animations" and contrast settings.
 
-Constants live in `GlassDefaults` (`Refraction`, `SurfaceRadius`, `MenuRadius`, `LightContentColor`, `DarkContentColor`, `LabelTextStyle`, `MaxSurfacesPerScene`, `ProgressiveBlurSize`, `ProgressiveBlurRadius`).
+Constants live in `GlassDefaults` (`Refraction`, the full 60 dp travel, and `refraction(width, height)`, the size-based default; `SurfaceRadius`, `MenuRadius`, `LightContentColor`, `DarkContentColor`, `LabelTextStyle`, `MaxSurfacesPerScene`, `ProgressiveBlurSize`, `ProgressiveBlurRadius`).
 
 ## Interaction and motion
 

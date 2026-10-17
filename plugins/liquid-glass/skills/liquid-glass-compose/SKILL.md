@@ -74,7 +74,7 @@ GlassScene(Modifier.fillMaxSize())        a Box: the region glass may refract; h
 1. **Scene** = `GlassScene { }`, a `Box` (`BoxScope` content, place children with `Modifier.align`). Glass sees only its own scene's content. Use one per screen, filling the window.
 2. **Content** = `GlassContent { }`, the backdrop. It records its children into a GPU layer and, on Android 13+, paints every glass surface of the scene into that same layer with one `RenderEffect`. That is why glass outside the content's bounds draws nothing, and why a plain composable placed in the scene (outside the content) draws above every glass surface.
 3. **Surfaces** = any glass composable or `Modifier.liquidGlass` element elsewhere in the scene, at any depth: in a `Column`, a scrolling list, under `offset`, `Modifier.scale`, `graphicsLayer` scale or translation (lambda or parameter form), animated. Each reports its exact bounds every frame; under a scale its corners, refraction and glow scale too. A surface's children draw in the normal tree above its glass and are not refracted.
-4. **Options inherit.** `GlassScene(material, appearance, refraction, motion, reduceTransparency, increaseContrast)` sets the defaults; components override them with nullable parameters (`null` = the scene's) and `refraction = Dp.Unspecified` (the scene's).
+4. **Options inherit.** `GlassScene(material, appearance, refraction, motion, reduceTransparency, increaseContrast)` sets the defaults; components override them with nullable parameters (`null` = the scene's) and `refraction = Dp.Unspecified` (the scene's; when the scene sets none either, the surface's resting size decides: `min(60 dp, 0.75 × its shorter side)`, so small controls never smear in backdrop from outside their outline).
 5. **Nesting.** Glass that must float above other glass (a tab bar over pages that have their own glass) needs a second scene: put a whole `GlassScene` inside the outer scene's `GlassContent`. The inner scene's output, glass included, becomes the outer backdrop. Nested scenes do not inherit options.
 
 ## Minimal example
@@ -174,9 +174,9 @@ Every signature and default, with snippets: [references/api.md](references/api.m
 
 | Component | Purpose | Key parameters (default) |
 | --- | --- | --- |
-| `GlassScene(modifier) { }` | Box: region glass refracts; defaults for everything inside | `material` (`Clear`), `appearance` (`Automatic` = `isSystemInDarkTheme()`), `refraction` (`GlassDefaults.Refraction` = 60.dp), `motion` (`Full`), `reduceTransparency` (false), `increaseContrast` (`GlassDefaults.systemIncreaseContrast()`) |
+| `GlassScene(modifier) { }` | Box: region glass refracts; defaults for everything inside | `material` (`Clear`), `appearance` (`Automatic` = `isSystemInDarkTheme()`), `refraction` (`Dp.Unspecified`: each surface follows its size, `GlassDefaults.refraction(width, height)`), `motion` (`Full`), `reduceTransparency` (false), `increaseContrast` (`GlassDefaults.systemIncreaseContrast()`) |
 | `GlassContent(modifier) { }` | The one backdrop layer, first child | `modifier` (use `Modifier.fillMaxSize()`) |
-| `Modifier.liquidGlass(…)` | Turns any element into glass; order it like a background | `shape` (`GlassShape(16.dp)`), `material`/`appearance`/`motion` (null = scene), `tint` (`Color.Unspecified`), `refraction` (`Dp.Unspecified` = scene), `interactive` (false), `opacity` (1f), `interactionSource` (null) |
+| `Modifier.liquidGlass(…)` | Turns any element into glass; order it like a background | `shape` (`GlassShape(16.dp)`), `material`/`appearance`/`motion` (null = scene), `tint` (`Color.Unspecified`), `refraction` (`Dp.Unspecified` = scene, else `min(60 dp, 0.75 × shorter side)`), `interactive` (false), `opacity` (1f), `interactionSource` (null) |
 | `GlassSurface(modifier) { }` | Glass `Box` that provides the right foreground color | as `liquidGlass` without `opacity`/`interactionSource`, plus `contentAlignment` (`Alignment.TopStart`) |
 | `GlassText(text)` | Text in the glass foreground | `style` (`GlassDefaults.LabelTextStyle`, 17 sp semibold), `color` (`Unspecified` → `LocalGlassContentColor`), `maxLines` (`Int.MAX_VALUE`) |
 | `GlassIcon(imageVector \| painter, contentDescription)` | Icon in the glass foreground | `tint` (`LocalGlassContentColor.current`), `size` (22.dp); `contentDescription` is required (null if decorative) |
@@ -193,7 +193,7 @@ Every signature and default, with snippets: [references/api.md](references/api.m
 | `GlassMenuItem(text, onClick)` / `GlassMenuDivider()` | Menu row ≥ 44 dp, label wraps; separator | `icon` (null), `enabled` (true), `destructive` (false), `checked` (null = action, true/false = choice) |
 | `GlassProgressiveBlur(edge)` | Progressive edge blur of the backdrop under bars | `modifier`, `size` (`GlassDefaults.ProgressiveBlurSize` = 80.dp), `blur` (`GlassDefaults.ProgressiveBlurRadius` = 20.dp) |
 | `GlassShape(radius)`, `GlassShape.Capsule`, `GlassShape.Circle` | Continuous-corner `Shape`, also for `clip`/`border` | `radius` finite, ≥ 0 |
-| `GlassDefaults` | Constants | `Refraction`, `SurfaceRadius` (16.dp), `MenuRadius` (28.dp), `MaxSurfacesPerScene` (16), `LightContentColor` (`#111113`), `DarkContentColor` (white), `LabelTextStyle`, `contentColor(dark)`, `systemIncreaseContrast()` |
+| `GlassDefaults` | Constants | `Refraction` (60.dp, the full travel), `refraction(width, height)` (the size-based default), `SurfaceRadius` (16.dp), `MenuRadius` (28.dp), `MaxSurfacesPerScene` (16), `LightContentColor` (`#111113`), `DarkContentColor` (white), `LabelTextStyle`, `contentColor(dark)`, `systemIncreaseContrast()` |
 | `LocalGlassContentColor` | Foreground for your own content on glass | `#111113` on light glass, white on dark |
 | Enums | | `GlassMaterial { Clear, Regular }`, `GlassAppearance { Automatic, Light, Dark }`, `GlassMotion { Full, Reduced, None }`, `GlassEdge { Top, Bottom, Start, End }` |
 
