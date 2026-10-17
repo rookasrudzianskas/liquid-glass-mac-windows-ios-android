@@ -78,8 +78,9 @@
               <ColumnDefinition Width="44" />
             </Grid.ColumnDefinitions>
             <TextBlock Text="&#xE706;" FontFamily="{StaticResource Studio.IconFont}" FontSize="14" VerticalAlignment="Center" Opacity="0.7" />
-            <lg:GlassSlider x:Name="Warmth" Grid.Column="1" Margin="12,0" Minimum="0" Maximum="1" Value="0.3" Tint="#FF9F0A" AutomationProperties.Name="Warmth" />
-            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=Warmth, StringFormat=P0}" FontSize="13" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.8" />
+            <lg:GlassSlider x:Name="Brightness" Grid.Column="1" Margin="12,0" Minimum="0" Maximum="100" Value="30" SmallChange="1" LargeChange="10"
+                            Tint="#FF9F0A" AutomationProperties.Name="Brightness" />
+            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=Brightness, StringFormat={}{0:0}%}" FontSize="13" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.8" />
           </Grid>
         </StackPanel>
       </lg:GlassSurface>
@@ -112,7 +113,8 @@
         <StackPanel lg:GlassScene.Material="Clear">
           <TextBlock Text="Menu" Style="{StaticResource Studio.Section}" />
           <StackPanel Orientation="Horizontal">
-            <lg:GlassMenu x:Name="SortMenu" Header="Sort by name" AutomationProperties.Name="Sort">
+            <!-- No fixed automation name: the trigger's label, which names the current sort, is what Narrator reads. -->
+            <lg:GlassMenu x:Name="SortMenu" Header="Sort by name">
               <lg:GlassMenuItem x:Name="SortName" Header="Name" IsCheckable="True" IsChecked="True" Click="OnSort" />
               <lg:GlassMenuItem x:Name="SortDate" Header="Date modified" IsCheckable="True" Click="OnSort" />
               <lg:GlassMenuItem x:Name="SortSize" Header="Size" IsCheckable="True" Click="OnSort" />
@@ -120,9 +122,9 @@
               <lg:GlassMenuItem Header="Show hidden files" IsCheckable="True" StaysOpenOnClick="True" />
             </lg:GlassMenu>
             <lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" Margin="10,0,0,0" AutomationProperties.Name="More">
-              <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" FontFamily="{StaticResource Studio.TextFont}" />
-              <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" FontFamily="{StaticResource Studio.TextFont}" />
-              <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" FontFamily="{StaticResource Studio.TextFont}" />
+              <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" />
+              <lg:GlassMenuItem Header="Rename" Icon="&#xE8AC;" InputGestureText="F2" />
+              <lg:GlassMenuItem Header="Delete" Icon="&#xE74D;" InputGestureText="Del" />
             </lg:GlassMenu>
           </StackPanel>
         </StackPanel>

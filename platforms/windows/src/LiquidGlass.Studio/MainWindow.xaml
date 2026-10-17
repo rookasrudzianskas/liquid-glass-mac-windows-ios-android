@@ -28,8 +28,14 @@
         <ColumnDefinition />
       </Grid.ColumnDefinitions>
 
-      <DockPanel Margin="0,0,0,14">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,14,0,18">
+      <!-- Rows in visual order (header, pages, appearance), so Tab reaches the page list first. -->
+      <Grid Margin="0,0,0,14">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="20,14,0,18">
           <Image Source="/Assets/icon-256.png" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
           <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
             <TextBlock Text="Liquid Glass" FontFamily="{StaticResource Studio.DisplayFont}" FontSize="16" FontWeight="SemiBold" />
@@ -37,17 +43,7 @@
           </StackPanel>
         </StackPanel>
 
-        <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,0">
-          <TextBlock Text="Appearance" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Studio.Secondary}" Margin="2,0,0,8" />
-          <lg:GlassTabBar x:Name="AppearancePicker" HorizontalAlignment="Left" AutomationProperties.Name="Appearance">
-            <lg:GlassTabBarItem Content="System" />
-            <lg:GlassTabBarItem Content="Light" />
-            <lg:GlassTabBarItem Content="Dark" />
-          </lg:GlassTabBar>
-          <TextBlock x:Name="RendererStatus" FontSize="11" Foreground="{DynamicResource Studio.Secondary}" Margin="2,12,0,0" TextWrapping="Wrap" />
-        </StackPanel>
-
-        <ListBox x:Name="Navigation" Background="Transparent" BorderThickness="0" Padding="4,0"
+        <ListBox x:Name="Navigation" Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="4,0"
                  ItemContainerStyle="{StaticResource Studio.NavItem}" AutomationProperties.Name="Pages"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBoxItem AutomationProperties.Name="Hero">
@@ -75,7 +71,17 @@
             </StackPanel>
           </ListBoxItem>
         </ListBox>
-      </DockPanel>
+
+        <StackPanel Grid.Row="2" Margin="16,0,16,0">
+          <TextBlock Text="Appearance" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Studio.Secondary}" Margin="2,0,0,8" />
+          <lg:GlassTabBar x:Name="AppearancePicker" HorizontalAlignment="Left" AutomationProperties.Name="Appearance">
+            <lg:GlassTabBarItem Content="System" />
+            <lg:GlassTabBarItem Content="Light" />
+            <lg:GlassTabBarItem Content="Dark" />
+          </lg:GlassTabBar>
+          <TextBlock x:Name="RendererStatus" FontSize="11" Foreground="{DynamicResource Studio.Secondary}" Margin="2,12,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+      </Grid>
 
       <Border x:Name="ContentFrame" Grid.Column="1" BorderBrush="{DynamicResource Studio.ContentStroke}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
         <ContentControl x:Name="PageHost" Focusable="False" />

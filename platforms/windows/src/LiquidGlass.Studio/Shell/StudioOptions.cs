@@ -75,7 +75,7 @@ internal sealed class StudioOptions
     }
 }
 
-/// <summary>The demo's pages (COMPONENTS § Demo app).</summary>
+/// <summary>The demo's pages, as the component contract's demo app lists them.</summary>
 internal enum StudioPage
 {
     Hero,

@@ -13,9 +13,18 @@
     <Style x:Key="Chip" TargetType="lg:GlassButton">
       <Setter Property="IsIconOnly" Value="True" />
       <Setter Property="Size" Value="Small" />
-      <Setter Property="Margin" Value="0,0,8,0" />
       <Setter Property="Width" Value="28" />
       <Setter Property="Height" Value="28" />
+    </Style>
+    <Style x:Key="ChipSlot" TargetType="Grid">
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style x:Key="ChipRing" TargetType="Ellipse">
+      <Setter Property="Margin" Value="-4" />
+      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="Stroke" Value="{DynamicResource Studio.Foreground}" />
+      <Setter Property="Visibility" Value="Hidden" />
+      <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
   </local:StudioPageBase.Resources>
 
@@ -31,7 +40,7 @@
       </lg:GlassSurface>
     </Canvas>
 
-    <lg:GlassSurface HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="316" Margin="0,18,18,18"
+    <lg:GlassSurface HorizontalAlignment="Right" VerticalAlignment="Top" Width="316" Margin="0,18,18,18"
                      Material="Regular" Radius="28" Padding="22,12,22,22">
       <StackPanel lg:GlassScene.Material="Clear">
         <TextBlock Text="Materials lab" Style="{StaticResource Studio.Title}" Margin="2,8,0,2" />
@@ -63,12 +72,28 @@
         <lg:GlassSlider x:Name="RadiusSlider" Minimum="0" Maximum="110" Value="40" SmallChange="1" LargeChange="10" AutomationProperties.Name="Corner radius" />
 
         <TextBlock Text="Tint" Style="{StaticResource Label}" />
-        <StackPanel x:Name="Tints" Orientation="Horizontal">
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="" Content="&#xE711;" FontFamily="{StaticResource Studio.IconFont}" FontSize="10" FontWeight="Normal" AutomationProperties.Name="No tint" Click="OnTint" />
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="#0A84FF" Tint="#0A84FF" AutomationProperties.Name="Blue" Click="OnTint" />
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF375F" Tint="#FF375F" AutomationProperties.Name="Pink" Click="OnTint" />
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="#30D158" Tint="#30D158" AutomationProperties.Name="Green" Click="OnTint" />
-          <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF9F0A" Tint="#FF9F0A" AutomationProperties.Name="Orange" Click="OnTint" />
+        <!-- Each chip sits in a ring that shows which tint is chosen. -->
+        <StackPanel x:Name="Tints" Orientation="Horizontal" Margin="4,4,0,4">
+          <Grid Style="{StaticResource ChipSlot}">
+            <Ellipse Style="{StaticResource ChipRing}" />
+            <lg:GlassButton Style="{StaticResource Chip}" Tag="" Content="&#xE711;" FontFamily="{StaticResource Studio.IconFont}" FontSize="10" FontWeight="Normal" AutomationProperties.Name="No tint" Click="OnTint" />
+          </Grid>
+          <Grid Style="{StaticResource ChipSlot}">
+            <Ellipse Style="{StaticResource ChipRing}" />
+            <lg:GlassButton Style="{StaticResource Chip}" Tag="#0A84FF" Tint="#0A84FF" AutomationProperties.Name="Blue" Click="OnTint" />
+          </Grid>
+          <Grid Style="{StaticResource ChipSlot}">
+            <Ellipse Style="{StaticResource ChipRing}" />
+            <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF375F" Tint="#FF375F" AutomationProperties.Name="Pink" Click="OnTint" />
+          </Grid>
+          <Grid Style="{StaticResource ChipSlot}">
+            <Ellipse Style="{StaticResource ChipRing}" />
+            <lg:GlassButton Style="{StaticResource Chip}" Tag="#30D158" Tint="#30D158" AutomationProperties.Name="Green" Click="OnTint" />
+          </Grid>
+          <Grid Style="{StaticResource ChipSlot}">
+            <Ellipse Style="{StaticResource ChipRing}" />
+            <lg:GlassButton Style="{StaticResource Chip}" Tag="#FF9F0A" Tint="#FF9F0A" AutomationProperties.Name="Orange" Click="OnTint" />
+          </Grid>
         </StackPanel>
 
         <TextBlock Text="Wallpaper" Style="{StaticResource Label}" />
