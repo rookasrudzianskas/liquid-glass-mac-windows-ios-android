@@ -58,7 +58,6 @@ import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
 import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
 import io.github.rookasrudzianskas.liquidglass.optics.sat
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
@@ -90,8 +89,8 @@ class GlassRenderingTest {
      * Composes [content] in a SceneWidth × SceneHeight box at density 1 and copies
      * its pixels from the window until [check] passes (returns null). A slow GPU
      * (a software-rendered CI emulator compiling the shader) may show a few frames
-     * without the effect, so the copy is retried for up to [Patience] ms before the
-     * test fails with the last message.
+     * without the effect, or time out a copy, so the copy is retried for up to
+     * [Patience] ms before the test fails with the last message.
      */
     private fun assertRendered(content: @Composable () -> Unit, check: (Bitmap) -> String?) {
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
@@ -107,7 +106,7 @@ class GlassRenderingTest {
             val deadline = SystemClock.uptimeMillis() + Patience
             var failure: String?
             do {
-                failure = check(copy(scenario, bounds))
+                failure = copy(scenario, bounds).fold(onSuccess = check, onFailure = { it.message })
                 if (failure == null) return
                 awaitFrames(scenario, RetryFrames)
             } while (SystemClock.uptimeMillis() < deadline)
@@ -115,7 +114,12 @@ class GlassRenderingTest {
         }
     }
 
-    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Bitmap {
+    /**
+     * The scene's pixels, or the PixelCopy error: a cold software-rendered emulator
+     * may time out a copy (ERROR_TIMEOUT) or have no frame yet (ERROR_SOURCE_NO_DATA),
+     * which the caller retries like a mismatch.
+     */
+    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Result<Bitmap> {
         val bitmap = Bitmap.createBitmap(SceneWidth, SceneHeight, Bitmap.Config.ARGB_8888)
         val done = CountDownLatch(1)
         var result = -1
@@ -124,9 +128,8 @@ class GlassRenderingTest {
             PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
         }
         // The first copy on a cold software-rendered emulator waits for every shader to compile.
-        assertTrue("PixelCopy timed out", done.await(Slow, TimeUnit.SECONDS))
-        assertEquals("PixelCopy failed", PixelCopy.SUCCESS, result)
-        return bitmap
+        assertTrue("PixelCopy never answered", done.await(Slow, TimeUnit.SECONDS))
+        return if (result == PixelCopy.SUCCESS) Result.success(bitmap) else Result.failure(IllegalStateException("PixelCopy failed with result $result"))
     }
 
     /** Waits for [count] frames to be drawn, so composition, layout and the glass effect have settled. */

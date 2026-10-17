@@ -31,7 +31,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
 import io.github.rookasrudzianskas.liquidglass.optics.sat
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
@@ -114,7 +113,10 @@ class GlassDensityTest {
             val deadline = SystemClock.uptimeMillis() + 8_000L
             var failure: String?
             do {
-                failure = difference(copy(scenario, scene), surface.translate(-scene.left, -scene.top), material == GlassMaterial.Regular, appearance == GlassAppearance.Dark, tint, gradient)
+                failure = copy(scenario, scene).fold(
+                    onSuccess = { difference(it, surface.translate(-scene.left, -scene.top), material == GlassMaterial.Regular, appearance == GlassAppearance.Dark, tint, gradient) },
+                    onFailure = { it.message },
+                )
                 if (failure == null) return
                 awaitFrames(scenario, 6)
             } while (SystemClock.uptimeMillis() < deadline)
@@ -192,7 +194,8 @@ class GlassDensityTest {
         return if (worst <= Tolerance) null else "max error ${worst * 255}/255 at $where"
     }
 
-    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Bitmap {
+    /** The scene's pixels, or the PixelCopy error (a timeout or no frame yet on a cold emulator), which [check] retries. */
+    private fun copy(scenario: ActivityScenario<ComponentActivity>, bounds: Rect): Result<Bitmap> {
         val width = bounds.width.roundToInt()
         val height = bounds.height.roundToInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -202,9 +205,8 @@ class GlassDensityTest {
             val area = android.graphics.Rect(bounds.left.roundToInt(), bounds.top.roundToInt(), bounds.left.roundToInt() + width, bounds.top.roundToInt() + height)
             PixelCopy.request(activity.window, area, bitmap, { code -> result = code; done.countDown() }, Handler(Looper.getMainLooper()))
         }
-        assertTrue("PixelCopy timed out", done.await(30, TimeUnit.SECONDS))
-        assertEquals("PixelCopy failed", PixelCopy.SUCCESS, result)
-        return bitmap
+        assertTrue("PixelCopy never answered", done.await(30, TimeUnit.SECONDS))
+        return if (result == PixelCopy.SUCCESS) Result.success(bitmap) else Result.failure(IllegalStateException("PixelCopy failed with result $result"))
     }
 
     private fun awaitFrames(scenario: ActivityScenario<ComponentActivity>, count: Int) {
