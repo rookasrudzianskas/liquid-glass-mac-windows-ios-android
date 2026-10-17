@@ -23,6 +23,7 @@
     <PackageProjectUrl>https://liquid-glass-engineering.vercel.app</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>The first release of Liquid Glass Engineering: native Liquid Glass for WPF from the shared optical model. Changes: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">

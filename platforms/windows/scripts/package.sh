@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the release artifacts of the Windows port into artifacts/windows (gitignored):
-#   nuget/LiquidGlassEngineering.Core.<version>.nupkg (+ .snupkg)
-#   nuget/LiquidGlassEngineering.Wpf.<version>.nupkg (+ .snupkg)
+#   nuget/LiquidGlassEngineering.Core.<version>.nupkg (the libraries carry their PDBs embedded)
+#   nuget/LiquidGlassEngineering.Wpf.<version>.nupkg
 #   LiquidGlassStudio-win-x64.zip                 framework-dependent (needs the .NET 10 Desktop Runtime, x64)
 #   LiquidGlassStudio-win-arm64.zip               framework-dependent (needs the .NET 10 Desktop Runtime, Arm64)
 #   LiquidGlassStudio-win-x64-self-contained.zip  single file, no runtime needed

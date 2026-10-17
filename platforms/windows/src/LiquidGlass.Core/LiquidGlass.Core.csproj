@@ -12,8 +12,9 @@
     <PackageTags>liquid-glass;glass;optics;refraction;material;spring;animation;ui</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- The PDB travels inside the library, so debuggers find symbols (and Source Link to the commit) wherever the
+         package was restored from; the project feed has no symbol server. -->
+    <DebugType>embedded</DebugType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
