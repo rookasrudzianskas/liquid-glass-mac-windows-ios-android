@@ -187,11 +187,11 @@ Full signatures, every default and template part: [references/api.md](references
 | Component (base) | Purpose | Key properties (default) |
 | --- | --- | --- |
 | `GlassScene` (`FrameworkElement`) | Region glass refracts; holds the backdrop | `Content` (null), `Children`; attached inherited `Material` (`Clear`), `Appearance` (`Automatic`), `Motion` (`Full`), `RenderMode` (`Automatic`), `ReduceTransparency` (`null` = follow Windows), `IncreaseContrast` (false); read-only `IsDark`, `ContentForeground`, `IsFocusVisible`; `InvalidateGlass()`, `FindScene(element)` |
-| `GlassSurface` (`ContentControl`) | Glass container for cards, panels, captions, draggable lenses | `Material`, `Appearance`, `Motion` (inherited), `Radius` (16), `Refraction` (60), `Tint` (null), `IsInteractive` (false), `IsFluid` (false), `IsFocusRingVisible` (false), read-only `IsPressed`, `RenderedMode` |
-| `GlassButton` (`Button`) | Interactive glass button; capsule, or circle when icon-only | `Size` (`Regular` = 32; `Small` 24, `Large` 40), `IsIconOnly` (false), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` (inherited); takes the toolbar button look inside a `GlassToolbar` |
-| `GlassToolbar` (`Control`) | Floating toolbar of capsule glass clusters, 40 tall | `Items` (content, `ObservableCollection<UIElement>`; no `ItemsSource`), `Orientation` (`Horizontal`), `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` |
+| `GlassSurface` (`ContentControl`) | Glass container for cards, panels, captions, draggable lenses | `Material`, `Appearance`, `Motion` (inherited), `Radius` (16), `Refraction` (NaN: `min(60, 0.75 × shorter side)`), `Tint` (null), `IsInteractive` (false), `IsFluid` (false), `IsFocusRingVisible` (false), read-only `IsPressed`, `RenderedMode` |
+| `GlassButton` (`Button`) | Interactive glass button; capsule, or circle when icon-only | `Size` (`Regular` = 32; `Small` 24, `Large` 40), `IsIconOnly` (false), `Radius` (`capsule`), `Refraction` (NaN: `min(60, 0.75 × shorter side)`), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` (inherited); takes the toolbar button look inside a `GlassToolbar` |
+| `GlassToolbar` (`Control`) | Floating toolbar of capsule glass clusters, 40 tall | `Items` (content, `ObservableCollection<UIElement>`; no `ItemsSource`), `Orientation` (`Horizontal`), `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction` (NaN: `min(60, 0.75 × shorter side)`), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion` |
 | `GlassToolbarSpacer` (`FrameworkElement`) | Splits a toolbar into clusters | `Sizing` (`Flexible` fills; `Fixed` = 8-unit gap) |
-| `GlassTabBar` (`ListBox`) / `GlassTabBarItem` (`ListBoxItem`) | Capsule tab bar with a sliding, draggable Clear selection lens | `SelectedIndex` (-1: always set it; once an item is selected one always is), `ItemsSource`, `SelectionChanged`, `Radius` (`capsule`), `Refraction` (60), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion`; items 28 tall |
+| `GlassTabBar` (`ListBox`) / `GlassTabBarItem` (`ListBoxItem`) | Capsule tab bar with a sliding, draggable selection lens in the bar's material | `SelectedIndex` (-1: always set it; once an item is selected one always is), `ItemsSource`, `SelectionChanged`, `Radius` (`capsule`), `Refraction` (NaN: `min(60, 0.75 × shorter side)`), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion`; items 28 tall |
 | `GlassSlider` (`Slider`) | 6-unit track, accent fill, white thumb lifting into glass while dragged | All `Slider` members; `Tint` (null = Windows accent); `IsMoveToPointEnabled` (true) |
 | `GlassSwitch` (`ToggleButton`) | 54 × 24 switch, thumb lifts into glass while pressed; `Content` is the label | `IsChecked`, `Checked`/`Unchecked`; `Tint` (null = Windows accent) |
 | `GlassMenu` (`HeaderedItemsControl`) | Glass trigger button whose Regular panel grows out of it | `Header`, `IsOpen` (false, two-way), `Placement` (`Bottom`), `PanelMaterial` (`Regular`), `PanelRadius` (28, a `GlassRadius`), `Size` (`Regular`), `IsIconOnly` (false), `Tint` (null), `Motion` (inherited), `Opened`/`Closed`, `Close()`; items are `GlassMenuItem` and `Separator` elements, or data from `ItemsSource` (with `ItemTemplate`, `ItemContainerStyle`) |
@@ -381,7 +381,10 @@ buttons; the glass re-aligns by itself.
   concentric. The exact concentric radius for library outlines is `R − inset / 1.528`
   (`GlassGeometry.InflateRadius(R, -inset)`; in XAML write the computed number). `R − inset` is the cross-platform
   rule of thumb and gives a slightly tighter inner corner.
-- Keep `Refraction` at 60 for surfaces; very high values make the backdrop unrecognizable. It must be ≥ 0.
+- Leave `Refraction` unset: it follows each surface's resting size, `min(60, 0.75 × shorter side)` (24 for a 32-unit
+  button, 60 for a card), so small controls never pull in backdrop from far outside their outline. A value you set is
+  used as given; very high values make the backdrop unrecognizable. It must be ≥ 0 (or NaN, the unset default).
+- A press drives the pointer light to full on the glow spring (0.42 s, no bounce), so it never overshoots.
 
 **Toolbars, tab bars and menus**
 

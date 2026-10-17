@@ -200,7 +200,7 @@ GlassScene.SetAppearance(window, GlassAppearance.Dark);
 A glass container (a `ContentControl`). Its content draws above glass that refracts the scene's backdrop.
 
 ```xml
-<lg:GlassSurface Material="Regular" Radius="28" Refraction="60" Tint="#0A84FF"
+<lg:GlassSurface Material="Regular" Radius="28" Tint="#0A84FF"
                  IsInteractive="True" IsFluid="True" Padding="20">
   <TextBlock Text="Drag me" />
 </lg:GlassSurface>
@@ -210,7 +210,7 @@ A glass container (a `ContentControl`). Its content draws above glass that refra
 | --- | --- | --- | --- |
 | `Material`, `Appearance`, `Motion` | | inherited | As on the scene; setting them here applies to the glass inside too. |
 | `Radius` | `GlassRadius` | `16` | Units (continuous corner), `capsule` or `circle`. |
-| `Refraction` | `double` | `60` | Optical travel at the outline, in units. |
+| `Refraction` | `double` | NaN | Optical travel at the outline, in units. Unset (NaN), it follows the surface's resting size: `min(60, 0.75 × shorter side)`, so a 32-unit button travels 24 and a large card 60; a value you set is used as given. |
 | `Tint` | `Color?` | null | Colors the glass, never the content. The color's alpha is ignored. |
 | `IsInteractive` | `bool` | false | Press grow, drag stretch, release overshoot and the pointer glow. |
 | `IsFluid` | `bool` | false | The outline springs to its new box when layout changes. |
@@ -243,7 +243,7 @@ share.Click += (_, _) => Share();
 | `IsIconOnly` | false | Square, circular outline. Give it `AutomationProperties.Name`. |
 | `Radius` | `capsule` | `circle` for icon-only buttons. |
 | `IsInteractive` | true | Press grow, drag stretch, release overshoot and the pointer glow. |
-| `Tint`, `Refraction`, `Material`, `Appearance`, `Motion` | | As on `GlassSurface`. |
+| `Tint`, `Refraction`, `Material`, `Appearance`, `Motion` | | As on `GlassSurface` (refraction 24 for a regular button, unless set). |
 
 Everything else is `Button`: `Click`, `Command`, `IsDefault`, `IsCancel`, access keys (`_Save`). Inside a
 `GlassToolbar` a glass button takes the toolbar button look: the cluster is its glass.
@@ -280,8 +280,8 @@ only.
 
 ### GlassTabBar
 
-A capsule tab bar (a `ListBox`): a Clear glass lens slides between the items on the track spring and stretches with
-its speed; it can be dragged across the bar, following the finger more slowly the larger it is (0.18 s +
+A capsule tab bar (a `ListBox`): a glass lens of the bar's material (a Regular bar has a Regular lens) slides between the
+items on the track spring and stretches with its speed; it can be dragged across the bar, following the finger more slowly the larger it is (0.18 s +
 0.0005 s per unit). Arrow keys move the selection. Selected labels are at full opacity, the others at 0.85. `Material`,
 `Appearance`, `Motion`, `Radius`, `Refraction`, `Tint` and `IsInteractive` are as on `GlassSurface`.
 
@@ -442,7 +442,7 @@ curvature; large radii blend into a capsule, so animating the radius never jumps
 `GlassSlider` and `GlassSwitch` it colors the fill and track instead (default: the Windows accent).
 
 **Motion.** Springs follow [OPTICS §6](../spec/OPTICS.md#6-interaction) (press 0.24/0.20, release 0.50/0.42, glow 0.42/0, morph 0.42/0.18, layout
-0.40/0.16, track 0.18/0). `Reduced` keeps every transition (the tab lens slides, the switch thumb travels, the menu
+0.40/0.16, track 0.18/0). A press drives the pointer light to full on the glow spring, so it never overshoots. `Reduced` keeps every transition (the tab lens slides, the switch thumb travels, the menu
 grows out of its trigger, fluid outlines flow, thumbs crossfade into glass) as a critically damped spring, without
 grow, stretch or overshoot; `None` removes transitions. When Windows' *Animation effects* are off, `Full` behaves as
 `Reduced`. `Motion` is set like `Material` and `Appearance`: on the scene, on `GlassSurface`, `GlassButton`,

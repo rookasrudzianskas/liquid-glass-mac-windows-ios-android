@@ -200,7 +200,7 @@ public GlassMaterial Material { get; set; }        // inherited (same DP as Glas
 public GlassAppearance Appearance { get; set; }    // inherited, default Automatic
 public GlassMotion Motion { get; set; }            // inherited, default Full
 public GlassRadius Radius { get; set; }            // default GlassRadius.FromValue(16)
-public double Refraction { get; set; }             // default 60 (GlassOptics.DefaultRefraction); must be >= 0 and finite
+public double Refraction { get; set; }             // default NaN: min(60, 0.75 × shorter resting side); else >= 0 and finite, used as given
 public Color? Tint { get; set; }                   // default null; alpha ignored, a fully transparent color means no tint
 public bool IsInteractive { get; set; }            // default false: press grow, drag stretch, release overshoot, pointer glow
 public bool IsFluid { get; set; }                  // default false: outline springs to its new box on layout changes
@@ -234,7 +234,7 @@ public GlassMaterial Material { get; set; }        // inherited, default Clear
 public GlassAppearance Appearance { get; set; }    // inherited, default Automatic
 public GlassMotion Motion { get; set; }            // inherited, default Full
 public GlassRadius Radius { get; set; }            // default GlassRadius.Capsule (style sets circle when IsIconOnly)
-public double Refraction { get; set; }             // default 60
+public double Refraction { get; set; }             // default NaN: 24 for a 32-unit button (min(60, 0.75 × shorter side))
 public Color? Tint { get; set; }                   // default null
 public bool IsInteractive { get; set; }            // default true
 public GlassButtonSize Size { get; set; }          // default GlassButtonSize.Regular
@@ -286,7 +286,7 @@ public GlassMaterial Material { get; set; }       // inherited, default Clear
 public GlassAppearance Appearance { get; set; }   // inherited, default Automatic
 public GlassMotion Motion { get; set; }           // inherited, default Full
 public GlassRadius Radius { get; set; }           // default GlassRadius.Capsule
-public double Refraction { get; set; }            // default 60
+public double Refraction { get; set; }            // default NaN: 30 for a 40-unit cluster (min(60, 0.75 × shorter side))
 public Color? Tint { get; set; }                  // default null (tints every cluster; rarely wanted)
 public bool IsInteractive { get; set; }           // default true
 public Orientation Orientation { get; set; }      // default Orientation.Horizontal
@@ -325,7 +325,7 @@ toolbar.Items.Insert(2, new GlassToolbarSpacer { Sizing = GlassSpacerSizing.Fixe
 
 ## GlassTabBar and GlassTabBarItem
 
-`public class GlassTabBar : ListBox`: a capsule tab bar. A Clear glass lens slides between items on the track
+`public class GlassTabBar : ListBox`: a capsule tab bar. A glass lens of the bar's material (a Regular bar has a Regular lens) slides between items on the track
 spring, stretches with its speed and can be dragged across the bar. Arrow keys move the selection
 (`DirectionalNavigation` = `Contained`); `SelectionMode` = `Single`. `ItemsSource`, `SelectedIndex`,
 `SelectedItem`, `SelectionChanged`, `ItemTemplate` and `ItemsPanel` work as on any `ListBox`. `SelectedIndex`
@@ -333,17 +333,17 @@ defaults to -1, which draws no selection lens: set it. Once an item is selected,
 selected item and `SelectedIndex = -1` keep the selection, and removing the selected item selects a neighbor. While
 dragged, the lens follows the pointer on the track spring lengthened by its size (0.18 s + 0.0005 s per unit of its
 longer side, `GlassSprings.TrackWhileDragging`), taking on the size of the item beneath it. Template parts:
-`PART_Surface` (`GlassSurface`, the bar), `PART_Lens` (`GlassSurface`, the selection lens, always Clear),
+`PART_Surface` (`GlassSurface`, the bar), `PART_Lens` (`GlassSurface`, the selection lens, in the bar's material),
 `PART_LensHost` (`Canvas`). UI Automation: `Tab` with `TabItem` children and the Selection pattern (single selection,
 selection required).
 
 ```csharp
 public GlassTabBar()
-public GlassMaterial Material { get; set; }       // inherited, default Clear (the selection lens stays Clear)
+public GlassMaterial Material { get; set; }       // inherited, default Clear; the selection lens takes it too
 public GlassAppearance Appearance { get; set; }   // inherited, default Automatic
 public GlassMotion Motion { get; set; }           // inherited, default Full
 public GlassRadius Radius { get; set; }           // default GlassRadius.Capsule
-public double Refraction { get; set; }            // default 60
+public double Refraction { get; set; }            // default NaN: bar and lens each follow their size (min(60, 0.75 × shorter side))
 public Color? Tint { get; set; }                  // default null; tints the bar and its lens
 public bool IsInteractive { get; set; }           // default true
 public override void OnApplyTemplate()
@@ -606,7 +606,7 @@ fallback. Not hit-test visible, not focusable. Material, appearance and accessib
 ```csharp
 public GlassLens()
 public GlassRadius Radius { get; set; }          // default GlassRadius.FromValue(16)
-public double Refraction { get; set; }           // default 60
+public double Refraction { get; set; }           // default NaN: min(60, 0.75 × the lens's shorter resting side)
 public Color? Tint { get; set; }                 // default null
 public bool IsFocusRingVisible { get; set; }     // default false
 public GlassLensMode Mode { get; }               // starts as GlassLensMode.Fallback until loaded
@@ -694,7 +694,7 @@ custom renderers and tests.
 public static class GlassOptics
 {
     public const double Bevel = 20;                 // refracting bevel depth inside the outline
-    public const double DefaultRefraction = 60;
+    public const double DefaultRefraction = 60;            // the full travel; unset refraction uses GlassRefraction.Default
     public const double ContinuousExtent = 1.528;   // corner reach along each edge, relative to the radius
     public const double ContinuousExponent = 3.26;  // superellipse exponent
     public const double LumaRed = 0.213, LumaGreen = 0.715, LumaBlue = 0.072;   // declared as three constants
@@ -835,6 +835,7 @@ public static class GlassShape
 public static class GlassRefraction
 {
     public static double EdgeProfile(double distance, double bevel = GlassOptics.Bevel)
+    public static double Default(double width, double height)   // min(60, 0.75 × max(0, min(width, height))), the unset refraction
     public static GlassVector Offset(double distance, double normalX, double normalY, double refraction = GlassOptics.DefaultRefraction)
     public static double Coverage(double distance, double pixel)
 }
