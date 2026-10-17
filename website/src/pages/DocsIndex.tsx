@@ -1,8 +1,8 @@
 import { Link } from "../router";
 import type { Head } from "../router";
-import { groupedDocs, hasDoc } from "../docs";
+import { EXAMPLES, EXAMPLES_SUMMARY, groupedDocs, hasDoc } from "../docs";
 import { DocsSidebar } from "./Doc";
-import { ArrowRightIcon, BookIcon, LaptopIcon, AndroidIcon, WindowIcon, TerminalIcon } from "../components/Icons";
+import { ArrowRightIcon, BookIcon, GitHubIcon, LaptopIcon, AndroidIcon, WindowIcon, TerminalIcon } from "../components/Icons";
 
 const PLATFORM_CARDS = [
   { slug: "apple", title: "SwiftUI", detail: "iOS 17+ and macOS 14+, Xcode 16+, Metal", Icon: LaptopIcon },
@@ -79,6 +79,28 @@ export default function DocsIndex() {
             </ul>
           </section>
         ))}
+
+        <section className="doc-group" aria-labelledby="group-examples">
+          <h2 id="group-examples" className="doc-group__title">
+            Examples
+          </h2>
+          <p className="doc-group__lead">{EXAMPLES_SUMMARY}</p>
+          <ul role="list" className="doc-list">
+            {EXAMPLES.map((e) => (
+              <li key={e.id}>
+                <a href={e.url} className="doc-list__item" rel="noopener" target="_blank">
+                  <GitHubIcon size={18} />
+                  <span>
+                    <span className="doc-list__title">{e.title}</span>
+                    <span className="doc-list__desc">
+                      <code>{e.path}</code> · {e.platform}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <section className="doc-group" aria-labelledby="group-agents">
           <h2 id="group-agents" className="doc-group__title">

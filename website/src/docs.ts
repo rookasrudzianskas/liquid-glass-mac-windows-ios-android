@@ -1,4 +1,6 @@
 import docsIndex from "./generated/docs-index.json";
+import site from "./generated/site.json";
+import examples from "./content/examples.json";
 
 export interface DocMeta {
   slug: string;
@@ -31,6 +33,10 @@ export const hasDoc = (slug: string) => docs.some((d) => d.slug === slug);
 
 /** Link to a doc page when it exists, otherwise to the docs index (never a 404). */
 export const docHref = (slug: string) => (hasDoc(slug) ? `/docs/${slug}` : "/docs");
+
+/** The Hello, Glass example apps, one per native toolkit, on GitHub (src/content/examples.json). */
+export const EXAMPLES = examples.items.map((e) => ({ ...e, url: `${site.repoUrl}/tree/main/${e.path}` }));
+export const EXAMPLES_SUMMARY = examples.summary;
 
 export function groupedDocs() {
   const groups = new Map<string, DocMeta[]>();

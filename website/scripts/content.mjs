@@ -1187,6 +1187,10 @@ async function buildLlms(docs, skills, packages) {
     for (const s of skills.skills) lines.push(`- [${s.name}](${REPO_URL}/blob/main/${s.source}): ${s.description}`);
     lines.push("");
   }
+  const examples = await readJson(path.join(site, "src/content/examples.json"), { items: [] });
+  if (examples.items.length) {
+    lines.push("## Examples", "", ...examples.items.map((e) => `- [${e.title} example](${REPO_URL}/tree/main/${e.path}): Hello, Glass for ${e.platform}, one screen of glass over the aurora wallpaper`), "");
+  }
   lines.push("## Optional", "", `- [Downloads](${SITE_URL}/downloads): packages, demo apps, source and skills with SHA-256 checksums`, `- [Playground](${SITE_URL}/playground): live WebGL2 materials lab`, "");
   await writeIfChanged(path.join(pub, "llms.txt"), lines.join("\n"));
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Link, handleLinkClick, useRouter } from "../router";
 import type { Head, PageProps } from "../router";
-import { docs, groupedDocs } from "../docs";
+import { EXAMPLES, docs, groupedDocs } from "../docs";
 import type { DocPage } from "../docs";
 import { copyText } from "../components/Code";
 import { ArrowRightIcon, ChevronDownIcon, GitHubIcon } from "../components/Icons";
@@ -48,6 +48,18 @@ export function DocsSidebar({ current }: { current?: string }) {
           </ul>
         </div>
       ))}
+      <div className="docs-nav__group">
+        <h2 className="docs-nav__title">Examples</h2>
+        <ul role="list">
+          {EXAMPLES.map((e) => (
+            <li key={e.id}>
+              <a href={e.url} className="docs-nav__link" rel="noopener" target="_blank">
+                {e.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="docs-nav__group">
         <h2 className="docs-nav__title">For agents</h2>
         <ul role="list">

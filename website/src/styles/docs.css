@@ -340,6 +340,14 @@ a.doc-card:hover {
   margin-bottom: 12px;
 }
 
+.doc-group__lead {
+  max-width: 64ch;
+  margin: -4px 0 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
 .doc-list {
   display: grid;
   gap: 2px;

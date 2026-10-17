@@ -1,0 +1,8 @@
+{
+  "summary": "Hello, Glass in each native toolkit: a Regular glass card over the aurora wallpaper with Get started and Learn more buttons, a toolbar, a three-tab bar and a Frosted switch between Regular and Clear.",
+  "items": [
+    { "id": "swiftui", "title": "SwiftUI", "platform": "iOS and macOS", "path": "examples/swiftui" },
+    { "id": "compose", "title": "Jetpack Compose", "platform": "Android", "path": "examples/compose" },
+    { "id": "wpf", "title": "WPF", "platform": "Windows", "path": "examples/wpf" }
+  ]
+}
