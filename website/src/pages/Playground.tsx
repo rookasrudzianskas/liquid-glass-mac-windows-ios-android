@@ -1,11 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Glass, GlassStage, hexToRgb } from "../glass/react";
-import { wallpaperInfo, wallpaperNames } from "../glass/backdrop";
+import { wallpaperInfo, wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
 import type { BackdropSpec, WallpaperName } from "../glass/backdrop";
 import type { Material } from "../glass/renderer";
+import type { RendererKind } from "../glass/scene";
 import { useTheme } from "../theme";
 import type { Head } from "../router";
+import site from "../generated/site.json";
 import { highlight } from "../lib/highlight";
 import type { Lang } from "../lib/highlight";
 import { CopyButton } from "../components/Code";
@@ -48,6 +50,9 @@ const TINTS = [
   { name: "Amber", hex: "#ffb02e" },
   { name: "Mint", hex: "#2fd4a3" },
 ];
+
+// The first two sentences of NOTICE.md's statement: an independent port, not affiliated with Apple.
+const NOTICE = site.notice.split(/(?<=\.)\s+(?=[A-Z"])/).slice(0, 2).join(" ");
 
 const BACKDROP_LABELS: Record<string, string> = { dunes: "Dunes", aurora: "Aurora", ocean: "Ocean", midnight: "Midnight", grid: "Grid", type: "Type" };
 
@@ -105,12 +110,14 @@ function swiftCode(s: Settings) {
   if (s.refraction !== 60) args.push(`refraction: ${s.refraction}`);
   if (s.tint) args.push(`tint: ${swiftColor(s.tint)}`);
   if (s.interactive) args.push("interactive: true");
+  // GlassSurface takes the size of its content, so the frame goes on the content.
   return `GlassSurface(
     ${args.join(",\n    ")}
 ) {
     Text("Liquid Glass")
-}
-.frame(width: ${s.width}, height: ${s.height})`;
+        .font(.headline)
+        .frame(width: ${s.width}, height: ${s.height})
+}`;
 }
 
 function composeCode(s: Settings) {
@@ -119,10 +126,12 @@ function composeCode(s: Settings) {
   if (s.tint) args.push(`tint = Color(0xFF${s.tint.slice(1).toUpperCase()})`);
   if (s.refraction !== 60) args.push(`refraction = ${s.refraction}.dp`);
   if (s.interactive) args.push("interactive = true");
+  args.push("contentAlignment = Alignment.Center");
+  // GlassText takes the glass content color (Material's Text would not follow the appearance).
   return `GlassSurface(
     ${args.join(",\n    ")},
 ) {
-    Text("Liquid Glass")
+    GlassText("Liquid Glass")
 }`;
 }
 
@@ -134,7 +143,8 @@ function wpfCode(s: Settings) {
   if (s.tint) attrs.push(`Tint="${s.tint.toUpperCase()}"`);
   if (s.interactive) attrs.push(`IsInteractive="True"`);
   return `<lg:GlassSurface ${attrs.join("\n                 ")}>
-    <TextBlock Text="Liquid Glass" />
+    <TextBlock Text="Liquid Glass" FontSize="17" FontWeight="SemiBold"
+               HorizontalAlignment="Center" VerticalAlignment="Center" />
 </lg:GlassSurface>`;
 }
 
@@ -249,6 +259,23 @@ function TintPicker({ value, onChange }: { value: string | null; onChange: (v: s
   );
 }
 
+/**
+ * What the stage shows before WebGL draws (and the starting point without it):
+ * the chosen wallpaper as a <picture> the renderer reuses as its texture, or a
+ * plain field in the colors of the drawn grid and type backdrops.
+ */
+function StageFallback({ backdrop }: { backdrop: BackdropId }) {
+  if (backdrop === "grid" || backdrop === "type") return <div className="stage__fallback pg__pattern" aria-hidden="true" />;
+  const info = wallpaperInfo[backdrop];
+  return (
+    <picture key={backdrop} className="stage__fallback" style={{ backgroundColor: info.color }}>
+      <source type="image/avif" srcSet={wallpaperSrcSet(backdrop, "avif")} sizes="100vw" />
+      <source type="image/webp" srcSet={wallpaperSrcSet(backdrop, "webp")} sizes="100vw" />
+      <img src={`/wallpapers/${backdrop}-1536.jpg`} alt="" width={info.width} height={info.height} decoding="async" style={{ objectPosition: `${(info.focus[0] ?? 0.5) * 100}% ${(info.focus[1] ?? 0.5) * 100}%` }} />
+    </picture>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 export default function Playground() {
@@ -258,6 +285,7 @@ export default function Playground() {
   const [tab, setTab] = useState(CODE_TABS[0]?.id ?? "swiftui");
   const [codeOpen, setCodeOpen] = useState(true);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [renderer, setRenderer] = useState<{ kind: RendererKind; reason?: string }>({ kind: "pending" });
   const resetKey = useRef(0);
   const [, force] = useState(0);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((prev) => ({ ...prev, [k]: v }));
@@ -282,11 +310,38 @@ export default function Playground() {
   const source = useMemo(() => (current ? current.make(s) : ""), [current, s]);
   const html = useMemo(() => (current ? highlight(source, current.lang) : ""), [source, current]);
   const tabsId = useId();
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLElement>(null);
+  // The glass centres in the space the code panel leaves free.
+  useEffect(() => {
+    const root = rootRef.current;
+    const code = codeRef.current;
+    if (!root || !code) return;
+    const observer = new ResizeObserver(() => root.style.setProperty("--pg-code-h", `${code.offsetHeight}px`));
+    observer.observe(code);
+    return () => observer.disconnect();
+  }, []);
+  const focusTab = (index: number) => {
+    const next = CODE_TABS[(index + CODE_TABS.length) % CODE_TABS.length];
+    if (!next) return;
+    setTab(next.id);
+    setCodeOpen(true);
+    tabsRef.current?.querySelector<HTMLElement>(`#${CSS.escape(`${tabsId}-${next.id}`)}`)?.focus();
+  };
 
   return (
-    <div className="pg" data-appearance={appearance}>
+    // The appearance is known only after mounting; until then CSS follows <html data-theme>.
+    <div ref={rootRef} className="pg" data-appearance={mounted ? appearance : undefined} data-pattern={ready && (s.backdrop === "grid" || s.backdrop === "type") ? s.backdrop : undefined}>
       <h1 className="sr-only">Liquid Glass materials lab</h1>
-      <GlassStage backdrop={backdrop} appearance={appearance} className="pg__stage" transition={450}>
+      <GlassStage
+        backdrop={backdrop}
+        appearance={appearance}
+        className="pg__stage"
+        transition={450}
+        fallback={ready ? <StageFallback backdrop={s.backdrop} /> : null}
+        onRenderer={(kind, reason) => setRenderer({ kind, reason })}
+      >
         <div className="pg__center">
           <Glass
             key={resetKey.current}
@@ -356,13 +411,28 @@ export default function Playground() {
             ]}
             onChange={(v) => set("appearance", v)}
           />
-          <Slider label="Refraction" value={s.refraction} min={0} max={120} onChange={(v) => set("refraction", v)} />
-          <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
-          <Toggle label="Capsule" checked={s.capsule} onChange={(v) => set("capsule", v)} />
-          <Slider label="Width" value={s.width} min={60} max={560} onChange={(v) => set("width", v)} />
-          <Slider label="Height" value={s.height} min={44} max={420} onChange={(v) => set("height", v)} />
+          <div className="control-pair">
+            <Slider label="Refraction" value={s.refraction} min={0} max={120} onChange={(v) => set("refraction", v)} />
+            <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
+          </div>
+          <div className="control-pair">
+            <Slider label="Width" value={s.width} min={60} max={560} onChange={(v) => set("width", v)} />
+            <Slider label="Height" value={s.height} min={44} max={420} onChange={(v) => set("height", v)} />
+          </div>
+          <div className="control-pair">
+            <Toggle label="Capsule" checked={s.capsule} onChange={(v) => set("capsule", v)} />
+            <Toggle label="Interactive" checked={s.interactive} onChange={(v) => set("interactive", v)} />
+          </div>
           <TintPicker value={s.tint} onChange={(v) => set("tint", v)} />
-          <Toggle label="Interactive" checked={s.interactive} onChange={(v) => set("interactive", v)} />
+          {renderer.kind === "css" ? (
+            <p className="pg-panel__note" role="status">
+              {renderer.reason === "reduced transparency"
+                ? "Reduce transparency is on, so the glass shows its opaque fallback material."
+                : "Live refraction needs WebGL 2. Showing the fallback material."}
+            </p>
+          ) : null}
+        </div>
+        <div className="pg-panel__foot">
           <div className="pg-panel__actions">
             <button
               type="button"
@@ -377,13 +447,20 @@ export default function Playground() {
             </button>
             <CopyButton text={typeof window === "undefined" ? "" : `${window.location.origin}/playground${serialize(s)}`} label="Copy link" />
           </div>
+          <p className="pg-panel__credit">
+            Optical model ported from{" "}
+            <a href="https://github.com/Glass-HQ/liquid-glass" rel="noopener" target="_blank">
+              Glass HQ liquid-glass
+            </a>{" "}
+            (MIT). {NOTICE}
+          </p>
         </div>
       </aside>
 
-      <section className="pg-code" data-open={codeOpen ? "" : undefined} aria-label="Code for the current settings">
+      <section ref={codeRef} className="pg-code" data-open={codeOpen ? "" : undefined} aria-label="Code for the current settings">
         <div className="pg-code__bar">
-          <div className="pg-code__tabs" role="tablist" aria-label="Platform">
-            {CODE_TABS.map((t) => (
+          <div ref={tabsRef} className="pg-code__tabs" role="tablist" aria-label="Platform">
+            {CODE_TABS.map((t, i) => (
               <button
                 key={t.id}
                 id={`${tabsId}-${t.id}`}
@@ -391,10 +468,17 @@ export default function Playground() {
                 role="tab"
                 aria-selected={tab === t.id}
                 aria-controls={`${tabsId}-panel`}
+                tabIndex={tab === t.id ? 0 : -1}
                 className="pg-code__tab"
                 onClick={() => {
                   setTab(t.id);
                   setCodeOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? CODE_TABS.length - 1 : null;
+                  if (to === null) return;
+                  e.preventDefault();
+                  focusTab(to);
                 }}
               >
                 {t.label}

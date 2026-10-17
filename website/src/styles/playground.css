@@ -10,6 +10,34 @@
   inset: 0;
   height: 100svh;
   min-height: 560px;
+  background: var(--bg);
+}
+
+/* Before the grid or type backdrop is drawn: its background colors. */
+.pg__pattern {
+  background: linear-gradient(135deg, #f7f6f2, #e9eef6);
+}
+
+[data-theme="dark"] .pg:not([data-appearance]) .pg__pattern,
+.pg[data-appearance="dark"] .pg__pattern {
+  background: linear-gradient(135deg, #0b0d17, #141a2e);
+}
+
+.pg[data-pattern="grid"] .pg__pattern {
+  background-image:
+    linear-gradient(rgba(20, 24, 40, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 24, 40, 0.14) 1px, transparent 1px),
+    linear-gradient(135deg, #f7f6f2, #e9eef6);
+  background-size: 28px 28px, 28px 28px, auto;
+  background-position: 50% 50%;
+}
+
+[data-theme="dark"] .pg:not([data-appearance])[data-pattern="grid"] .pg__pattern,
+.pg[data-appearance="dark"][data-pattern="grid"] .pg__pattern {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(135deg, #0b0d17, #141a2e);
 }
 
 .pg[data-appearance="dark"] .pg__stage {
@@ -22,9 +50,10 @@
   --glass-fg-2: rgba(17, 17, 19, 0.62);
 }
 
+/* The free area: below the nav, left of the settings and above the code panel. */
 .pg__center {
   position: absolute;
-  inset: var(--nav-h) 360px 0 0;
+  inset: var(--nav-h) 360px calc(var(--pg-code-h, 0px) + 20px) 0;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -72,12 +101,57 @@
 
 .pg-panel__body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 18px 18px 20px;
+  padding: 16px 18px 18px;
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 16px;
   scrollbar-width: thin;
+}
+
+/* Two related controls side by side. */
+.control-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.control-pair > .control--inline {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.pg-panel__note {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg-2);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+/* Reset, Copy link and the credit stay in view below the scrolling controls. */
+.pg-panel__foot {
+  flex: none;
+  display: grid;
+  gap: 10px;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pg-panel__credit {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--fg-2);
+}
+
+.pg-panel__credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 2px;
 }
 
 .control {
@@ -238,13 +312,13 @@
 .tints {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
 }
 
 .tint {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: 50%;
   cursor: pointer;
@@ -292,7 +366,7 @@
 
 .backdrop-thumb {
   position: relative;
-  height: 52px;
+  height: 46px;
   border: 0;
   border-radius: 12px;
   background-size: cover;
@@ -350,7 +424,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 4px;
 }
 
 .pg-code {
@@ -434,6 +507,10 @@
   .pg__center {
     inset: var(--nav-h) 0 0 0;
   }
+  .pg-panel__foot {
+    border-top: 0;
+    padding-top: 0;
+  }
   .pg-panel,
   .pg-code {
     position: relative;
@@ -468,8 +545,7 @@
     column-gap: 24px;
   }
   .pg-panel__body > .control:first-child,
-  .pg-panel__body > .control:nth-last-child(2),
-  .pg-panel__actions {
+  .pg-panel__body > .pg-panel__note {
     grid-column: 1 / -1;
   }
   .backdrops {
@@ -480,6 +556,19 @@
   }
   .pg-code__body {
     max-height: none;
+  }
+}
+
+/* On tablets and phones the stage stays in view while the settings below it
+   scroll, so every change shows as it is made. */
+@media (max-width: 1024px) and (min-height: 560px) {
+  .pg__stage {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    height: 46svh;
+    min-height: 320px;
+    box-shadow: 0 1px 0 var(--line);
   }
 }
 
