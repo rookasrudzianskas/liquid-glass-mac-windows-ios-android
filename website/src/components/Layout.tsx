@@ -157,7 +157,13 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
   const toggleRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Escape closes; focus inside the sheet goes back to the toggle instead of falling to <body>.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const inside = sheetRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (inside || document.activeElement === toggleRef.current) toggleRef.current?.focus();
+    };
     // A tap outside the sheet (and its toggle), or scrolling the page, closes it.
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;

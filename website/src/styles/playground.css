@@ -42,12 +42,12 @@
 
 .pg[data-appearance="dark"] .pg__stage {
   --glass-fg: #ffffff;
-  --glass-fg-2: rgba(255, 255, 255, 0.66);
+  --glass-fg-2: rgba(255, 255, 255, 0.8);
 }
 
 .pg[data-appearance="light"] .pg__stage {
   --glass-fg: #111113;
-  --glass-fg-2: rgba(17, 17, 19, 0.62);
+  --glass-fg-2: rgba(17, 17, 19, 0.78);
 }
 
 /* The free area: below the nav, left of the settings and above the code panel. */
@@ -55,15 +55,19 @@
   position: absolute;
   inset: var(--nav-h) 360px calc(var(--pg-code-h, 0px) + 20px) 0;
   display: grid;
+  /* One cell as large as the area, so the glass's percentage max size resolves against it. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   pointer-events: none;
 }
 
+/* Never larger than the free area, so it can always be seen and grabbed. */
 .pg__glass {
   pointer-events: auto;
   display: grid;
   place-items: center;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
 }
 
 .pg__glass-label {
@@ -75,12 +79,13 @@
   pointer-events: none;
 }
 
+/* As tall as its settings (no empty band above Reset), and never taller than the screen. */
 .pg-panel {
   position: absolute;
   z-index: 3;
   top: calc(var(--nav-h) + 20px);
   right: 20px;
-  bottom: 20px;
+  max-height: calc(max(100svh, 560px) - var(--nav-h) - 40px);
   width: 320px;
   display: flex;
   flex-direction: column;
@@ -397,14 +402,15 @@
   background: #f3f3f6;
 }
 
+/* "Aa" in the top-right corner, clear of the label in the bottom-left. */
 .backdrop-thumb[data-kind="type"]::before {
   content: "Aa";
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 24px;
+  top: 3px;
+  right: 8px;
+  font-size: 21px;
   font-weight: 800;
+  line-height: 1;
   color: #4f3cf0;
 }
 
@@ -515,6 +521,7 @@
   .pg-code {
     position: relative;
     inset: auto;
+    max-height: none;
     width: auto;
     margin: 16px var(--gutter) 0;
     background: var(--bg-elevated);

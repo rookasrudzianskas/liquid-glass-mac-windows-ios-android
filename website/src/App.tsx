@@ -59,7 +59,28 @@ export function App({ initial }: { initial: Resolved }) {
       void go(window.location.href, "pop");
     };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    // The current entry keeps its scroll position up to date, so Back and Forward
+    // both return to where the visitor was. Debounced: Safari limits replaceState.
+    let timer = 0;
+    const save = () => {
+      window.clearTimeout(timer);
+      // Between a push (or a pop) and the render of the new page, the entry is not this page's.
+      if (normalizePath(window.location.pathname) !== pathRef.current) return;
+      const state = (window.history.state ?? {}) as HistoryState;
+      if (state.scroll !== window.scrollY) window.history.replaceState({ ...state, scroll: window.scrollY } satisfies HistoryState, "");
+    };
+    const onScroll = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(save, 200);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", save);
+    };
   }, [go]);
 
   // After a navigation renders: scroll, update the head, move focus.

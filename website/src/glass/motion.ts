@@ -71,6 +71,15 @@ export class SurfaceMotion {
 
   private bind() {
     const el = this.el;
+    // A dropped surface stays inside its bounds when the stage, its parent or the surface
+    // itself changes size (window resize, rotation, split view, a settings change).
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => this.reclamp());
+      observer.observe(this.scene.root);
+      observer.observe(el);
+      if (el.parentElement) observer.observe(el.parentElement);
+      this.cleanups.push(() => observer.disconnect());
+    }
     this.listen(el, "pointerdown", (e) => {
       if (!this.options.interactive && !this.options.draggable) return;
       if (e.button !== 0 || this.pointerId !== null) return;

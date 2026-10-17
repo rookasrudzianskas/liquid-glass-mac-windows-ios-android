@@ -146,6 +146,23 @@
 
 .docs__toc li[data-depth="3"] a {
   padding-left: 24px;
+  font-size: 13px;
+}
+
+/* A list longer than its column fades at the edge it continues past. */
+.docs__toc[data-more="below"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+}
+
+.docs__toc[data-more="above"] {
+  -webkit-mask-image: linear-gradient(to top, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to top, #000 calc(100% - 40px), transparent);
+}
+
+.docs__toc[data-more="both"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 }
 
 .docs__toc li a:hover {
@@ -444,6 +461,53 @@ a.doc-card:hover {
   padding-left: 1.4em;
 }
 
+/* The page's own contents list (content.mjs): shown only where the "On this
+   page" column is hidden, so a guide never lists its sections twice. */
+.prose .prose-toc {
+  margin: 28px 0 36px;
+  padding: 16px 20px 18px;
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.prose .prose-toc__title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.prose .prose-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 2 200px;
+  column-gap: 24px;
+}
+
+.prose .prose-toc li {
+  margin: 0;
+  padding: 3px 0;
+  break-inside: avoid;
+}
+
+.prose .prose-toc a {
+  text-decoration: none;
+}
+
+.prose .prose-toc a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 1181px) {
+  .prose .prose-toc {
+    display: none;
+  }
+}
+
 .prose li + li {
   margin-top: 0.35em;
 }
@@ -462,6 +526,13 @@ a.doc-card:hover {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
   font-size: 0.86em;
   overflow-wrap: anywhere;
+}
+
+/* A table's first column names things (parameters, components): keep each name
+   whole; the table scrolls sideways when it has to. */
+.prose :is(td, th):first-child > code {
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .prose hr {

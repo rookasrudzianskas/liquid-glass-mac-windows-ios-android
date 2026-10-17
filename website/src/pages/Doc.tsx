@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Link, handleLinkClick, useRouter } from "../router";
 import type { Head, PageProps } from "../router";
@@ -6,6 +6,7 @@ import { docs, groupedDocs } from "../docs";
 import type { DocPage } from "../docs";
 import { copyText } from "../components/Code";
 import { ArrowRightIcon, ChevronDownIcon, GitHubIcon } from "../components/Icons";
+import { useScrollRegions } from "../lib/scroll-regions";
 
 const loaders = import.meta.glob<{ default: DocPage }>("../generated/docs/*.json");
 
@@ -96,6 +97,18 @@ function useActiveHeading(ids: string[]) {
   return active;
 }
 
+/** "Table: <section heading>", from the nearest heading before the table. */
+function tableLabel(el: HTMLElement) {
+  let node: Element | null = el;
+  while (node) {
+    let prev = node.previousElementSibling;
+    while (prev && !/^H[2-4]$/.test(prev.tagName)) prev = prev.previousElementSibling;
+    if (prev) return `Table: ${(prev.textContent ?? "").replace(/^#/, "").trim()}`;
+    node = node.parentElement?.classList.contains("prose") ? null : node.parentElement ?? null;
+  }
+  return "Table";
+}
+
 const formatDate = (iso: string | null) => {
   if (!iso) return null;
   const d = new Date(iso);
@@ -111,6 +124,44 @@ export default function Doc({ data }: PageProps<Data>) {
   const prev = index > 0 ? docs[index - 1] : undefined;
   const next = index >= 0 && index < docs.length - 1 ? docs[index + 1] : undefined;
   const updated = formatDate(doc.updated);
+  // The page component is reused between docs: the phone menu closes on every navigation.
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (menuRef.current) menuRef.current.open = false;
+  }, [doc.slug]);
+  // Wide tables scroll sideways: those get a tab stop and a name, so keyboard users can scroll them.
+  const proseRef = useRef<HTMLDivElement>(null);
+  // "On this page" lists every section, and the subsections of the one being read.
+  const sectionOf = useMemo(() => doc.toc.map((t, i) => (t.depth <= 2 ? t.id : (doc.toc.slice(0, i).findLast((u) => u.depth <= 2)?.id ?? ""))), [doc]);
+  const activeIndex = doc.toc.findIndex((t) => t.id === active);
+  const activeSection = activeIndex >= 0 ? sectionOf[activeIndex] : undefined;
+  const tocRef = useRef<HTMLElement>(null);
+  const [more, setMore] = useState<"above" | "below" | "both" | null>(null);
+  useEffect(() => {
+    const toc = tocRef.current;
+    if (!toc) return;
+    const update = () => {
+      const above = toc.scrollTop > 1;
+      const below = toc.scrollTop + toc.clientHeight < toc.scrollHeight - 1;
+      setMore(above && below ? "both" : above ? "above" : below ? "below" : null);
+    };
+    // Keep the current entry in view inside the column (without scrolling the page).
+    const current = toc.querySelector<HTMLElement>("a[aria-current]");
+    if (current) {
+      const top = current.getBoundingClientRect().top - toc.getBoundingClientRect().top + toc.scrollTop;
+      if (top < toc.scrollTop + 32) toc.scrollTop = Math.max(0, top - 32);
+      else if (top + current.offsetHeight > toc.scrollTop + toc.clientHeight - 32) toc.scrollTop = top + current.offsetHeight - toc.clientHeight + 32;
+    }
+    update();
+    toc.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(toc);
+    return () => {
+      toc.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [active, activeSection, doc]);
+  useScrollRegions(proseRef, ".table-wrap", tableLabel, [doc.slug]);
 
   const onProseClick = async (e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -134,7 +185,7 @@ export default function Doc({ data }: PageProps<Data>) {
   return (
     <div className="docs">
       <aside className="docs__sidebar">
-        <details className="docs__menu">
+        <details ref={menuRef} className="docs__menu">
           <summary>
             <span>{doc.nav}</span>
             <ChevronDownIcon size={18} />
@@ -163,7 +214,7 @@ export default function Doc({ data }: PageProps<Data>) {
         </header>
         {/* Rendered at build time from the repository's Markdown. */}
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div className="prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: doc.html }} />
+        <div ref={proseRef} className="prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: doc.html }} />
         <nav className="docs__pager" aria-label="Previous and next">
           {prev ? (
             <Link href={`/docs/${prev.slug}`} className="docs__pager-link">
@@ -183,11 +234,11 @@ export default function Doc({ data }: PageProps<Data>) {
       </article>
 
       {doc.toc.length > 1 ? (
-        <nav className="docs__toc" aria-label="On this page">
+        <nav ref={tocRef} className="docs__toc" aria-label="On this page" data-more={more ?? undefined}>
           <p className="docs__toc-title">On this page</p>
           <ul role="list">
-            {doc.toc.map((t) => (
-              <li key={t.id} data-depth={t.depth}>
+            {doc.toc.map((t, i) => (
+              <li key={t.id} data-depth={t.depth} hidden={t.depth > 2 && sectionOf[i] !== activeSection}>
                 <a href={`#${t.id}`} aria-current={active === t.id ? "location" : undefined}>
                   {t.text}
                 </a>

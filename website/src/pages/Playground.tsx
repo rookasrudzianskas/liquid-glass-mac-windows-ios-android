@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { Glass, GlassStage, hexToRgb } from "../glass/react";
 import { wallpaperInfo, wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
 import type { BackdropSpec, WallpaperName } from "../glass/backdrop";
@@ -54,6 +54,7 @@ const TINTS = [
 // The first two sentences of NOTICE.md's statement: an independent port, not affiliated with Apple.
 const NOTICE = site.notice.split(/(?<=\.)\s+(?=[A-Z"])/).slice(0, 2).join(" ");
 
+const BACKDROPS: BackdropId[] = [...wallpaperNames, "grid", "type"];
 const BACKDROP_LABELS: Record<string, string> = { dunes: "Dunes", aurora: "Aurora", ocean: "Ocean", midnight: "Midnight", grid: "Grid", type: "Type" };
 
 const clampInt = (v: unknown, lo: number, hi: number, fallback: number) => {
@@ -157,6 +158,28 @@ const CODE_TABS: { id: string; label: string; file: string; lang: Lang; make: (s
 // ---------------------------------------------------------------------------
 // Controls
 
+/**
+ * Radio groups use a roving tab stop: Tab reaches the checked option, and the
+ * arrow keys, Home and End move the selection (and focus) inside the group.
+ */
+function onRadioKey<T>(e: KeyboardEvent<HTMLElement>, values: readonly T[], index: number, select: (v: T) => void) {
+  const n = values.length;
+  const to =
+    e.key === "ArrowRight" || e.key === "ArrowDown"
+      ? (index + 1) % n
+      : e.key === "ArrowLeft" || e.key === "ArrowUp"
+        ? (index - 1 + n) % n
+        : e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? n - 1
+            : -1;
+  if (to < 0) return;
+  e.preventDefault();
+  select(values[to] as T);
+  e.currentTarget.closest('[role="radiogroup"]')?.querySelectorAll<HTMLElement>('[role="radio"]')[to]?.focus();
+}
+
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
   const id = useId();
   return (
@@ -174,16 +197,14 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
             tabIndex={value === o.value ? 0 : -1}
             className="pg-segmented__item"
             onClick={() => onChange(o.value)}
-            onKeyDown={(e) => {
-              const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
-              if (!delta) return;
-              e.preventDefault();
-              const next = options[(i + delta + options.length) % options.length];
-              if (next) {
-                onChange(next.value);
-                (e.currentTarget.parentElement?.children[(i + delta + options.length) % options.length] as HTMLElement | undefined)?.focus();
-              }
-            }}
+            onKeyDown={(e) =>
+              onRadioKey(
+                e,
+                options.map((opt) => opt.value),
+                i,
+                onChange,
+              )
+            }
           >
             {o.label}
           </button>
@@ -240,15 +261,26 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function TintPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
   const id = useId();
   const custom = value && !TINTS.some((t) => t.hex === value) ? value : null;
+  const values: (string | null)[] = [null, ...TINTS.map((t) => t.hex)];
+  // With a custom color nothing in the group is checked: the first option keeps the tab stop.
+  const stop = Math.max(0, values.indexOf(value));
+  const radio = (i: number) => ({
+    type: "button" as const,
+    role: "radio",
+    "aria-checked": values[i] === value,
+    tabIndex: i === stop ? 0 : -1,
+    onClick: () => onChange(values[i] ?? null),
+    onKeyDown: (e: KeyboardEvent<HTMLElement>) => onRadioKey(e, values, i, onChange),
+  });
   return (
     <div className="control" role="radiogroup" aria-labelledby={id}>
       <span id={id} className="control__label">
         Tint
       </span>
       <div className="tints">
-        <button type="button" role="radio" aria-checked={value === null} className="tint tint--none" aria-label="No tint" title="No tint" onClick={() => onChange(null)} />
-        {TINTS.map((t) => (
-          <button key={t.hex} type="button" role="radio" aria-checked={value === t.hex} className="tint" style={{ background: t.hex }} aria-label={t.name} title={t.name} onClick={() => onChange(t.hex)} />
+        <button {...radio(0)} className="tint tint--none" aria-label="No tint" title="No tint" />
+        {TINTS.map((t, i) => (
+          <button key={t.hex} {...radio(i + 1)} className="tint" style={{ background: t.hex }} aria-label={t.name} title={t.name} />
         ))}
         <label className="tint tint--custom" data-checked={custom ? "" : undefined} title="Custom color" style={custom ? { background: custom } : undefined}>
           <span className="sr-only">Custom tint color</span>
@@ -286,8 +318,8 @@ export default function Playground() {
   const [codeOpen, setCodeOpen] = useState(true);
   const [panelOpen, setPanelOpen] = useState(true);
   const [renderer, setRenderer] = useState<{ kind: RendererKind; reason?: string }>({ kind: "pending" });
-  const resetKey = useRef(0);
-  const [, force] = useState(0);
+  // Reset remounts the glass, which drops where it was dragged.
+  const [resets, setResets] = useState(0);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((prev) => ({ ...prev, [k]: v }));
 
   // Settings live in the URL so a configuration can be shared.
@@ -313,6 +345,17 @@ export default function Playground() {
   const tabsRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLElement>(null);
+  // The glass can be smaller than asked for (it never outgrows the free area): say the size it has.
+  const glassRef = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const el = glassRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setShown({ w: Math.round(el.offsetWidth), h: Math.round(el.offsetHeight) }));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [resets]);
+  const size = shown && (shown.w < s.width - 1 || shown.h < s.height - 1) ? `${shown.w} by ${shown.h} (fitted to the screen; the code keeps ${s.width} by ${s.height})` : `${s.width} by ${s.height}`;
   // The glass centres in the space the code panel leaves free.
   useEffect(() => {
     const root = rootRef.current;
@@ -344,7 +387,8 @@ export default function Playground() {
       >
         <div className="pg__center">
           <Glass
-            key={resetKey.current}
+            key={resets}
+            ref={glassRef}
             className="pg__glass"
             material={s.material}
             radius={s.capsule ? "capsule" : s.radius}
@@ -352,10 +396,11 @@ export default function Playground() {
             tint={s.tint}
             appearance={appearance}
             draggable
+            bounds="parent"
             interactive={s.interactive}
             tabIndex={0}
             role="img"
-            aria-label={`${s.material === "regular" ? "Regular" : "Clear"} glass, ${s.width} by ${s.height}. Drag it with the pointer, or focus it and use the arrow keys.`}
+            aria-label={`${s.material === "regular" ? "Regular" : "Clear"} glass, ${size}. Drag it with the pointer, or focus it and use the arrow keys.`}
             style={{ width: s.width, height: s.height }}
           >
             <span className="pg__glass-label" aria-hidden="true">
@@ -376,16 +421,18 @@ export default function Playground() {
               Backdrop
             </span>
             <div className="backdrops">
-              {[...wallpaperNames, "grid" as const, "type" as const].map((b) => (
+              {BACKDROPS.map((b, i) => (
                 <button
                   key={b}
                   type="button"
                   role="radio"
                   aria-checked={s.backdrop === b}
+                  tabIndex={s.backdrop === b ? 0 : -1}
+                  onKeyDown={(e) => onRadioKey(e, BACKDROPS, i, (v) => set("backdrop", v))}
                   className="backdrop-thumb"
                   data-kind={b === "grid" || b === "type" ? b : "wallpaper"}
                   style={b === "grid" || b === "type" ? undefined : { backgroundImage: `url(/wallpapers/${b}-640.webp)`, backgroundColor: wallpaperInfo[b as WallpaperName].color }}
-                  onClick={() => set("backdrop", b as BackdropId)}
+                  onClick={() => set("backdrop", b)}
                 >
                   <span>{BACKDROP_LABELS[b] ?? b}</span>
                 </button>
@@ -439,8 +486,7 @@ export default function Playground() {
               className="button button--secondary button--small"
               onClick={() => {
                 setS(DEFAULTS);
-                resetKey.current++;
-                force((n) => n + 1);
+                setResets((n) => n + 1);
               }}
             >
               Reset
