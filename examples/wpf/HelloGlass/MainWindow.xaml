@@ -5,11 +5,12 @@
         Title="Hello, Glass" Width="960" Height="700" MinWidth="480" MinHeight="520"
         UseLayoutRounding="True">
   <lg:GlassScene>
-    <!-- What the glass refracts. A brush, not an Image: the wallpaper is decorative, so screen readers skip it. -->
+    <!-- What the glass refracts. A brush, not an Image: the wallpaper is decorative, so screen readers skip it. Its
+         top stays in view, so the toolbar sits over the dark sky. -->
     <lg:GlassScene.Content>
       <Rectangle RenderOptions.BitmapScalingMode="HighQuality">
         <Rectangle.Fill>
-          <ImageBrush ImageSource="/Assets/aurora.jpg" Stretch="UniformToFill" />
+          <ImageBrush ImageSource="/Assets/aurora.jpg" Stretch="UniformToFill" AlignmentY="Top" />
         </Rectangle.Fill>
       </Rectangle>
     </lg:GlassScene.Content>

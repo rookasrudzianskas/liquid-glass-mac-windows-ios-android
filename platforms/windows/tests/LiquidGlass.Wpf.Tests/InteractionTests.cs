@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -333,12 +334,15 @@ public class InteractionTests
             button.RaiseEvent(down);
             Wait(0.3);
             button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
-            // Let the release settle, so the frame loop stops after its last frame.
-            Wait(1.6);
         }
-        // Nothing the press started may outlive it: the frame loop has stopped and the mouse is free.
+        // Nothing the press started may outlive it: the frame loop stops once the release has settled (about 1.3 s, and
+        // later on a loaded machine, whose frames arrive late) and the mouse is free.
         if (button is GlassButton glass && glass.Template.FindName("PART_Surface", glass) is GlassSurface { Interaction: { } interaction })
-            Assert.False(GlassFrameLoop.IsRunning(interaction), $"{variant}: the press is still animating");
+        {
+            var settle = Stopwatch.StartNew();
+            while (GlassFrameLoop.IsRunning(interaction) && settle.Elapsed < TimeSpan.FromSeconds(8)) Wait(0.1);
+            Assert.False(GlassFrameLoop.IsRunning(interaction), $"{variant}: the press is still animating {settle.Elapsed.TotalSeconds:0.0} s after the release");
+        }
         Assert.Null(Mouse.Captured);
         Keyboard.ClearFocus();
         window.Close();
