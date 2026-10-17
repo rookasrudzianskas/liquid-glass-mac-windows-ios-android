@@ -147,6 +147,11 @@ public class GlassProgressiveBlur : FrameworkElement
             level.Clip.Margin = new Thickness(band.X, band.Y, Math.Max(0, finalSize.Width - band.Right), Math.Max(0, finalSize.Height - band.Bottom));
             level.Clip.Width = band.Width;
             level.Clip.Height = band.Height;
+            if (level.MaskSize != band.Size)
+            {
+                level.MaskSize = band.Size;
+                level.Clip.OpacityMask = Mask(level.Index, band.Size);
+            }
         }
         return finalSize;
     }
@@ -233,26 +238,31 @@ public class GlassProgressiveBlur : FrameworkElement
                 ClipToBounds = true,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                OpacityMask = Mask(i),
                 Child = content,
             };
-            _levels.Add(new Level(clip, copy, radii));
+            _levels.Add(new Level(i, clip, copy, radii));
             _host.Children.Add(clip);
         }
         InvalidateArrange();
     }
 
-    /// <summary>Opacity of level <paramref name="level"/> across the band, from the sharp side to the edge.</summary>
-    private Brush Mask(int level)
+    /// <summary>
+    /// Opacity of level <paramref name="level"/> across a band of <paramref name="band"/>, from the sharp side to the
+    /// edge. The gradient is placed in the band's own coordinates: relative to the bounding box it would span the
+    /// level's content, which reaches past the band by the blur's reach and more, and so would fade the level out
+    /// well before the edge.
+    /// </summary>
+    private Brush Mask(int level, System.Windows.Size band)
     {
+        double w = band.Width, h = band.Height;
         var (start, end) = Edge switch
         {
-            GlassEdge.Bottom => (new Point(0, 0), new Point(0, 1)),
-            GlassEdge.Left => (new Point(1, 0), new Point(0, 0)),
-            GlassEdge.Right => (new Point(0, 0), new Point(1, 0)),
-            _ => (new Point(0, 1), new Point(0, 0)),
+            GlassEdge.Bottom => (new Point(0, 0), new Point(0, h)),
+            GlassEdge.Left => (new Point(w, 0), new Point(0, 0)),
+            GlassEdge.Right => (new Point(0, 0), new Point(w, 0)),
+            _ => (new Point(0, h), new Point(0, 0)),
         };
-        var brush = new LinearGradientBrush { StartPoint = start, EndPoint = end, MappingMode = BrushMappingMode.RelativeToBoundingBox };
+        var brush = new LinearGradientBrush { StartPoint = start, EndPoint = end, MappingMode = BrushMappingMode.Absolute };
         for (var k = 0; k <= GradientStops; k++)
         {
             var u = (double)k / GradientStops;
@@ -265,12 +275,19 @@ public class GlassProgressiveBlur : FrameworkElement
 
     private sealed class Level
     {
-        public Level(Border clip, BackdropCopy copy, double[] radii)
+        public Level(int index, Border clip, BackdropCopy copy, double[] radii)
         {
+            Index = index;
             Clip = clip;
             Copy = copy;
             Radii = radii;
         }
+
+        /// <summary>The blur level, 1 to 6.</summary>
+        public int Index { get; }
+
+        /// <summary>The band size the opacity mask was laid out for.</summary>
+        public System.Windows.Size MaskSize { get; set; } = System.Windows.Size.Empty;
 
         public Border Clip { get; }
 
