@@ -4,7 +4,10 @@ Native Liquid Glass for WPF: refraction, the Clear and Regular materials, rim li
 rendered by an HLSL pixel shader with the same optical model as the SwiftUI and Jetpack Compose ports of
 [Liquid Glass Engineering](https://liquid-glass-engineering.vercel.app).
 
+The package is published on the project's NuGet feed:
+
 ```
+dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf
 ```
 
@@ -39,4 +42,5 @@ honored; every control has a UI Automation peer and a keyboard focus ring.
 **Requirements:** .NET Framework 4.8, .NET 8 or .NET 10 on Windows 10 (1809) or Windows 11.
 
 Documentation: [docs/windows.md](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/docs/windows.md).
-MIT licensed; the optical model is ported from the MIT-licensed Glass HQ liquid-glass web library.
+MIT licensed; the optical model is ported from the MIT-licensed Glass HQ liquid-glass web library
+(`LICENSE` and `NOTICE.md` in the package).

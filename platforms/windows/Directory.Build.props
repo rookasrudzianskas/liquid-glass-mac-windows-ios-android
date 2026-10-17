@@ -15,7 +15,8 @@
     <Authors>Liquid Glass Engineering</Authors>
     <Company>Liquid Glass Engineering</Company>
     <Product>Liquid Glass Engineering</Product>
-    <Copyright>Copyright (c) 2026 Liquid Glass Engineering</Copyright>
+    <!-- The holder named in the repository's LICENSE. -->
+    <Copyright>Copyright (c) 2026 Rokas Rudzianskas</Copyright>
     <NeutralLanguage>en</NeutralLanguage>
     <RepositoryUrl>https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

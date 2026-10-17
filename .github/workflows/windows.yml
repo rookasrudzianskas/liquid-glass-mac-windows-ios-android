@@ -1,9 +1,10 @@
 name: Windows
 
 # Builds and verifies the WPF port on a real Windows machine. Pushes to main and manual runs then report back through
-# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode and screenshots to
-# the orphan branch `ci-windows`. Pull requests run the same checks with a read-only token and keep the report as a
-# workflow artifact.
+# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode, screenshots, the
+# NuGet packages and the framework-dependent Studio zips to the orphan branch `ci-windows`. Pull requests run the same
+# checks with a read-only token and keep the report as a workflow artifact. Every run also keeps the complete release
+# set (packages and all three Studio zips, built as continuous-integration builds) as the `windows-release` artifact.
 on:
   push:
     branches: [main]
@@ -34,6 +35,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
   REPORT: ${{ github.workspace }}\report
+  RELEASE: ${{ github.workspace }}\release
 
 jobs:
   windows:
@@ -49,11 +51,14 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          # .NET 10 builds everything; .NET 8 runs the library's net8.0-windows build under test.
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Prepare report
         run: |
-          New-Item -ItemType Directory -Force -Path $env:REPORT | Out-Null
+          New-Item -ItemType Directory -Force -Path $env:REPORT, $env:RELEASE | Out-Null
           "commit: $env:GITHUB_SHA`nrun: $env:GITHUB_RUN_ID`nstarted: $(Get-Date -Format o)" | Set-Content "$env:REPORT\run.txt"
           dotnet --info | Out-File "$env:REPORT\dotnet-info.txt"
           Get-CimInstance Win32_VideoController | Select-Object Name, DriverVersion, AdapterRAM, VideoModeDescription | Format-List | Out-File "$env:REPORT\video.txt"
@@ -128,25 +133,86 @@ jobs:
           $log = "$env:REPORT\publish.txt"
           $failures = @()
           $variants = @(
-            @{ Name = "framework-dependent"; Args = @("--self-contained", "false") },
-            @{ Name = "self-contained"; Args = @("--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:EnableCompressionInSingleFile=true") }
+            @{ Name = "framework-dependent"; Rid = "win-x64"; Zip = "LiquidGlassStudio-win-x64.zip"; Run = $true; Args = @("--self-contained", "false") },
+            @{ Name = "arm64"; Rid = "win-arm64"; Zip = "LiquidGlassStudio-win-arm64.zip"; Run = $false; Args = @("--self-contained", "false") },
+            @{ Name = "self-contained"; Rid = "win-x64"; Zip = "LiquidGlassStudio-win-x64-self-contained.zip"; Run = $true; Args = @("--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:EnableCompressionInSingleFile=true") }
           )
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
           foreach ($v in $variants) {
             $out = "$env:RUNNER_TEMP\studio-$($v.Name)"
-            dotnet publish src\LiquidGlass.Studio -c Release -r win-x64 @($v.Args) -o $out 2>&1 | Out-File -Append "$env:REPORT\publish.log"
+            dotnet publish src\LiquidGlass.Studio -c Release -r $v.Rid @($v.Args) -o $out 2>&1 | Out-File -Append "$env:REPORT\publish.log"
             if ($LASTEXITCODE -ne 0) { "$($v.Name): publish FAILED" | Add-Content $log; $failures += "$($v.Name) publish"; continue }
-            $zip = "$env:RUNNER_TEMP\studio-$($v.Name).zip"
-            Compress-Archive -Path "$out\*" -DestinationPath $zip -Force
+            # What users unzip: the app, its license and notices; no PDBs or IntelliSense files.
+            Remove-Item "$out\*.pdb", "$out\*.xml" -ErrorAction SilentlyContinue
+            foreach ($file in "LICENSE", "NOTICE.md") {
+              if (-not (Test-Path "$out\$file")) { "$($v.Name): $file missing" | Add-Content $log; $failures += "$($v.Name) lacks $file" }
+            }
+            $zip = "$env:RELEASE\$($v.Zip)"
+            if (Test-Path $zip) { Remove-Item $zip }
+            [IO.Compression.ZipFile]::CreateFromDirectory($out, $zip, [IO.Compression.CompressionLevel]::Optimal, $false)
+            $mb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+            if (-not $v.Run) { "$($v.Name): zip $mb MB, published for $($v.Rid) (not run on this x64 runner)" | Add-Content $log; continue }
             $start = Get-Date
             $p = Start-Process -FilePath "$out\LiquidGlassStudio.exe" -ArgumentList "--page", "controls", "--exit-after", "8" -PassThru
             $finished = $p.WaitForExit(60000)
             $code = if ($finished) { $p.ExitCode } else { $p.Kill(); "timeout" }
-            $mb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
             "$($v.Name): zip $mb MB, smoke test exit $code after $([math]::Round(((Get-Date) - $start).TotalSeconds, 1)) s" | Add-Content $log
             if ($code -ne 0) { $failures += "$($v.Name) exit $code" }
           }
           Get-Content $log
-          if ($failures) { throw "Studio smoke test failed: $($failures -join ', ')" }
+          if ($failures) { throw "Studio publish or smoke test failed: $($failures -join ', ')" }
+
+      - name: Pack and check the NuGet packages
+        if: always()
+        run: |
+          $out = "$env:RELEASE\nuget"
+          $log = "$env:REPORT\packages.txt"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $failures = @()
+          foreach ($project in "src\LiquidGlass.Core\LiquidGlass.Core.csproj", "src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj") {
+            dotnet pack $project -c Release -o $out 2>&1 | Out-File -Append "$env:REPORT\pack.log"
+            if ($LASTEXITCODE -ne 0) { $failures += "pack $project" }
+          }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          foreach ($package in Get-ChildItem $out -Filter *.nupkg) {
+            $zip = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+            try {
+              $names = @($zip.Entries | ForEach-Object { $_.FullName })
+              "$($package.Name): $(($names | Where-Object { $_ -notlike '_rels/*' -and $_ -notlike 'package/*' } | Sort-Object) -join ', ')" | Add-Content $log
+              foreach ($required in "LICENSE", "NOTICE.md", "README.md", "icon.png") {
+                if ($names -notcontains $required) { $failures += "$($package.Name) lacks $required" }
+              }
+              if ($package.Name -like "LiquidGlassEngineering.Wpf.*") {
+                foreach ($tfm in "net48", "net8.0-windows7.0", "net10.0-windows7.0") {
+                  if ($names -notcontains "lib/$tfm/LiquidGlass.Wpf.dll") { $failures += "$($package.Name) lacks lib/$tfm" }
+                }
+              }
+              # Continuous-integration builds map source paths to /_/: no library may record the build machine's.
+              foreach ($dll in $zip.Entries | Where-Object { $_.FullName -like "*.dll" }) {
+                $reader = New-Object IO.StreamReader($dll.Open(), [Text.Encoding]::GetEncoding(28591))
+                $text = $reader.ReadToEnd()
+                $reader.Close()
+                if ($text.Contains($env:GITHUB_WORKSPACE)) { $failures += "$($dll.FullName) in $($package.Name) records the build path" }
+                if (-not $text.Contains("/_/")) { $failures += "$($dll.FullName) in $($package.Name) has no mapped source path" }
+              }
+            }
+            finally { $zip.Dispose() }
+          }
+          Get-Content $log
+          if ($failures) { throw "package check failed: $($failures -join '; ')" }
+
+      - name: List the release artifacts
+        if: always()
+        run: |
+          $list = "$env:REPORT\release.txt"
+          New-Item -ItemType Directory -Force -Path "$env:REPORT\release" | Out-Null
+          foreach ($file in Get-ChildItem $env:RELEASE -Recurse -File | Sort-Object FullName) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$($file.FullName.Substring($env:RELEASE.Length + 1)): $($file.Length) bytes, sha256 $hash" | Add-Content $list
+            # The report branch keeps the packages and the framework-dependent zips; the self-contained zip is too large for it.
+            if ($file.Name -notlike "*self-contained*") { Copy-Item $file.FullName "$env:REPORT\release\" }
+          }
+          Get-Content $list -ErrorAction SilentlyContinue
 
       - name: Summarize
         if: always()
@@ -156,6 +222,7 @@ jobs:
           "job status: ${{ job.status }}" | Add-Content $summary
           Get-Content "$env:REPORT\shaders\fxc.log" -ErrorAction SilentlyContinue | Select-String "precompiled shader" | ForEach-Object { $_.Line } | Add-Content $summary
           Get-Content "$env:REPORT\publish.txt" -ErrorAction SilentlyContinue | Add-Content $summary
+          Get-Content "$env:REPORT\release.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           Get-Content "$env:REPORT\studio\studio.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
             [xml]$x = Get-Content $trx.FullName
@@ -169,6 +236,14 @@ jobs:
         with:
           name: windows-report
           path: ${{ env.REPORT }}
+          if-no-files-found: warn
+
+      - name: Upload the release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: ${{ env.RELEASE }}
           if-no-files-found: warn
 
   report:

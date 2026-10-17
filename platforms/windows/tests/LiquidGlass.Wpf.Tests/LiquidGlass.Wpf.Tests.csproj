@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Windows-only tests: WPF controls, the shader bytecode, and the HLSL library on the GPU (WARP). -->
+  <!-- Windows-only tests: WPF controls, the shader bytecode, and the HLSL library on the GPU (WARP). They run against
+       each build the package ships: .NET 10, .NET 8 and .NET Framework 4.8. -->
   <PropertyGroup>
-    <TargetFrameworks>net10.0-windows;net48</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows;net8.0-windows;net48</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <RootNamespace>LiquidGlass.Wpf.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
@@ -25,7 +26,10 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
-    <!-- Vortice targets .NET 8 and later; the GPU check runs on .NET 10. -->
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
+    <!-- The GPU check of the HLSL library is independent of the .NET build: it runs once, on .NET 10. -->
     <Compile Remove="GpuTests.cs" />
   </ItemGroup>
 

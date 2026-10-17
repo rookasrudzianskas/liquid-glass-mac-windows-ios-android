@@ -11,6 +11,8 @@
     <ApplicationIcon>..\..\packaging\LiquidGlass.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <IsPackable>false</IsPackable>
+    <!-- The library's IntelliSense files are for developers, not for the app's users. -->
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +23,12 @@
     <!-- The wallpapers shared by every demo (assets/wallpapers), embedded as WPF resources. -->
     <Resource Include="$(LiquidGlassRepoRoot)assets\wallpapers\*-2048.jpg" Link="Wallpapers\%(Filename)%(Extension)" />
     <Resource Include="..\..\packaging\icon-256.png" Link="Assets\icon-256.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Published next to the app (also beside the single-file build): the license and the notices it is used under. -->
+    <None Include="$(LiquidGlassRepoRoot)LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(LiquidGlassRepoRoot)NOTICE.md" Link="NOTICE.md" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

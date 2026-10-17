@@ -38,6 +38,9 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\packaging\icon.png" Pack="true" PackagePath="\" Link="icon.png" />
+    <!-- The license and the notices of the work the optical model is ported from travel with the package. -->
+    <None Include="$(LiquidGlassRepoRoot)LICENSE" Pack="true" PackagePath="\" Link="LICENSE" />
+    <None Include="$(LiquidGlassRepoRoot)NOTICE.md" Pack="true" PackagePath="\" Link="NOTICE.md" />
   </ItemGroup>
 
 </Project>
