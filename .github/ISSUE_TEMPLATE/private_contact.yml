@@ -1,0 +1,17 @@
+name: Private contact request
+description: Ask the maintainer for a private way to send a security or code of conduct report. Issues are public, so this one carries no details.
+title: "Private contact request"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Use this form only to ask for a private channel: never describe the problem, the people involved or the affected systems here. The maintainer will reply with a way to send the report privately.
+
+        For a vulnerability, try the private advisory form first, as described in the [security policy](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/SECURITY.md).
+  - type: checkboxes
+    id: no-details
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no details of the problem, the people involved or the affected systems.
+          required: true
