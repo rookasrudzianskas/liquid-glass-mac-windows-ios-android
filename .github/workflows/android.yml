@@ -111,14 +111,15 @@ jobs:
           api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
-          # A 1080 x 2400, 420 dpi phone: GlassDensityTest lays its scene out at 2.625 px per dp
-          # (714 px wide), which the default 320 px screen cannot hold.
+          # A 1080 x 2400 screen: GlassDensityTest lays its scene out at 2.625 px per dp (714 px wide),
+          # which the default 320 px screen cannot hold. The script sets 160 dpi, the density the other
+          # device tests are written at and ran at on the default screen.
           profile: pixel_6
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           working-directory: platforms/android
           # The measured GPU error of each case is logged; surface it (and crashes) as annotations.
-          script: ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I GlassDensityTest:I ShaderVectorTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|GlassDensityTest|ShaderVectorTest|AndroidRuntime" | head -80 | sed 's/^/::notice title=GPU test log::/'; exit $status
+          script: adb shell wm density 160; ./gradlew :liquidglass:connectedDebugAndroidTest; status=$?; adb logcat -d -s GlassRenderingTest:I GlassDensityTest:I ShaderVectorTest:I AndroidRuntime:E | grep -E "GlassRenderingTest|GlassDensityTest|ShaderVectorTest|AndroidRuntime" | head -80 | sed 's/^/::notice title=GPU test log::/'; exit $status
       - name: Report failed tests
         if: failure()
         run: |
