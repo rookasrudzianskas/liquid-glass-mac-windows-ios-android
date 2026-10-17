@@ -24,7 +24,7 @@ Thanks for helping. Liquid Glass Engineering is one optical model in four places
 1. **Specification first.** Anything that changes how glass looks or moves starts in [`spec/OPTICS.md`](spec/OPTICS.md) and [`spec/reference.mjs`](spec/reference.mjs) (and [`spec/shaders/liquid-glass.glsl`](spec/shaders/liquid-glass.glsl) for shader code). Component names, options and sizes live in [`spec/COMPONENTS.md`](spec/COMPONENTS.md).
 2. **Regenerate the golden vectors** and commit them with the change: `node spec/generate-vectors.mjs`. Never edit `spec/vectors.json` by hand.
 3. **Update every port** until its tests reproduce the new vectors (1e-4 on the CPU, 2e-3 on the GPU).
-4. **Refresh the skills' copies** of the spec, `LICENSE` and `NOTICE.md`: `node scripts/sync-skill-references.mjs`. Never edit the copies under `plugins/liquid-glass/skills/*/references/` directly.
+4. **Refresh the skills' copies** of the spec, `LICENSE` and `NOTICE.md`: `node scripts/sync-skill-references.mjs`. The copies are `skills/liquid-glass/references/optics.md`, everything in `skills/liquid-glass-port/references/`, and the `LICENSE` and `NOTICE.md` in the plugin folder and in every skill folder (all under `plugins/liquid-glass/`); never edit them directly. The other reference files (each platform skill's `api.md` and `recipes.md`, and the `liquid-glass` skill's `design.md`) are written by hand and change with the API or guidance they describe.
 5. **Update the guides** in `docs/` and the code samples in them.
 
 CI checks steps 2 and 4 on every pull request:

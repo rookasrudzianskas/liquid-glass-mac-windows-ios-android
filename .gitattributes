@@ -10,8 +10,10 @@
 # Compiled shader bytecode (fxc), not PostScript.
 *.ps binary
 spec/vectors.json linguist-generated=true
-# Copies of spec/, LICENSE and NOTICE.md written by scripts/sync-skill-references.mjs.
-plugins/liquid-glass/skills/*/references/** linguist-generated=true
+# Copies of spec/, LICENSE and NOTICE.md written by scripts/sync-skill-references.mjs. The other files under
+# skills/*/references/ (api.md, recipes.md, design.md) are written by hand.
+plugins/liquid-glass/skills/liquid-glass/references/optics.md linguist-generated=true
+plugins/liquid-glass/skills/liquid-glass-port/references/** linguist-generated=true
 plugins/liquid-glass/LICENSE linguist-generated=true
 plugins/liquid-glass/NOTICE.md linguist-generated=true
 plugins/liquid-glass/skills/*/LICENSE linguist-generated=true

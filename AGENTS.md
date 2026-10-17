@@ -18,7 +18,7 @@ When the spec and a port disagree, the spec wins: change the spec first, regener
 | `platforms/apple/` | Liquid Glass Studio for iOS and macOS, CI scripts | [docs/apple.md](docs/apple.md) |
 | `platforms/android/` | Compose and AGSL library (`liquidglass`), Studio (`studio`) | [docs/android.md](docs/android.md) |
 | `platforms/windows/` | WPF and HLSL library (`LiquidGlass.Core`, `LiquidGlass.Wpf`), Studio, tests, CI tools | [docs/windows.md](docs/windows.md) |
-| `plugins/liquid-glass/` | The plugin and its skills; `skills/*/references/`, `LICENSE` and `NOTICE.md` there are generated copies | [CONTRIBUTING.md](CONTRIBUTING.md#agent-skills) |
+| `plugins/liquid-glass/` | The plugin and its skills. `skills/liquid-glass/references/optics.md`, `skills/liquid-glass-port/references/` and every `LICENSE` and `NOTICE.md` there are generated copies; the other `references/*.md` files (`api.md`, `recipes.md`, `design.md`) are written by hand | [CONTRIBUTING.md](CONTRIBUTING.md#agent-skills) |
 | `website/` | The website (Vite and React); it publishes `docs/` and `spec/` | |
 | `scripts/` | Release downloads, skill reference sync, plugin checks | |
 
