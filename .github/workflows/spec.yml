@@ -3,9 +3,28 @@ name: Spec
 on:
   push:
     branches: [main]
-    paths: ["spec/**", "plugins/**", "scripts/sync-skill-references.mjs", ".github/workflows/spec.yml"]
+    paths:
+      - "spec/**"
+      - "plugins/**"
+      - ".claude-plugin/**"
+      - "LICENSE"
+      - "NOTICE.md"
+      - "scripts/sync-skill-references.mjs"
+      - "scripts/check-plugin.mjs"
+      - "scripts/build-downloads.mjs"
+      - ".github/workflows/spec.yml"
   pull_request:
-    paths: ["spec/**", "plugins/**", "scripts/sync-skill-references.mjs", ".github/workflows/spec.yml"]
+    paths:
+      - "spec/**"
+      - "plugins/**"
+      - ".claude-plugin/**"
+      - "LICENSE"
+      - "NOTICE.md"
+      - "scripts/sync-skill-references.mjs"
+      - "scripts/check-plugin.mjs"
+      - "scripts/build-downloads.mjs"
+      - ".github/workflows/spec.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +34,7 @@ jobs:
     name: Golden vectors are current
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,5 +42,16 @@ jobs:
         run: node spec/generate-vectors.mjs
       - name: Fail if the committed vectors are stale
         run: git diff --exit-code -- spec/vectors.json
-      - name: Fail if the skills' copies of the spec are stale
+      - name: Fail if the skills' copies of the spec, LICENSE or NOTICE.md are stale
         run: node scripts/sync-skill-references.mjs --check
+
+  plugin:
+    name: Plugin and skills are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Marketplace, plugin manifest, skill frontmatter, skill names and links
+        run: node scripts/check-plugin.mjs
