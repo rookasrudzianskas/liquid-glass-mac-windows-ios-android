@@ -1,0 +1,23 @@
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\LiquidGlass.Studio.csproj (in 220 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tools\LiquidGlass.CiTools\LiquidGlass.CiTools.csproj (in 220 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\LiquidGlass.Core.csproj (in 10.64 sec).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Core.Tests\LiquidGlass.Core.Tests.csproj (in 11.15 sec).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj (in 14.75 sec).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Wpf.Tests\LiquidGlass.Wpf.Tests.csproj (in 14.52 sec).
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Core.Tests -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Core.Tests\bin\Release\net10.0\LiquidGlass.Core.Tests.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net48\LiquidGlass.Wpf.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net8.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net10.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Wpf.Tests -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Wpf.Tests\bin\Release\net10.0-windows\LiquidGlass.Wpf.Tests.dll
+  LiquidGlass.CiTools -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tools\LiquidGlass.CiTools\bin\Release\net10.0-windows\LiquidGlass.CiTools.dll
+  LiquidGlass.Studio -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\bin\Release\net10.0-windows\LiquidGlassStudio.dll
+  LiquidGlass.Wpf.Tests -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Wpf.Tests\bin\Release\net48\LiquidGlass.Wpf.Tests.dll
+  LiquidGlass.Wpf.Tests -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\tests\LiquidGlass.Wpf.Tests\bin\Release\net8.0-windows\LiquidGlass.Wpf.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:45.67

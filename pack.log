@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\LiquidGlass.Core.csproj (in 326 ms).
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  Successfully created package 'D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\release\nuget\LiquidGlassEngineering.Core.1.0.0.nupkg'.
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj (in 286 ms).
+  1 of 2 projects are up-to-date for restore.
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net48\LiquidGlass.Wpf.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net10.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net8.0-windows\LiquidGlass.Wpf.dll
+  Successfully created package 'D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\release\nuget\LiquidGlassEngineering.Wpf.1.0.0.nupkg'.

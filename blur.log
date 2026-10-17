@@ -1,0 +1,33 @@
+σ in device pixels from the 10%–90% width of a blurred black | white edge (2.563 σ).
+model: each effect blurs by min(100, trunc(Radius × scale)) / 3 device pixels; nested effects add variances.
+
+scale 1 (window DPI scale 1, render tier 2)
+  15 (15 px): screen σ 4.95, bitmap σ 4.95, model σ 5.00
+  30 (30 px): screen σ 9.99, bitmap σ 9.99, model σ 10.00
+  45 (45 px): screen σ 15.09, bitmap σ 15.09, model σ 15.00
+  60 (60 px): screen σ 20.18, bitmap σ 20.33, model σ 20.00
+  90 (90 px): screen σ 30.59, bitmap σ 30.59, model σ 30.00
+  100.5 (100.5 px): screen σ 32.93, bitmap σ 32.93, model σ 33.33
+  150 (150 px): screen σ 33.36, bitmap σ 33.63, model σ 33.33
+  60.5 (60.5 px) + 60.5 (60.5 px): screen σ 30.59, bitmap σ 30.29, model σ 28.28
+  100.5 (100.5 px) + 100.5 (100.5 px): screen σ 46.35, bitmap σ 46.35, model σ 47.14
+
+scale 2 (window DPI scale 1, render tier 2)
+  10 (20 px): screen σ 6.69, bitmap σ 6.69, model σ 6.67
+  22.25 (44.5 px): screen σ 14.57, bitmap σ 14.57, model σ 14.67
+  30 (60 px): screen σ 19.92, bitmap σ 19.94, model σ 20.00
+  42.75 (85.5 px): screen σ 28.13, bitmap σ 28.48, model σ 28.33
+  50.25 (100.5 px): screen σ 32.93, bitmap σ 32.93, model σ 33.33
+  60 (120 px): screen σ 33.67, bitmap σ 34.57, model σ 33.33
+  42.75 (85.5 px) + 42.75 (85.5 px): screen σ 39.02, bitmap σ 39.02, model σ 40.07
+  30 (60 px) + 30 (60 px): screen σ 28.13, bitmap σ 27.78, model σ 28.28
+
+scale 3 (window DPI scale 1, render tier 2)
+  10 (30 px): screen σ 9.99, bitmap σ 9.99, model σ 10.00
+  20 (60 px): screen σ 19.92, bitmap σ 19.94, model σ 20.00
+  22.17 (66.51 px): screen σ 22.37, bitmap σ 22.37, model σ 22.00
+  30.17 (90.51 px): screen σ 30.26, bitmap σ 29.92, model σ 30.00
+  33.5 (100.5 px): screen σ 32.77, bitmap σ 33.16, model σ 33.33
+  40 (120 px): screen σ 37.45, bitmap σ 37.84, model σ 33.33
+  30.17 (90.51 px) + 30.17 (90.51 px) + 30.17 (90.51 px) + 30.17 (90.51 px): screen σ 57.43, bitmap σ 57.82, model σ 60.00
+

@@ -1,0 +1,7 @@
+accessible names present: Switch appearance, Profile, Hello, Glass, Get started, Learn more, Frosted, Sections, Home, Explore, Settings
+hello-glass-light: 946x693
+Frosted toggled Off
+hello-glass-clear-light: 946x693
+hello-glass-dark: 946x693
+Profile selects the Settings tab
+closed with exit code 0

@@ -1,0 +1,24 @@
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\LiquidGlass.Studio.csproj (in 238 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\LiquidGlass.Core.csproj (in 329 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj (in 331 ms).
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net10.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Studio -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\bin\Release\net10.0-windows\win-x64\LiquidGlassStudio.dll
+  LiquidGlass.Studio -> D:\a\_temp\studio-framework-dependent\
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj (in 384 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\LiquidGlass.Core.csproj (in 384 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\LiquidGlass.Studio.csproj (in 1.18 sec).
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net10.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Studio -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\bin\Release\net10.0-windows\win-arm64\LiquidGlassStudio.dll
+  LiquidGlass.Studio -> D:\a\_temp\studio-arm64\
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\LiquidGlass.Core.csproj (in 414 ms).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\LiquidGlass.Studio.csproj (in 17.79 sec).
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\LiquidGlass.Wpf.csproj (in 17.8 sec).
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net10.0-windows\LiquidGlass.Wpf.dll
+  LiquidGlass.Studio -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Studio\bin\Release\net10.0-windows\win-x64\LiquidGlassStudio.dll
+  LiquidGlass.Studio -> D:\a\_temp\studio-self-contained\

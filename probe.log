@@ -1,0 +1,21 @@
+{
+  "values": {
+    "tier": 2,
+    "pixelShader20": true,
+    "pixelShader30": true,
+    "pixelShader20Software": true,
+    "pixelShader30Software": false,
+    "maxPixelShader30Slots": 32768,
+    "maxTextureSize": "16384,16384",
+    "processRenderMode": "Default",
+    "windowRenderMode": "Default",
+    "dpiScale": 1,
+    "screen": "1920x1080",
+    "workArea": "0,0,1920,1032",
+    "highContrast": false,
+    "clientAreaAnimation": false,
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "runtime": ".NET 10.0.13"
+  },
+  "capture": "466x293"
+}

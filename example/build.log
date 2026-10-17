@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\examples\wpf\HelloGlass\HelloGlass.csproj (in 163 ms).
+  2 of 3 projects are up-to-date for restore.
+  LiquidGlass.Core -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Core\bin\Release\netstandard2.0\LiquidGlass.Core.dll
+  LiquidGlass.Wpf -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\platforms\windows\src\LiquidGlass.Wpf\bin\Release\net8.0-windows\LiquidGlass.Wpf.dll
+  HelloGlass -> D:\a\liquid-glass-mac-windows-ios-android\liquid-glass-mac-windows-ios-android\examples\wpf\HelloGlass\bin\Release\net8.0-windows\HelloGlass.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.59

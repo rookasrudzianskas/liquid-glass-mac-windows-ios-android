@@ -1,0 +1,43 @@
+tier 2, ps_3_0 supported (32768 slots), shader Precompiled: precompiled by fxc
+can use shader here: True
+Shader-Light-Clear-capsule: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Clear-card: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Clear-circle: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Clear-tint: Shader, dark False, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Light-Regular-capsule: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Regular-card: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Regular-circle: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-Light-Regular-tint: Shader, dark False, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Clear-capsule: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Clear-card: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Clear-circle: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Clear-tint: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Regular-capsule: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Regular-card: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Regular-circle: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-Dark-Regular-tint: Shader, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Shader-orientation-RTL: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-orientation-45°: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-orientation-90°: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Shader-orientation-Skew: Shader, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Clear-capsule: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Clear-card: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Clear-circle: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Clear-tint: Fallback, dark False, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Light-Regular-capsule: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Regular-card: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Regular-circle: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-Light-Regular-tint: Fallback, dark False, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Clear-capsule: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Clear-card: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Clear-circle: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Clear-tint: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Regular-capsule: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Regular-card: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Regular-circle: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-Dark-Regular-tint: Fallback, dark True, content foreground #FFFFFFFF, foreground #FFFFFFFF from DefaultStyle (expression), binding Active
+Fallback-orientation-RTL: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-orientation-45°: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-orientation-90°: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+Fallback-orientation-Skew: Fallback, dark False, content foreground #FF111113, foreground #FF111113 from DefaultStyle (expression), binding Active
+
