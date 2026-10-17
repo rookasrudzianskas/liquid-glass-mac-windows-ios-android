@@ -50,7 +50,7 @@ jobs:
         run: ./gradlew :studio:assembleRelease
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android
           path: |
@@ -77,7 +77,7 @@ jobs:
       - name: Build and lint
         run: ./gradlew :app:assembleDebug :app:lintDebug
       - name: Upload the APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-hello-glass
           path: examples/compose/HelloGlass/app/build/outputs/apk/debug/*.apk
@@ -134,7 +134,7 @@ jobs:
           PY
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-gpu-tests-api${{ matrix.api-level }}
           path: platforms/android/liquidglass/build/reports/androidTests/
