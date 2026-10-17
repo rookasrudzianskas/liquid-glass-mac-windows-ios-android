@@ -8,7 +8,7 @@ export default function NotFound() {
   const { theme, mounted } = useTheme();
   return (
     <div className="not-found">
-      <GlassStage backdrop={mounted ? { kind: "canvas", pattern: "404" } : null} appearance={theme} className="not-found__stage" fallback={<p className="not-found__fallback" aria-hidden="true">404</p>}>
+      <GlassStage backdrop={mounted ? { kind: "canvas", pattern: "404" } : null} appearance={theme} className="not-found__stage" fallback={<p className="not-found__fallback" aria-hidden="true" data-backdrop-text>404</p>}>
         <div className="not-found__copy">
           <h1 className="not-found__title">This page slipped through the glass.</h1>
           <p className="lead">The address may be mistyped, or the page has moved.</p>

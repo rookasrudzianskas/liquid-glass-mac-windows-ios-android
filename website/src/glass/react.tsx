@@ -5,7 +5,7 @@ import type { SpringState } from "@lg/reference";
 import { GlassScene } from "./scene";
 import type { Appearance, Radius, RendererKind, Surface, SurfaceOptions } from "./scene";
 import { SurfaceMotion } from "./motion";
-import type { Material } from "./renderer";
+import type { BackdropImage, Material } from "./renderer";
 import { loadBackdrop } from "./backdrop";
 import type { BackdropSpec } from "./backdrop";
 
@@ -43,11 +43,39 @@ export interface GlassStageProps {
   onRenderer?: (kind: RendererKind, reason?: string) => void;
 }
 
+/** Cover-fit a backdrop into a 2D canvas, keeping its focal point in view (as the WebGL renderer does). */
+function paintBackdrop(canvas: HTMLCanvasElement, image: BackdropImage) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const ctx = w && h ? canvas.getContext("2d") : null;
+  if (!ctx) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const scale = Math.max(w / image.width, h / image.height);
+  const dw = image.width * scale;
+  const dh = image.height * scale;
+  const x = Math.min(0, Math.max(w - dw, w / 2 - (image.focusX ?? 0.5) * dw));
+  const y = Math.min(0, Math.max(h - dh, h / 2 - (image.focusY ?? 0.5) * dh));
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image.source as CanvasImageSource, x, y, dw, dh);
+}
+
 export function GlassStage({ backdrop, appearance, className, style, children, fallback, transition = 650, onRenderer }: GlassStageProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Without WebGL the chosen backdrop is painted into a plain 2D canvas instead,
+  // so changing it still shows (the fallback material blurs it like glass).
+  const flatRef = useRef<HTMLCanvasElement>(null);
+  const shown = useRef<BackdropImage | null>(null);
   const [scene, setScene] = useState<GlassScene | null>(null);
   const [kind, setKind] = useState<RendererKind>("pending");
+  const kindRef = useRef(kind);
+  kindRef.current = kind;
+  const paintFlat = () => {
+    if (kindRef.current === "css" && flatRef.current && shown.current) paintBackdrop(flatRef.current, shown.current);
+  };
   const callback = useRef(onRenderer);
   callback.current = onRenderer;
   const appearanceRef = useRef(appearance);
@@ -101,6 +129,8 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
       if (backdrop.kind === "canvas" && !first.current) scene.refreshBackdrop(image);
       else scene.setBackdrop(image, first.current ? 0 : transition);
       first.current = false;
+      shown.current = image;
+      paintFlat();
     });
     return () => {
       cancelled = true;
@@ -110,11 +140,30 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene, backdropKey, backdrop?.kind === "canvas" ? appearance : null]);
 
+  // The flat backdrop follows the stage's size while the CSS renderer is in use.
+  useEffect(() => {
+    const flat = flatRef.current;
+    if (kind !== "css" || !flat) return;
+    paintFlat();
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (!frame) frame = requestAnimationFrame(() => ((frame = 0), paintFlat()));
+    });
+    observer.observe(flat);
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+    // paintFlat reads refs only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
+
   const value = useMemo(() => ({ scene, kind, appearance }), [scene, kind, appearance]);
 
   return (
     <div ref={rootRef} className={`stage${className ? ` ${className}` : ""}`} style={style} data-renderer={kind}>
       {fallback}
+      <canvas ref={flatRef} className="stage__flat" aria-hidden="true" hidden={kind !== "css"} />
       <canvas ref={canvasRef} className="stage__canvas" aria-hidden="true" />
       <StageContext.Provider value={value}>{children}</StageContext.Provider>
     </div>
@@ -241,6 +290,7 @@ export function Glass({
       ref={elRef}
       className={`glass${className ? ` ${className}` : ""}`}
       data-material={material}
+      data-capsule={radius === "capsule" ? "" : undefined}
       data-tinted={tint ? "" : undefined}
       data-draggable={draggable ? "" : undefined}
       style={{ ...radiusStyle(radius), ...tintStyle, ...style }}

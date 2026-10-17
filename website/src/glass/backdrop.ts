@@ -49,7 +49,37 @@ function neededWidth(canvas: HTMLCanvasElement | null) {
   return wallpaperSize(Math.max(w, h, window.innerWidth, window.innerHeight), window.devicePixelRatio || 1);
 }
 
-function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number, h: number, dark: boolean) {
+/** Where a stage's static text (the 404 fallback) sits, in canvas coordinates, so the drawn copy lands on it. */
+interface TextAnchor {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  font: string;
+  size: number;
+  opacity: number;
+}
+
+function textAnchor(canvas: HTMLCanvasElement): TextAnchor | undefined {
+  const el = canvas.parentElement?.querySelector<HTMLElement>("[data-backdrop-text]");
+  if (!el?.textContent) return undefined;
+  const c = canvas.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const cs = getComputedStyle(el);
+  const size = parseFloat(cs.fontSize) || 16;
+  return { text: el.textContent, x: r.left - c.left, y: r.top - c.top, w: r.width, h: r.height, font: `${cs.fontWeight} ${size}px ${cs.fontFamily}`, size, opacity: Number(cs.opacity) || 1 };
+}
+
+// The stops of --spectrum in base.css, which colors the CSS 404.
+const SPECTRUM: [number, string][] = [
+  [0, "#12b5cb"],
+  [0.35, "#4b6bff"],
+  [0.6, "#8a4dff"],
+  [1, "#ff4f9a"],
+];
+
+function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number, h: number, dark: boolean, anchor?: TextAnchor) {
   const bg = ctx.createLinearGradient(0, 0, w, h);
   if (dark) {
     bg.addColorStop(0, "#0b0d17");
@@ -66,16 +96,24 @@ function drawPattern(ctx: CanvasRenderingContext2D, pattern: Pattern, w: number,
     glow.addColorStop(1, "rgba(122,92,255,0)");
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
-    const size = Math.min(w * 0.36, h * 0.48);
-    ctx.font = `800 ${size}px "Inter Variable", "Inter", system-ui, sans-serif`;
+    // Drawn exactly over the CSS fallback (same box, font, gradient and opacity), so the
+    // switch to WebGL does not move or recolor the numerals.
+    const size = anchor?.size ?? Math.min(w * 0.36, h * 0.48);
+    const box = anchor ?? { text: "404", x: 0, y: h * 0.4 - size / 2, w, h: size, opacity: 0.9 };
+    ctx.font = anchor?.font ?? `800 ${size}px "Inter Variable", "Inter", system-ui, sans-serif`;
     ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const g = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
-    g.addColorStop(0, "#12b5cb");
-    g.addColorStop(0.5, "#6a5cff");
-    g.addColorStop(1, "#ff4f9a");
+    ctx.textBaseline = "alphabetic";
+    const metrics = ctx.measureText(box.text);
+    const ascent = metrics.fontBoundingBoxAscent ?? size * 0.97;
+    const descent = metrics.fontBoundingBoxDescent ?? size * 0.24;
+    // CSS centers the font's ascent + descent in the line box; the baseline follows.
+    const baseline = box.y + (box.h - (ascent + descent)) / 2 + ascent;
+    const g = ctx.createLinearGradient(box.x, 0, box.x + box.w, 0);
+    for (const [at, color] of SPECTRUM) g.addColorStop(at, color);
     ctx.fillStyle = g;
-    ctx.fillText("404", w / 2, h * 0.4);
+    ctx.globalAlpha = box.opacity;
+    ctx.fillText(box.text, box.x + box.w / 2, baseline);
+    ctx.globalAlpha = 1;
     return;
   }
   if (pattern === "grid") {
@@ -186,7 +224,7 @@ export function loadBackdrop(
     off.width = Math.round(cw * dpr);
     off.height = Math.round(ch * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawPattern(ctx, spec.pattern, cw, ch, appearance === "dark");
+    drawPattern(ctx, spec.pattern, cw, ch, appearance === "dark", spec.pattern === "404" ? textAnchor(stageCanvas) : undefined);
     ready({ source: off, width: cw, height: ch });
   };
   const fontsReady = document.fonts?.ready ?? Promise.resolve();

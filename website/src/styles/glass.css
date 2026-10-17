@@ -30,6 +30,16 @@
   z-index: -2;
 }
 
+/* Without WebGL: the chosen backdrop, painted flat above the static fallback. */
+.stage__flat {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* Theme-aware wallpaper fallback. Sizes mirror wallpaperSize() in backdrop.ts. */
 .wallpaper-fallback {
   background-color: var(--wl-color);
@@ -83,8 +93,10 @@
 }
 
 @supports (corner-shape: superellipse(2)) {
-  /* The spec's continuous corner: extent 1.528 r, exponent 3.26 (= 2^1.705). */
-  .glass {
+  /* The spec's continuous corner: extent 1.528 r, exponent 3.26 (= 2^1.705).
+     A capsule keeps round ends (a superellipse would square them off), so its
+     fallback fill, contact shadow and focus ring match the pill WebGL draws. */
+  .glass:not([data-capsule]) {
     border-radius: var(--glass-rc);
     corner-shape: superellipse(1.705);
   }
@@ -147,6 +159,12 @@
 
 [data-theme="dark"] .stage:is([data-renderer="css"], [data-renderer="pending"]) .glass[data-material="regular"] {
   background: color-mix(in srgb, var(--glass-tint, #1c1c22) 26%, rgba(28, 28, 34, 0.58));
+}
+
+/* Tinted glass reads as its color, as the WebGL material does (white labels stay legible). */
+.stage:is([data-renderer="css"], [data-renderer="pending"]) .glass[data-tinted],
+[data-theme="dark"] .stage:is([data-renderer="css"], [data-renderer="pending"]) .glass[data-tinted] {
+  background: color-mix(in srgb, var(--glass-tint) 82%, rgba(255, 255, 255, 0.12));
 }
 
 /* Reduce transparency: an opaque fill, rim kept (OPTICS.md section 8). */

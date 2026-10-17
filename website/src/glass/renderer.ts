@@ -78,7 +78,10 @@ type Program = { program: WebGLProgram; uniforms: Map<string, WebGLUniformLocati
 
 const FROST_SIGMA = materials.regular.blur;
 
-function gaussianTaps(sigma: number) {
+function gaussianTaps(requested: number) {
+  // The shader takes at most MAX_BLUR_TAPS paired taps (a radius of twice that):
+  // wider requests are clamped rather than failing the frame.
+  const sigma = Math.max(1e-3, Math.min(requested, (2 * MAX_BLUR_TAPS) / 3));
   const radius = Math.max(1, Math.ceil(sigma * 3));
   const raw: number[] = [];
   for (let i = 0; i <= radius; i++) raw.push(Math.exp(-(i * i) / (2 * sigma * sigma)));

@@ -28,16 +28,20 @@ function readPreference(): Preference {
 
 const systemTheme = (): Theme => (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 
-/** The theme the inline head script already applied, so hydration starts right. */
-const domTheme = (): Theme => (typeof document !== "undefined" && document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+/** The theme the inline head script already applied to <html>. */
+const domTheme = (): Theme => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPref] = useState<Preference>("system");
-  const [theme, setTheme] = useState<Theme>(domTheme);
+  // The first client render must match the prerendered HTML, which is always
+  // light: React keeps mismatched attributes from the server during hydration.
+  // The real theme arrives with `mounted`, in the same render.
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setPref(readPreference());
+    setTheme(domTheme());
     setMounted(true);
   }, []);
 

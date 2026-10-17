@@ -324,13 +324,29 @@ export class GlassScene {
       } else animating = true;
     }
 
-    if (r && !r.lost && (this.dirty || animating) && this.visible && !document.hidden) {
-      r.render(this.frames(), this.appearance === "dark");
+    // Frame callbacks run before resize observers: a canvas that just got its size
+    // (it had none when the scene started, or it changed since) is measured here,
+    // and nothing is drawn while it has no size.
+    if (r && (this.canvas.clientWidth !== this.cssSize.width || this.canvas.clientHeight !== this.cssSize.height)) this.measure();
+    const sized = this.cssSize.width === this.canvas.clientWidth && this.cssSize.height === this.canvas.clientHeight;
+    if (r && !r.lost && sized && (this.dirty || animating) && this.visible && !document.hidden) {
+      try {
+        r.render(this.frames(), this.appearance === "dark");
+      } catch (error) {
+        // A failed frame must not leave an empty stage: fall back to the CSS material.
+        try {
+          r.destroy();
+        } catch {
+          /* the context is already unusable */
+        }
+        this.fail(error instanceof Error ? error.message : String(error));
+        return;
+      }
       if (this.pendingReady && this.hasBackdrop) {
         this.pendingReady = false;
         this.setKind("webgl");
       }
-    }
+    } else if (r && !sized) return; // keep `dirty`; the resize observer schedules the next frame
     this.dirty = false;
     if (animating) this.invalidate();
     else this.last = 0;
