@@ -40,6 +40,8 @@ targets: [
 ]
 ```
 
+The version requirement resolves once the `1.0.0` release tag is published on GitHub (Swift Package Manager reads versions from tags, so `from: "1.0.0"` finds nothing before that). Until then, depend on the `main` branch: in Xcode choose **Branch** `main` as the dependency rule, and in `Package.swift` write `branch: "main"` in place of `from: "1.0.0"`.
+
 Requirements: iOS 17 or macOS 14 deployment targets, built with Xcode 16 or later (iOS 18 / macOS 15 SDK; Xcode 15 cannot compile the iOS target). There are no third-party dependencies.
 
 > The package contains Metal shaders. Xcode compiles them (in an app, with `xcodebuild`, or in Xcode's own package build). The bare command line `swift build` does not compile Metal, so build and test the package with Xcode or `xcodebuild`.

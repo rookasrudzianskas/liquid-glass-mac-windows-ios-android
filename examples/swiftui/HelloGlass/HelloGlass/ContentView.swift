@@ -33,11 +33,13 @@ struct ContentView: View {
             }
             .ignoresSafeArea()
 
+            // The spacers may shrink to nothing, so the screen still fits
+            // an iPhone in landscape.
             VStack(spacing: 0) {
                 toolbar
-                Spacer(minLength: 24)
+                Spacer(minLength: 0)
                 card
-                Spacer(minLength: 24)
+                Spacer(minLength: 0)
                 tabBar
             }
             .padding(.horizontal, 20)

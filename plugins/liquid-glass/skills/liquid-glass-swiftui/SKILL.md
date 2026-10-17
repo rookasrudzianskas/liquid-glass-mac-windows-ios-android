@@ -43,6 +43,9 @@ targets: [
 ]
 ```
 
+`from: "1.0.0"` resolves once the `1.0.0` release tag is published on GitHub (SwiftPM reads versions from tags).
+Until then use `branch: "main"` (Xcode: dependency rule **Branch**, `main`).
+
 | Requirement | Value |
 | --- | --- |
 | Deployment target | iOS 17.0 / macOS 14.0 or later (`platforms: [.iOS(.v17), .macOS(.v14)]`) |
@@ -418,9 +421,9 @@ GlassScene {
 
 ## Checklist
 
-- [ ] Package added (`from: "1.0.0"`), product `LiquidGlass`, deployment target iOS 17 / macOS 14, built with
-      Xcode 16 or later, `import LiquidGlass`; `CADisableMinimumFrameDurationOnPhone` = `YES` in an iPhone app's
-      Info.plist.
+- [ ] Package added (`from: "1.0.0"`; `branch: "main"` before the tag), product `LiquidGlass`, deployment target
+      iOS 17 / macOS 14, built with Xcode 16 or later, `import LiquidGlass`; `CADisableMinimumFrameDurationOnPhone` =
+      `YES` in an iPhone app's Info.plist.
 - [ ] One `GlassScene` per screen with a definite size (never inside a `ScrollView`); `GlassContent` first,
       `.ignoresSafeArea()`, pure SwiftUI, no `@State`, `AsyncImage` or side effects inside, no glass inside,
       explicit padding for bars.
