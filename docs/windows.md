@@ -29,7 +29,11 @@ verified against the same golden vectors.
 | `LiquidGlassEngineering.Wpf` | The WPF controls and the glass shader | `net48`, `net8.0-windows`, `net10.0-windows` |
 | `LiquidGlassEngineering.Core` | The platform-independent optical model (pulled in by the WPF package) | `netstandard2.0` |
 
+The packages are published on the project's own NuGet feed, not on nuget.org. Add the feed once (this writes it to
+your user NuGet configuration), then the package:
+
 ```
+dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf
 ```
 
@@ -38,6 +42,21 @@ or in the project file:
 ```xml
 <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
 ```
+
+To keep the feed with the code, so that CI and other machines restore without that step, put a `nuget.config` next to
+the solution instead. Keep nuget.org in it for every other package:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="liquid-glass" value="https://liquid-glass-engineering.vercel.app/nuget/index.json" />
+  </packageSources>
+</configuration>
+```
+
+If the solution uses package source mapping, map `LiquidGlassEngineering.*` to the `liquid-glass` source.
 
 Requirements: Windows 10 version 1809 or later, or Windows 11; .NET Framework 4.8, .NET 8 or .NET 10 with WPF
 (`<UseWPF>true</UseWPF>`).

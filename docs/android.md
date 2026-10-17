@@ -400,7 +400,7 @@ The demo app (`platforms/android/studio`) has the same four pages as every platf
 3. **Materials lab:** live material, appearance, refraction, corner radius and tint on a draggable lens.
 4. **Progressive blur:** a scrolling journal with blurred top and bottom edges under a glass toolbar.
 
-Install the prebuilt `LiquidGlassStudio.apk` from the website, or build it (below). Intent extras open a given state, which keeps screenshots reproducible:
+Install the prebuilt `liquid-glass-studio-android.apk` from the [downloads page](https://liquid-glass-engineering.vercel.app/downloads) (`adb install liquid-glass-studio-android.apk`), or build it (below). Intent extras open a given state, which keeps screenshots reproducible:
 
 ```sh
 adb shell am start -n io.github.rookasrudzianskas.liquidglass.studio/.MainActivity \
