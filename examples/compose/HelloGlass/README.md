@@ -13,13 +13,14 @@ The smallest complete Liquid Glass app for Android: one screen, one Kotlin file 
 - **A Regular glass card** (`GlassSurface`, continuous 32 dp corners) with the title "Hello, Glass", a one-line subtitle, a prominent tinted button "Get started" and a plain glass button "Learn more".
 - **A "Frosted" switch** (`GlassSwitch`) that turns the card from Regular (frosted) to Clear glass and back.
 - **A toolbar** (`GlassToolbar`) with two icon buttons, Share and Profile, and **a floating tab bar** (`GlassTabBar`) with Home, Explore and Settings. "Get started" selects Explore and Profile selects Settings.
+- **A layout that fits.** The toolbar, the card and the tab bar stack inside the safe area (status and navigation bars, display cutout). The card is centered in the space between the bars, and when that space is too short for it (a phone in landscape, a large font size) it scrolls instead of running under the tab bar.
 - **Light and dark.** The card follows the system theme. The bars sit over the wallpaper's dark top and bottom, so they are dark glass in both themes and the status bar icons stay light.
 - **Accessibility.** The title is a heading, the icon buttons have content descriptions and the switch carries its own label ("Frosted"), so TalkBack reads each control once. Glass refraction never touches the text: labels draw above the glass.
 - **Default refraction.** Nothing sets `refraction`, so every surface follows its own size, `min(60 dp, 0.75 × the shorter side)`: the card gets the full 60 dp, the 44 dp buttons 33 dp, the 52 dp toolbar clusters 39 dp and the 62 dp tab bar 46.5 dp.
 
 ## Run it
 
-Needs JDK 17 and the Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`). The glass itself needs Android 13 (API 33) or newer; Android 7 to 12 draw the library's fallback material.
+Needs JDK 17 and the Android SDK. Set `ANDROID_HOME`, which covers both builds: inside this repository the example includes the library's own Gradle build from [`platforms/android`](../../../platforms/android), and that build looks for the SDK on its own. With `sdk.dir` instead, put it in both `examples/compose/HelloGlass/local.properties` and `platforms/android/local.properties`. The glass itself needs Android 13 (API 33) or newer; Android 7 to 12 draw the library's fallback material.
 
 ```sh
 cd examples/compose/HelloGlass
@@ -71,5 +72,7 @@ dependencyResolutionManagement {
     }
 }
 ```
+
+The repository serves the build of the `1.0.0` release. A build that resolved `1.0.0` from it before the release got a pre-release copy (it lacks `GlassSwitch(label = …)`, which this app uses, and the size-based refraction) and Gradle keeps that copy in its cache: run `./gradlew --refresh-dependencies :app:assembleDebug` once to fetch the release.
 
 Once the `1.0.0` release tag is on GitHub, JitPack works too: add `maven("https://jitpack.io")` and depend on `com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0`. The [Android guide](../../../docs/android.md#install) has every install route, including the plain AAR.

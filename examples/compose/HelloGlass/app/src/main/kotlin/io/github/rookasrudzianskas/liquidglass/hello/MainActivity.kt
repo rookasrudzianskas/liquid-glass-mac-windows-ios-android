@@ -7,15 +7,17 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
@@ -95,59 +97,64 @@ fun HelloGlass() {
             )
         }
 
-        // The bars float over the wallpaper's dark top and bottom, so they are dark glass in either theme.
-        GlassToolbar(
-            Modifier
-                .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(start = 20.dp, top = 8.dp, end = 20.dp)
-                .fillMaxWidth(),
-            appearance = GlassAppearance.Dark,
-        ) {
-            GlassButton(Icons.Filled.Share, contentDescription = "Share", onClick = { context.startActivity(shareIntent(GUIDE)) })
-            GlassToolbarSpacer()
-            GlassButton(Icons.Filled.AccountCircle, contentDescription = "Profile", onClick = { tab = 2 })
-        }
+        // Toolbar, card and tab bar stack inside the safe area: the card is centered in the space
+        // between the bars and scrolls when that space is too short for it (a phone in landscape,
+        // large font sizes), so it never runs under either bar.
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+            // The bars float over the wallpaper's dark top and bottom, so they are dark glass in either theme.
+            GlassToolbar(
+                Modifier
+                    .padding(start = 20.dp, top = 8.dp, end = 20.dp)
+                    .fillMaxWidth(),
+                appearance = GlassAppearance.Dark,
+            ) {
+                GlassButton(Icons.Filled.Share, contentDescription = "Share", onClick = { context.startActivity(shareIntent(GUIDE)) })
+                GlassToolbarSpacer()
+                GlassButton(Icons.Filled.AccountCircle, contentDescription = "Profile", onClick = { tab = 2 })
+            }
 
-        // The card follows the system theme: light glass with dark text, or dark glass with white text.
-        GlassSurface(
-            Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 20.dp)
-                .widthIn(max = 408.dp)
-                .fillMaxWidth(),
-            shape = GlassShape(32.dp),
-            material = if (frosted) GlassMaterial.Regular else GlassMaterial.Clear,
-        ) {
-            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    GlassText("Hello, Glass", Modifier.semantics { heading() }, style = TitleStyle)
-                    GlassText("Native glass over a live backdrop.", style = SubtitleStyle, maxLines = 1)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GlassButton("Get started", onClick = { tab = 1 }, tint = Color(0xFF0A84FF))
-                    GlassButton("Learn more", onClick = { uriHandler.openUri(GUIDE) })
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // TalkBack reads the switch's own label, so the visible one is hidden from it.
-                    GlassText("Frosted", Modifier.weight(1f).clearAndSetSemantics {})
-                    GlassSwitch(checked = frosted, onCheckedChange = { frosted = it }, label = "Frosted")
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(Modifier.verticalScroll(rememberScrollState())) {
+                    // The card follows the system theme: light glass with dark text, or dark glass with white text.
+                    GlassSurface(
+                        Modifier
+                            .padding(horizontal = 20.dp)
+                            .widthIn(max = 408.dp)
+                            .fillMaxWidth(),
+                        shape = GlassShape(32.dp),
+                        material = if (frosted) GlassMaterial.Regular else GlassMaterial.Clear,
+                    ) {
+                        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                GlassText("Hello, Glass", Modifier.semantics { heading() }, style = TitleStyle)
+                                GlassText("Native glass over a live backdrop.", style = SubtitleStyle, maxLines = 1)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                GlassButton("Get started", onClick = { tab = 1 }, tint = Color(0xFF0A84FF))
+                                GlassButton("Learn more", onClick = { uriHandler.openUri(GUIDE) })
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // TalkBack reads the switch's own label, so the visible one is hidden from it.
+                                GlassText("Frosted", Modifier.weight(1f).clearAndSetSemantics {})
+                                GlassSwitch(checked = frosted, onCheckedChange = { frosted = it }, label = "Frosted")
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        GlassTabBar(
-            tabs = Tabs,
-            selectedIndex = tab,
-            onSelectedIndexChange = { tab = it },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
-                .widthIn(max = 400.dp)
-                .fillMaxWidth(),
-            appearance = GlassAppearance.Dark,
-        )
+            GlassTabBar(
+                tabs = Tabs,
+                selectedIndex = tab,
+                onSelectedIndexChange = { tab = it },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth(),
+                appearance = GlassAppearance.Dark,
+            )
+        }
     }
 }
 
