@@ -6,14 +6,16 @@ using System.Windows.Media;
 namespace LiquidGlass.Wpf.Rendering;
 
 /// <summary>
-/// Elastic, illuminated response to pointer, touch and keyboard (OPTICS §6): the surface grows under a press,
+/// Elastic, illuminated response to pointer, touch and keyboard: the surface grows under a press,
 /// stretches toward a drag with constant volume, settles with gel-like overshoot on release, and lights up beneath
 /// the pointer. Input is read from <c>input</c> (the surface, or the control whose template it belongs to); the
 /// innermost interactive surface claims a press.
 /// </summary>
 internal sealed class GlassInteraction : IGlassAnimation
 {
-    [ThreadStatic] private static RoutedEventArgs? _claimed;
+    // The press that the innermost interactive surface claimed, so enclosing surfaces the same event bubbles through
+    // leave it alone. Held weakly: the event's source must not keep a closed window alive until the next press.
+    [ThreadStatic] private static WeakReference<RoutedEventArgs>? _claimed;
 
     private static readonly double HoverGlow = GlassInteractionModel.Glow(1, 1, false).Hover;
 
@@ -99,7 +101,7 @@ internal sealed class GlassInteraction : IGlassAnimation
         _surface.Lens?.SetGlow(_glowPoint, 0);
     }
 
-    public bool Tick(double dt)
+    bool IGlassAnimation.Tick(double dt)
     {
         var width = Math.Max(1, _surface.ActualWidth);
         var height = Math.Max(1, _surface.ActualHeight);
@@ -152,8 +154,8 @@ internal sealed class GlassInteraction : IGlassAnimation
 
     private void OnDown(object sender, MouseButtonEventArgs e)
     {
-        if (ReferenceEquals(_claimed, e) || !_input.IsEnabled || !_surface.IsInteractive) return;
-        _claimed = e;
+        if (IsClaimed(e) || !_input.IsEnabled || !_surface.IsInteractive) return;
+        Claim(e);
         _pointer = true;
         _pressPoint = e.GetPosition(_surface);
         _glowPoint = LensPoint();
@@ -201,13 +203,16 @@ internal sealed class GlassInteraction : IGlassAnimation
 
     private void OnLostCapture(object sender, MouseEventArgs e)
     {
-        if (_pointer && _capturedByUs) Release();
+        // Whoever held the capture (this surface, or a button that captured the press before it), losing it ends the
+        // press: the window was deactivated, or another element took the mouse, and no button-up will arrive here. On
+        // an ordinary release the button lets go of the capture first and the button-up then finds nothing to do.
+        if (_pointer && !_input.IsMouseCaptureWithin) Release();
     }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Space or Key.Enter) || e.IsRepeat || ReferenceEquals(_claimed, e) || IsHeld || !_input.IsEnabled || !_surface.IsInteractive) return;
-        _claimed = e;
+        if (e.Key is not (Key.Space or Key.Enter) || e.IsRepeat || IsClaimed(e) || IsHeld || !_input.IsEnabled || !_surface.IsInteractive) return;
+        Claim(e);
         _keyboard = true;
         _glowPoint = new Point(_surface.ActualWidth / 2, _surface.ActualHeight / 2);
         var motion = GlassResolve.Motion(_surface);
@@ -265,6 +270,14 @@ internal sealed class GlassInteraction : IGlassAnimation
     {
         _glow.Animate(target, spring);
         GlassFrameLoop.Start(this);
+    }
+
+    private static bool IsClaimed(RoutedEventArgs e) => _claimed is not null && _claimed.TryGetTarget(out var claimed) && ReferenceEquals(claimed, e);
+
+    private static void Claim(RoutedEventArgs e)
+    {
+        if (_claimed is null) _claimed = new WeakReference<RoutedEventArgs>(e);
+        else _claimed.SetTarget(e);
     }
 
     private Point LensPoint() => _surface.Lens is { } lens ? Mouse.GetPosition(lens) : Mouse.GetPosition(_surface);

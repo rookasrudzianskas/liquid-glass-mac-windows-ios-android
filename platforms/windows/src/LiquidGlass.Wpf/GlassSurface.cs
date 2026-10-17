@@ -167,6 +167,9 @@ public class GlassSurface : ContentControl
     /// <summary>The lens in the template.</summary>
     internal GlassLens? Lens { get; private set; }
 
+    /// <summary>The press response, while the surface is interactive.</summary>
+    internal GlassInteraction? Interaction => _interaction;
+
     /// <summary>
     /// The element whose input drives the press response: the control a surface belongs to (for example a button
     /// whose template it is), or the surface itself.
@@ -298,7 +301,8 @@ public class GlassSurface : ContentControl
         {
             var scene = GlassScene.FindScene(_surface);
             if (scene is null || !_surface.IsLoaded || !_surface.IsDescendantOf(scene)) return;
-            var origin = _surface.TransformToAncestor(scene).Transform(default);
+            var toScene = _surface.TransformToAncestor(scene);
+            var origin = toScene.Transform(default);
             var size = _surface.RenderSize;
             if (_origin is not { } previous)
             {
@@ -307,8 +311,10 @@ public class GlassSurface : ContentControl
                 return;
             }
             if (Near(previous, origin) && size == _size) return;
-            // The current outline, expressed in the surface's new coordinates, springs to the new bounds.
-            var shift = previous - origin;
+            // The current outline, expressed in the surface's new coordinates, springs to the new bounds. Mapping the
+            // old origin back through the surface's transform keeps the direction right in a right-to-left subtree,
+            // whose coordinates run against the scene's.
+            var shift = toScene.Inverse?.Transform(previous) is { } local ? (Vector)local : previous - origin;
             var running = GlassFrameLoop.IsRunning(this);
             var oldSize = _size;
             _origin = origin;

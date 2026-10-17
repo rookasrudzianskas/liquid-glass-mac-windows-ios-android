@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using LiquidGlass.Wpf.Rendering;
 using Xunit;
 
@@ -122,13 +122,86 @@ public class InteractionTests
         });
     }
 
-    /// <summary>Runs the dispatcher (and so rendering and the frame loop) for <paramref name="seconds"/>.</summary>
-    private static void Wait(double seconds)
+    [Fact]
+    public void LosingTheMouseCaptureReleasesAPress()
     {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer(TimeSpan.FromSeconds(seconds), DispatcherPriority.Background, (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-        timer.Stop();
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                var scene = new GlassScene { Content = new Border { Background = Brushes.SteelBlue } };
+                scene.Children.Add(button);
+                var window = Sta.Show(scene, 400, 200);
+                var surface = (GlassSurface)button.Template.FindName("PART_Surface", button);
+                var interaction = surface.Interaction;
+                Assert.NotNull(interaction);
+
+                // A button captures the mouse itself before the glass sees the press (ButtonBase does on a real press).
+                Assert.True(button.CaptureMouse(), "the test needs the mouse capture");
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
+                Wait(0.3);
+                Assert.True(surface.IsPressed);
+
+                // The capture goes (the window was deactivated, another element took the mouse) and no button-up follows.
+                button.ReleaseMouseCapture();
+                Wait(2.0);
+                Assert.False(surface.IsPressed);
+                Assert.False(GlassFrameLoop.IsRunning(interaction!), "the press should settle and stop the frame loop");
+                window.Close();
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
     }
+
+    [Fact]
+    public void APressDoesNotKeepAClosedWindowAlive()
+    {
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var (window, press) = PressAndClose();
+                for (var i = 0; i < 3; i++)
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                    Sta.Pump();
+                }
+                Assert.False(press.IsAlive, "the press event is still referenced after the window closed");
+                Assert.False(window.IsAlive, "the closed window is still referenced");
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (WeakReference Window, WeakReference Press) PressAndClose()
+    {
+        var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var scene = new GlassScene { Content = new Border { Background = Brushes.SteelBlue } };
+        scene.Children.Add(button);
+        var window = Sta.Show(scene, 400, 200);
+        var down = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent };
+        button.RaiseEvent(down);
+        Wait(0.3);
+        button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+        // Let the release settle, so the frame loop stops after its last frame.
+        Wait(1.6);
+        Keyboard.ClearFocus();
+        window.Close();
+        Sta.Pump();
+        return (new WeakReference(window), new WeakReference(down));
+    }
+
+    private static void Wait(double seconds) => Sta.Wait(seconds);
 }

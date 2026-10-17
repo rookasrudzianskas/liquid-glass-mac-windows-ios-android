@@ -42,8 +42,8 @@ public sealed class GlassLens : FrameworkElement
     /// <summary>Space past the outline the side shade and the safety clip cover, in layout units.</summary>
     private const double RimReach = 3;
 
-    /// <summary>The frost blur: WPF's Gaussian uses σ = radius / 3, so 22 gives σ = 7.33 (OPTICS §3).</summary>
-    private const double FrostRadius = 22;
+    /// <summary>The frost blur of Regular glass, σ in layout units (the spec's 7.33: a WPF blur radius of 22 at 100%).</summary>
+    private const double FrostSigma = 22 / 3.0;
 
     // Shader path: the effect runs over an empty rectangle and reads the frosted copy through a brush, so WPF
     // realizes the copy (and its blur) as a brush input instead of nesting the blur inside the effect's layer.
@@ -59,7 +59,8 @@ public sealed class GlassLens : FrameworkElement
     private readonly Border _frame = new() { ClipToBounds = true };
     private readonly Grid _sources = new();
     private readonly LensOverlay _overlay;
-    private readonly BlurEffect _frost = new() { Radius = FrostRadius, KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Quality };
+    private readonly List<Border> _frostPasses = new();
+    private double[] _frostRadii = Array.Empty<double>();
     private readonly List<BackdropCopy> _layers = new();
     private GlassShaderEffect? _shader;
     private GlassScene? _scene;
@@ -142,6 +143,9 @@ public sealed class GlassLens : FrameworkElement
     internal bool IsNested => _nested;
 
     internal double GlowAmount => _glowAmount;
+
+    /// <summary>What the lens draws when the shader does not: fill, border, rim, glow and focus ring.</summary>
+    internal LensOverlay Overlay => _overlay;
 
     /// <summary>Visual children: the copy, the shader glass and the overlay.</summary>
     protected override int VisualChildrenCount => 3;
@@ -253,6 +257,7 @@ public sealed class GlassLens : FrameworkElement
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        GlassShaderLibrary.EnsureBadShaderHandler();
         GlassSystemSettings.Changed -= OnSettingsChanged;
         GlassSystemSettings.Changed += OnSettingsChanged;
         GlassSystemSettings.Watch(this);
@@ -299,7 +304,9 @@ public sealed class GlassLens : FrameworkElement
         var shape = ShapeBounds;
         var scale = GlassResolve.Scale(this);
         var regular = Material == GlassMaterial.Regular;
-        var frostPad = regular ? GlassResolve.CeilToPixels(FrostRadius + 1, scale) : 0;
+        // One WPF blur covers the frost up to 450% display scale; beyond, nested passes keep σ exact.
+        var frost = regular ? BlurPasses.Radii(FrostSigma, scale) : Array.Empty<double>();
+        var frostPad = regular ? GlassResolve.CeilToPixels(BlurPasses.Reach(frost) + 1, scale) : 0;
         switch (Mode)
         {
             case GlassLensMode.Shader:
@@ -333,14 +340,43 @@ public sealed class GlassLens : FrameworkElement
                 _copyHost.Visibility = Visibility.Collapsed;
                 break;
         }
-        _sources.Margin = new Thickness(-frostPad);
-        _sources.Effect = regular ? _frost : null;
+        SetFrost(frost, frostPad);
         UpdateShaderConstants(shape);
         _overlay.Refresh();
         InvalidateMeasure();
         InvalidateArrange();
         if (_sourcesDirty) RebuildSources();
         _scene?.RequestRealign();
+    }
+
+    /// <summary>Blurs the copy by the frost passes (none for Clear) and extends it by <paramref name="pad"/> past the lens.</summary>
+    private void SetFrost(double[] radii, double pad)
+    {
+        if (!System.Linq.Enumerable.SequenceEqual(radii, _frostRadii))
+        {
+            _frostRadii = radii;
+            _frame.Child = null;
+            foreach (var wrapper in _frostPasses) wrapper.Child = null;
+            _frostPasses.Clear();
+            FrameworkElement content = _sources;
+            for (var pass = 0; pass < radii.Length; pass++)
+            {
+                var blur = new BlurEffect { Radius = radii[pass], KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Quality };
+                if (pass == 0)
+                {
+                    _sources.Effect = blur;
+                    continue;
+                }
+                var wrapper = new Border { Child = content, Effect = blur };
+                _frostPasses.Add(wrapper);
+                content = wrapper;
+            }
+            if (radii.Length == 0) _sources.Effect = null;
+            _frame.Child = content;
+        }
+        var outermost = _frostPasses.Count > 0 ? (FrameworkElement)_frostPasses[_frostPasses.Count - 1] : _sources;
+        outermost.Margin = new Thickness(-pad);
+        if (!ReferenceEquals(outermost, _sources)) _sources.Margin = default;
     }
 
     private GlassLensMode ResolveMode()

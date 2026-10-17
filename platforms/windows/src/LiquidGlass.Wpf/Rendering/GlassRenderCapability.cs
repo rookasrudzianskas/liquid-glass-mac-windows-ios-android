@@ -15,11 +15,11 @@ internal static class GlassRenderCapability
 
     /// <summary>
     /// True when pixel shader 3.0 runs in hardware for <paramref name="visual"/>: a compiled shader exists, the GPU
-    /// supports it, and neither the process nor the visual's window renders in software.
+    /// supports it, the driver has not rejected it, and neither the process nor the visual's window renders in software.
     /// </summary>
     public static bool CanUseShader(Visual visual)
     {
-        if (GlassShaderLibrary.SurfacePixelShader is null) return false;
+        if (GlassShaderLibrary.SurfacePixelShader is null || GlassShaderLibrary.ShaderRejected) return false;
         if (RenderOptions.ProcessRenderMode == RenderMode.SoftwareOnly) return false;
         if (RenderCapability.Tier >> 16 < 2) return false;
         if (!RenderCapability.IsPixelShaderVersionSupported(3, 0)) return false;

@@ -56,6 +56,9 @@ internal static class GlassSystemSettings
     /// <summary>Replaces the animation setting, for tests on machines where animations are off.</summary>
     internal static bool? AnimationsOverride { get; set; }
 
+    /// <summary>Raises <see cref="Changed"/>: something glass depends on changed (for example, the driver rejected the shader).</summary>
+    internal static void NotifyChanged() => Changed?.Invoke(null, EventArgs.Empty);
+
     /// <summary>Watches the window that hosts <paramref name="visual"/> for setting changes.</summary>
     public static void Watch(Visual visual)
     {

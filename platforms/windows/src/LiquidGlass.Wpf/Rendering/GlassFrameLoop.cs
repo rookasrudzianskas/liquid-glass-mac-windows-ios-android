@@ -63,6 +63,8 @@ internal static class GlassFrameLoop
             if (!state.Active.Contains(animation)) continue;
             if (!animation.Tick(dt)) state.Active.Remove(animation);
         }
+        // Holding the frame's animations past it would keep a closed window alive until the next frame on this thread.
+        state.Ticking.Clear();
         _afterTick?.Invoke();
         if (state.Active.Count > 0) return;
         CompositionTarget.Rendering -= OnRendering;

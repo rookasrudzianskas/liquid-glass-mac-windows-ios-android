@@ -16,10 +16,17 @@ public enum GlassAppearance
 /// <summary>How glass is drawn.</summary>
 public enum GlassRenderMode
 {
-    /// <summary>The pixel shader where pixel shader 3.0 runs in hardware, otherwise the fallback material.</summary>
+    /// <summary>
+    /// The pixel shader where it can run (pixel shader 3.0 in hardware, render tier 2, a window that does not render in
+    /// software, a shader the driver accepted), otherwise the fallback material.
+    /// </summary>
     Automatic,
 
-    /// <summary>Always try the pixel shader; still falls back where it cannot run.</summary>
+    /// <summary>
+    /// The same as <see cref="Automatic"/>: the pixel shader wherever it can run, otherwise the fallback material. Glass
+    /// never forces the shader where it cannot run, because there it would draw nothing; use this value to state the
+    /// intent in a style or to undo an inherited <see cref="Fallback"/>.
+    /// </summary>
     Shader,
 
     /// <summary>Always draw the fallback material: platform blur, a fitted veil and the exact rim light.</summary>

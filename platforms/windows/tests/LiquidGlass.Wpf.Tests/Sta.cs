@@ -44,6 +44,16 @@ internal static class Sta
         }
     }
 
+    /// <summary>Runs the dispatcher (and so rendering and the frame loop) for <paramref name="seconds"/>.</summary>
+    public static void Wait(double seconds)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(TimeSpan.FromSeconds(seconds), DispatcherPriority.Background, (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+    }
+
     /// <summary>Shows <paramref name="content"/> in a borderless window and waits until it is loaded.</summary>
     public static Window Show(UIElement content, double width = 640, double height = 420)
     {

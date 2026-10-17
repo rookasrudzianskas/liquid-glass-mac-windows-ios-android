@@ -7,8 +7,8 @@ namespace LiquidGlass.Wpf.Rendering;
 
 /// <summary>
 /// Draws what a <see cref="GlassLens"/> paints over its copy of the backdrop when the pixel shader is not drawing it:
-/// the veil or opaque fill, the pointer glow, the rim light (rasterized exactly as the shader computes it), the
-/// increased-contrast border and the keyboard focus ring.
+/// the veil or opaque fill, the increased-contrast border, the rim light (rasterized exactly as the shader computes
+/// it), the pointer glow (in the shader's order) and the keyboard focus ring.
 /// </summary>
 internal sealed class LensOverlay : FrameworkElement
 {
@@ -25,6 +25,9 @@ internal sealed class LensOverlay : FrameworkElement
         Focusable = false;
     }
 
+    /// <summary>The rasterized rim light, while the lens draws one.</summary>
+    internal BitmapSource? RimBitmap => _rim;
+
     /// <summary>Recomputes the cached outline and rim after the lens changed.</summary>
     public void Refresh()
     {
@@ -32,7 +35,9 @@ internal sealed class LensOverlay : FrameworkElement
         _outline = GlassGeometry.Create(shape, _lens.Radius);
         if (_lens.Mode is GlassLensMode.Fallback or GlassLensMode.Opaque && shape.Width > 0 && shape.Height > 0)
         {
-            var scale = GlassResolve.Scale(this);
+            // The lens's scale, not this element's: after a DPI change WPF notifies a parent before it updates its
+            // children, so while the lens refreshes from its own notification this element still reports the old DPI.
+            var scale = GlassResolve.Scale(_lens);
             var key = new RimKey(shape.Size, _lens.Radius, _lens.IsDark, scale, _lens.EffectiveTint);
             if (_rim is null || !key.Equals(_rimKey))
             {
@@ -51,6 +56,13 @@ internal sealed class LensOverlay : FrameworkElement
             _rimImage = null;
         }
         InvalidateVisual();
+    }
+
+    /// <inheritdoc />
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        Refresh();
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -85,6 +97,18 @@ internal sealed class LensOverlay : FrameworkElement
 
     private void DrawLight(DrawingContext dc, Rect shape, bool dark)
     {
+        // Border, rim, glow: the order of the shader and of the other ports.
+        if (_lens.IncreaseContrast)
+        {
+            var pen = new Pen(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.ContrastBorder(dark))), 1);
+            dc.DrawGeometry(null, pen, GlassGeometry.Inflate(shape, _lens.Radius, -0.5));
+        }
+        if (_rim is not null && _rimImage is not null)
+        {
+            var pixel = _rimImage.Pixel;
+            dc.DrawImage(_rim, new Rect(shape.X - _rimImage.Padding * pixel, shape.Y - _rimImage.Padding * pixel,
+                _rimImage.PixelWidth * pixel, _rimImage.PixelHeight * pixel));
+        }
         if (_lens.GlowAmount > 1e-3)
         {
             var glow = GlassInteractionModel.Glow(shape.Width, shape.Height, dark);
@@ -100,17 +124,6 @@ internal sealed class LensOverlay : FrameworkElement
             brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)Math.Round(alpha * 255), 255, 255, 255), 0));
             brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1));
             dc.DrawGeometry(brush, null, _outline);
-        }
-        if (_rim is not null && _rimImage is not null)
-        {
-            var pixel = _rimImage.Pixel;
-            dc.DrawImage(_rim, new Rect(shape.X - _rimImage.Padding * pixel, shape.Y - _rimImage.Padding * pixel,
-                _rimImage.PixelWidth * pixel, _rimImage.PixelHeight * pixel));
-        }
-        if (_lens.IncreaseContrast)
-        {
-            var pen = new Pen(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.ContrastBorder(dark))), 1);
-            dc.DrawGeometry(null, pen, GlassGeometry.Inflate(shape, _lens.Radius, -0.5));
         }
     }
 
@@ -130,7 +143,7 @@ internal sealed class LensOverlay : FrameworkElement
     }
 
     /// <summary>
-    /// Tinted glass is nearly opaque pigment that transmits the backdrop's luminance (OPTICS §3); without the shader,
+    /// Tinted glass is nearly opaque pigment that transmits the backdrop's luminance; without the shader,
     /// the pigment at its body strength over the frosted copy reads the same way.
     /// </summary>
     private Brush TintFill(Color tint)

@@ -3,9 +3,10 @@
 // Applied by GlassShaderEffect to a surface's lens: a live copy of the scene's
 // backdrop (and of any glass beneath) laid out `margin` beyond the surface on
 // every side, frosted by WPF's BlurEffect for Regular glass. The shader
-// refracts and tones it, adds the rim light, the pointer glow and the
-// increased-contrast border, and returns premultiplied glass that WPF
-// composites over the real backdrop (OPTICS §5 with `base` drawn by WPF).
+// refracts and tones it, adds the increased-contrast border, the rim light
+// and the pointer glow (in that order, as on every port), and returns
+// premultiplied glass that WPF composites over the real backdrop (the
+// composite of spec/OPTICS.md with `base` drawn by WPF).
 
 #include "LiquidGlass.hlsli"
 
@@ -45,8 +46,11 @@ float4 main(float2 uv : TEXCOORD) : COLOR
     float2 lens = LensGeometry.xy;
     float2 size = LensGeometry.zw;
     // One device pixel in layout units, measured from the texture itself, so
-    // DPI and render transforms are always accounted for.
-    float pixel = max(lens.x * abs(DdxUvDdyUv.x), lens.y * abs(DdxUvDdyUv.w));
+    // DPI and render transforms are always accounted for: the larger of the
+    // layout lengths one device pixel spans along x and along y. Each is the
+    // length of the full derivative vector, so rotation (where du/dy and dv/dx
+    // carry it all) and skew count as well as scale.
+    float pixel = max(max(length(lens * DdxUvDdyUv.xy), length(lens * DdxUvDdyUv.zw)), 1e-4);
     float2 p = uv * lens - 0.5 * lens;
     float3 field = lgShapeField(p, size, ShapeOptics.xy);
     // The rim's outer shade ends one unit (plus a pixel) outside the outline.
@@ -62,14 +66,18 @@ float4 main(float2 uv : TEXCOORD) : COLOR
         src.rgb = lgFrostColor(src.rgb, fill.rgb, dark);
     }
 
-    float4 glass = lgCompose(src, 0, field, regular, dark, MaterialOptics.z, TintOptics.rgb, TintOptics.a, pixel);
-
+    float4 glass = lgComposeBody(src, 0, field, regular, dark, MaterialOptics.z, TintOptics.rgb, TintOptics.a, pixel);
     float cover = lgCoverage(field.x, pixel);
-    float4 glow = lgGlow(p, GlowOptics.xy, max(GlowOptics.z, 1e-3), dark, GlowOptics.w, cover);
-    glass = glow + glass * (1.0 - glow.a);
 
-    // Increased contrast: a 1-unit inner border (black 0.18 light, white 0.28 dark).
+    // Increased contrast: a 1-unit inner border (black 0.18 light, white 0.28
+    // dark), beneath the rim light so the specular line keeps its brightness.
     float band = (cover - lgCoverage(field.x + 1.0, pixel)) * MaterialOptics.w;
     float4 border = float4(dark.xxx, 1.0) * lerp(0.18, 0.28, dark) * band;
-    return border + glass * (1.0 - border.a);
+    glass = border + glass * (1.0 - border.a);
+
+    float4 rim = lgRimOverlay(field, dark, pixel, TintOptics.rgb, TintOptics.a);
+    glass = rim + glass * (1.0 - rim.a);
+
+    float4 glow = lgGlow(p, GlowOptics.xy, max(GlowOptics.z, 1e-3), dark, GlowOptics.w, cover);
+    return glow + glass * (1.0 - glow.a);
 }

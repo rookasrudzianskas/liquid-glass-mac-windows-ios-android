@@ -19,6 +19,10 @@ internal static class GlassShaderLibrary
 
     private static readonly Lazy<LoadedShader> Surface = new(LoadSurface);
 
+    // WPF keeps InvalidPixelShaderEncountered per UI thread (on its media context), so each thread subscribes once.
+    [ThreadStatic] private static bool _handlerAdded;
+    private static volatile bool _rejected;
+
     /// <summary>The frozen surface shader, or null when it is unavailable.</summary>
     public static PixelShader? SurfacePixelShader => Surface.Value.Shader;
 
@@ -27,6 +31,40 @@ internal static class GlassShaderLibrary
 
     /// <summary>A one-line description of how the shader was loaded, or why it could not be.</summary>
     public static string SurfaceStatus => Surface.Value.Status;
+
+    /// <summary>
+    /// True once the graphics driver refused to create a pixel shader on any UI thread of the process. WPF does not
+    /// say which shader failed, so glass assumes its own and draws the fallback material from then on.
+    /// </summary>
+    public static bool ShaderRejected => _rejected;
+
+    /// <summary>
+    /// Subscribes to <see cref="PixelShader.InvalidPixelShaderEncountered"/> on the calling UI thread, once. Without a
+    /// handler WPF throws on the UI thread when a driver rejects a shader (after drawing the effect as a pass-through,
+    /// which for glass would be nothing); with it, every lens switches to the fallback material.
+    /// </summary>
+    public static void EnsureBadShaderHandler()
+    {
+        if (_handlerAdded) return;
+        _handlerAdded = true;
+        PixelShader.InvalidPixelShaderEncountered += (_, _) => MarkShaderRejected();
+    }
+
+    /// <summary>Records that the shader cannot run here and tells every lens to draw the fallback material.</summary>
+    internal static void MarkShaderRejected()
+    {
+        if (_rejected) return;
+        _rejected = true;
+        GlassSystemSettings.NotifyChanged();
+    }
+
+    /// <summary>Forgets a rejection (tests only).</summary>
+    internal static void ResetShaderRejected()
+    {
+        if (!_rejected) return;
+        _rejected = false;
+        GlassSystemSettings.NotifyChanged();
+    }
 
     /// <summary>SHA-256 (hex) of the embedded surface shader sources, as fxc's output records it.</summary>
     public static string SurfaceSourceHash() => Hash(ReadResource(SurfaceShader), ReadResource(Library));

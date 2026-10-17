@@ -19,5 +19,6 @@ public static class GlassDiagnostics
     /// <summary>A summary of the rendering tier, pixel shader support and shader status.</summary>
     public static string Describe()
         => $"tier {RenderCapability.Tier >> 16}, ps_3_0 {(RenderCapability.IsPixelShaderVersionSupported(3, 0) ? "supported" : "unsupported")} " +
-           $"({RenderCapability.MaxPixelShaderInstructionSlots(3, 0)} slots), shader {ShaderSource}: {ShaderStatus}";
+           $"({RenderCapability.MaxPixelShaderInstructionSlots(3, 0)} slots), shader {ShaderSource}: {ShaderStatus}" +
+           (GlassShaderLibrary.ShaderRejected ? "; rejected by the graphics driver, so glass draws the fallback material" : "");
 }

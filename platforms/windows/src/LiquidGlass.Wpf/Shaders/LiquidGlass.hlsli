@@ -161,10 +161,13 @@ float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float ti
 // ---------------------------------------------------------------------------
 // Composite
 
-// src: refracted backdrop at p + lgRefractionOffset (unpremul; regular glass
-// passes lgFrostColor). base: unrefracted backdrop at p (premul).
-float4 lgCompose(float4 src, float4 base, float3 field, float material, float dark, float nested,
-                 float3 tint, float tintOn, float pixel)
+// The glass body without the rim light: lgCompose up to (not including) the
+// rim, so that a port can paint layers between the two (the WPF shader puts
+// the increased-contrast border there, as the other ports do). Not in the
+// canonical GLSL, where lgCompose is a single function; lgCompose below is
+// exactly lgComposeBody followed by the rim.
+float4 lgComposeBody(float4 src, float4 base, float3 field, float material, float dark, float nested,
+                     float3 tint, float tintOn, float pixel)
 {
     float3 rgb = lgMaterialColor(src.rgb, material, dark, nested);
     float a = src.a;
@@ -175,7 +178,15 @@ float4 lgCompose(float4 src, float4 base, float3 field, float material, float da
         a = body + (1.0 - body) * a;
     }
     float ga = a * lgCoverage(field.x, pixel);
-    float4 result = float4(rgb * ga, ga) + base * (1.0 - ga);
+    return float4(rgb * ga, ga) + base * (1.0 - ga);
+}
+
+// src: refracted backdrop at p + lgRefractionOffset (unpremul; regular glass
+// passes lgFrostColor). base: unrefracted backdrop at p (premul).
+float4 lgCompose(float4 src, float4 base, float3 field, float material, float dark, float nested,
+                 float3 tint, float tintOn, float pixel)
+{
+    float4 result = lgComposeBody(src, base, field, material, dark, nested, tint, tintOn, pixel);
     float4 rim = lgRimOverlay(field, dark, pixel, tint, tintOn);
     return rim + result * (1.0 - rim.a);
 }

@@ -9,9 +9,10 @@ using LiquidGlass.Wpf.Rendering;
 namespace LiquidGlass.Wpf;
 
 /// <summary>
-/// Progressive edge blur over the scene's backdrop (OPTICS §7): six blur levels whose strength rises toward
-/// <see cref="Edge"/> across a band <see cref="Size"/> units deep, so content scrolling under a toolbar or tab bar
-/// softens instead of clashing with it. Glass above the band refracts the blurred backdrop.
+/// Progressive edge blur over the scene's backdrop: six blur levels whose strength rises toward
+/// <see cref="Edge"/> across a band <see cref="Size"/> units deep (level <c>i</c> has σ = <see cref="Blur"/> × (i/6)²),
+/// so content scrolling under a toolbar or tab bar softens instead of clashing with it. Glass above the band refracts
+/// the blurred backdrop.
 /// </summary>
 /// <remarks>
 /// Place it among a <see cref="GlassScene"/>'s children, stretched over the area whose edge should blur; it draws only
@@ -35,10 +36,16 @@ public class GlassProgressiveBlur : FrameworkElement
         new FrameworkPropertyMetadata(GlassProgressive.DefaultSize, FrameworkPropertyMetadataOptions.AffectsMeasure, OnBandChanged),
         v => v is double d && d >= 0 && !double.IsInfinity(d));
 
-    /// <summary>Gaussian σ at the edge, in units. Default 20.</summary>
+    /// <summary>Gaussian σ at the edge, in units, from 0 to <see cref="MaxBlur"/>. Default 20.</summary>
     public static readonly DependencyProperty BlurProperty = DependencyProperty.Register(
         nameof(Blur), typeof(double), typeof(GlassProgressiveBlur),
-        new FrameworkPropertyMetadata(GlassProgressive.DefaultBlur, OnBandChanged), v => v is double d && d >= 0 && d <= 33);
+        new FrameworkPropertyMetadata(GlassProgressive.DefaultBlur, OnBandChanged), v => v is double d && d >= 0 && d <= MaxBlur);
+
+    /// <summary>
+    /// The largest <see cref="Blur"/>: 33 units. It renders exactly at every display scale (WPF's blur is split into
+    /// nested passes where one is not wide enough), and keeps the strongest level to a few passes even at 300%.
+    /// </summary>
+    public const double MaxBlur = 33;
 
     /// <summary>The element to blur. Default: the enclosing scene's backdrop.</summary>
     public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
@@ -49,6 +56,7 @@ public class GlassProgressiveBlur : FrameworkElement
     private readonly Grid _host = new() { IsHitTestVisible = false };
     private readonly List<Level> _levels = new();
     private GlassScene? _scene;
+    private double? _scaleOverride;
 
     static GlassProgressiveBlur()
     {
@@ -77,7 +85,7 @@ public class GlassProgressiveBlur : FrameworkElement
         set => SetValue(SizeProperty, value);
     }
 
-    /// <summary>Gaussian σ at the edge, in units (at most 33, the largest blur WPF renders at 100% scale).</summary>
+    /// <summary>Gaussian σ at the edge, in units (at most <see cref="MaxBlur"/>), at every display scale.</summary>
     public double Blur
     {
         get => (double)GetValue(BlurProperty);
@@ -93,6 +101,28 @@ public class GlassProgressiveBlur : FrameworkElement
 
     /// <summary>The visual glass copies to see the blurred band; it sits at this element's origin.</summary>
     internal Visual BrushTarget => _host;
+
+    /// <summary>Plans the blur passes for this display scale instead of the element's own (tests that render at another DPI).</summary>
+    internal double? ScaleOverride
+    {
+        get => _scaleOverride;
+        set
+        {
+            _scaleOverride = value;
+            Rebuild();
+        }
+    }
+
+    /// <summary>The <c>BlurEffect</c> radii of each level, strongest last.</summary>
+    internal IReadOnlyList<IReadOnlyList<double>> LevelRadii
+    {
+        get
+        {
+            var result = new List<IReadOnlyList<double>>();
+            foreach (var level in _levels) result.Add(level.Radii);
+            return result;
+        }
+    }
 
     /// <inheritdoc />
     protected override int VisualChildrenCount => 1;
@@ -119,6 +149,14 @@ public class GlassProgressiveBlur : FrameworkElement
             level.Clip.Height = band.Height;
         }
         return finalSize;
+    }
+
+    /// <inheritdoc />
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        // WPF scales a blur's radius with the display: plan the passes again for the new scale.
+        Rebuild();
     }
 
     /// <summary>Re-aligns the blurred copies with the source.</summary>
@@ -174,22 +212,31 @@ public class GlassProgressiveBlur : FrameworkElement
         Clear();
         var source = Source ?? _scene?.BackdropHost;
         if (source is null || !IsLoaded) return;
+        var scale = _scaleOverride ?? GlassResolve.Scale(this);
         for (var i = 1; i <= GlassProgressive.Levels; i++)
         {
-            // WPF's Gaussian uses σ = radius / 3 with a whole-unit radius.
-            var radius = Math.Round(3 * GlassProgressive.LevelBlur(i, Blur));
+            // WPF renders one blur of at most 100 device pixels of radius (σ = radius / 3): a level wider than that at
+            // this display scale is drawn by nested passes, innermost on the copy itself.
+            var radii = BlurPasses.Radii(GlassProgressive.LevelBlur(i, Blur), scale);
             var copy = new BackdropCopy(source);
-            copy.Rectangle.Margin = new Thickness(-(radius + 1));
-            if (radius >= 1) copy.Rectangle.Effect = new BlurEffect { Radius = radius, KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Quality };
+            FrameworkElement content = copy.Rectangle;
+            for (var pass = 0; pass < radii.Length; pass++)
+            {
+                var blur = new BlurEffect { Radius = radii[pass], KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Quality };
+                if (pass == 0) copy.Rectangle.Effect = blur;
+                else content = new Border { Child = content, Effect = blur, IsHitTestVisible = false };
+            }
+            // The copy reaches past the band as far as the passes together read.
+            content.Margin = new Thickness(-(BlurPasses.Reach(radii) + 1));
             var clip = new Border
             {
                 ClipToBounds = true,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
                 OpacityMask = Mask(i),
-                Child = copy.Rectangle,
+                Child = content,
             };
-            _levels.Add(new Level(clip, copy));
+            _levels.Add(new Level(clip, copy, radii));
             _host.Children.Add(clip);
         }
         InvalidateArrange();
@@ -218,14 +265,17 @@ public class GlassProgressiveBlur : FrameworkElement
 
     private sealed class Level
     {
-        public Level(Border clip, BackdropCopy copy)
+        public Level(Border clip, BackdropCopy copy, double[] radii)
         {
             Clip = clip;
             Copy = copy;
+            Radii = radii;
         }
 
         public Border Clip { get; }
 
         public BackdropCopy Copy { get; }
+
+        public double[] Radii { get; }
     }
 }
