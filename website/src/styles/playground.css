@@ -159,8 +159,11 @@
   text-underline-offset: 2px;
 }
 
+/* Content stays at the top of a taller grid cell (the refraction hint makes its row
+   taller), so sliders side by side line up. */
 .control {
   display: grid;
+  align-content: start;
   gap: 8px;
 }
 
@@ -174,10 +177,12 @@
   justify-content: space-between;
 }
 
+/* As tall as the Auto toggle, so every slider's label row is the same height. */
 .control__row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  min-height: 22px;
 }
 
 .control__label {

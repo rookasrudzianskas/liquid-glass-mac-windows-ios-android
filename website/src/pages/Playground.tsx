@@ -64,17 +64,25 @@ const clampInt = (v: unknown, lo: number, hi: number, fallback: number) => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
 };
 
+/**
+ * A refraction from a link: anything that is not a number (missing, "auto", empty or
+ * malformed) is Auto. Numbers keep up to two decimals, as Auto's size rule gives them.
+ */
+function parseRefraction(v: string | null): number | null {
+  const n = v === null || v.trim() === "" ? NaN : Number(v);
+  return Number.isFinite(n) ? Math.min(120, Math.max(0, Math.round(n * 100) / 100)) : DEFAULTS.refraction;
+}
+
 function parse(search: string): Settings {
   const q = new URLSearchParams(search);
   const backdrops: string[] = [...wallpaperNames, "grid", "type"];
   const b = q.get("backdrop");
   const tint = q.get("tint");
-  const refraction = q.get("refraction");
   return {
     backdrop: (b && backdrops.includes(b) ? b : DEFAULTS.backdrop) as BackdropId,
     material: q.get("material") === "clear" ? "clear" : q.get("material") === "regular" ? "regular" : DEFAULTS.material,
     appearance: (["automatic", "light", "dark"].includes(q.get("appearance") ?? "") ? q.get("appearance") : DEFAULTS.appearance) as AppearanceSetting,
-    refraction: refraction === null || refraction === "auto" ? null : clampInt(refraction, 0, 120, 60),
+    refraction: parseRefraction(q.get("refraction")),
     radius: clampInt(q.get("radius") ?? DEFAULTS.radius, 0, 120, DEFAULTS.radius),
     capsule: q.get("capsule") === "1",
     width: clampInt(q.get("width") ?? DEFAULTS.width, 60, 560, DEFAULTS.width),
@@ -284,7 +292,8 @@ function Slider({
 /**
  * Refraction is Auto until the slider moves: the glass then sets none and follows its
  * size, min(60, 0.75 × shorter side), and the slider shows that value. Moving the
- * slider sets an explicit value, used as given; Auto returns to the size rule.
+ * slider, or turning Auto off (which keeps the value Auto showed, fractions included),
+ * sets an explicit value, used as given; Auto returns to the size rule.
  */
 function RefractionControl({ value, auto, onChange }: { value: number | null; auto: number; onChange: (v: number | null) => void }) {
   const isAuto = value === null;
@@ -295,9 +304,9 @@ function RefractionControl({ value, auto, onChange }: { value: number | null; au
       value={shown}
       min={0}
       max={120}
-      valueText={isAuto ? `${shown}, automatic` : undefined}
+      valueText={isAuto ? `${shown}, automatic` : String(shown)}
       accessory={
-        <button type="button" className="pg-auto" aria-pressed={isAuto} aria-label="Auto refraction" onClick={() => onChange(isAuto ? Math.round(auto) : null)}>
+        <button type="button" className="pg-auto" aria-pressed={isAuto} aria-label="Auto refraction" onClick={() => onChange(isAuto ? auto : null)}>
           Auto
         </button>
       }

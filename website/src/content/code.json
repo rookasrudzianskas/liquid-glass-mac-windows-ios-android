@@ -15,10 +15,6 @@
     "lang": "kotlin",
     "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"{{SITE_URL}}/maven\")\n    }\n}\n\n// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
   },
-  "jitpack": {
-    "lang": "kotlin",
-    "code": "// Secondary route: JitPack builds the library on the first request after\n// the {{VERSION}} release tag is published, so that first resolve is slow.\n// The project's Maven repository is the primary install path.\n// settings.gradle.kts: repositories { maven(\"https://jitpack.io\") }\nimplementation(\"com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{{VERSION}}\")"
-  },
   "nugetCli": {
     "lang": "shellscript",
     "code": "dotnet nuget add source {{SITE_URL}}/nuget/index.json --name liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"

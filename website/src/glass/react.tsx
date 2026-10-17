@@ -182,10 +182,11 @@ export interface SurfaceProps {
 
 /**
  * The refraction a surface without one uses (OPTICS.md section 2), from the element's
- * resting (layout) size; null until the element is measured.
+ * resting (layout) size. `initial` is the value before the element is measured (the
+ * prerendered page shows it), so pass the one its styled size gives.
  */
-export function useDefaultRefraction(ref: RefObject<HTMLElement | null>): number | null {
-  const [value, setValue] = useState<number | null>(null);
+export function useDefaultRefraction(ref: RefObject<HTMLElement | null>, initial: number): number {
+  const [value, setValue] = useState(initial);
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { defaultRefraction } from "@lg/reference";
 import { Glass, GlassStage, GlassTabBar, useDefaultRefraction } from "../../glass/react";
 import { wallpaperInfo, wallpaperNames } from "../../glass/backdrop";
 import type { WallpaperName } from "../../glass/backdrop";
@@ -7,6 +8,10 @@ import type { Material } from "../../glass/renderer";
 import { useTheme } from "../../theme";
 import { Link } from "../../router";
 import { ArrowRightIcon, DownloadIcon, DropIcon, LogoMark, PaletteIcon, SparkleIcon } from "../../components/Icons";
+
+// The card as home.css lays it out, 340 by about 129, gives 60. The page is prerendered
+// with that, and the measured size takes over once the card is on screen.
+const CARD_REFRACTION = defaultRefraction(340, 129);
 
 const TINTS: { name: string; hex: string | null }[] = [
   { name: "None", hex: null },
@@ -51,7 +56,7 @@ export function Hero() {
   const [refraction, setRefraction] = useState(true);
   // With refraction on, the glass sets none and follows its size (OPTICS.md section 2).
   const cardRef = useRef<HTMLDivElement>(null);
-  const cardRefraction = useDefaultRefraction(cardRef);
+  const cardRefraction = useDefaultRefraction(cardRef, CARD_REFRACTION);
   // Until mounted the theme is unknown to React (the head script set it on
   // <html>), so markup stays theme-neutral and CSS picks the right tone.
   const current = mounted ? (picked ?? defaultWallpaper(theme)) : null;
@@ -125,7 +130,7 @@ export function Hero() {
               <div>
                 <p className="hero-card__title">Liquid Glass</p>
                 <p className="hero-card__meta">
-                  {materialName} · refraction {refraction ? (cardRefraction ?? "auto") : 0}
+                  {materialName} · refraction {refraction ? cardRefraction : 0}
                   {tintHex ? ` · ${tintName.toLowerCase()} tint` : ""}
                 </p>
               </div>
