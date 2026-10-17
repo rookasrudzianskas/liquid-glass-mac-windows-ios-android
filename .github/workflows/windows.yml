@@ -6,7 +6,8 @@ name: Windows
 # orphan branch `ci-windows`. No binaries go there: every clone of the repository that fetches all branches (Swift
 # Package Manager's cache does) would download them. Pull requests run the same checks with a read-only token and keep
 # the report as a workflow artifact. Every run keeps the complete release set (packages and all three Studio zips, built
-# as continuous-integration builds) as the `windows-release` artifact.
+# as continuous-integration builds) as the `windows-release` artifact. The `feed` job compares those packages with the
+# ones the project's NuGet feed serves (feed.txt in the report).
 on:
   push:
     branches: [main]
@@ -147,7 +148,7 @@ jobs:
         if: always()
         run: |
           # examples/wpf/HelloGlass built as a developer builds it, then launched and captured on this machine: the
-          # screenshot in its README is example/hello-glass-light.png from this report.
+          # screenshots in its README are example/hello-glass-light.png and hello-glass-dark.png from this report.
           $example = "$PWD\..\..\examples\wpf\HelloGlass"
           New-Item -ItemType Directory -Force -Path "$env:REPORT\example" | Out-Null
           dotnet build $example -c Release 2>&1 | Tee-Object -FilePath "$env:REPORT\example\build.log"
@@ -375,9 +376,41 @@ jobs:
           path: ${{ env.RELEASE }}
           if-no-files-found: warn
 
+  feed:
+    name: Project feed serves these packages
+    needs: windows
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The feed is deployed with the website (website/scripts/deploy.sh), not by this workflow. A failure here says the
+    # feed is behind this commit's packages, not that the commit is broken, so it does not fail the run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: release
+      - name: Compare the feed with these packages
+        shell: bash
+        run: |
+          mkdir -p feed
+          platforms/windows/scripts/check-feed.sh release/nuget | tee feed/feed.txt
+      - name: Show the comparison in the run summary
+        if: always()
+        shell: bash
+        run: |
+          { echo '```'; cat feed/feed.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-feed
+          path: feed
+          if-no-files-found: warn
+
   report:
     name: Publish the report to ci-windows
-    needs: windows
+    needs: [windows, feed]
     if: ${{ !cancelled() && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -387,6 +420,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: windows-report
+          path: report
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: windows-feed
           path: report
       - name: Push the report
         working-directory: report

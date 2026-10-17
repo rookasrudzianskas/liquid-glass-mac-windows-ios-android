@@ -465,6 +465,9 @@ and the canvas it moves on) in `GlassTabBar`; `PART_Host` in `GlassToolbar`; `PA
   Selection), toolbars (ToolBar), menus (the focused trigger button with ExpandCollapse, the open panel a Menu) and menu
   items (MenuItem, Invoke, Toggle) expose the expected roles and patterns. Give icon-only controls an
   `AutomationProperties.Name`; on a menu whose label changes, let the header name it rather than a fixed name.
+- **Decorative backdrops.** An `Image` in the scene's `Content` reaches screen readers as an unnamed image. Draw a
+  purely decorative wallpaper as a `Rectangle` filled with an `ImageBrush`, which UI Automation does not expose (the
+  [Hello Glass example](../examples/wpf/HelloGlass) does), and name a picture that carries meaning.
 - **Keyboard.** Tab moves between controls; Space and Enter press buttons and the press glass responds; arrows move
   tab selection, slider values and menu focus; Escape closes menus. A 2-unit focus ring follows each control's
   outline and appears only for keyboard focus.
@@ -573,10 +576,14 @@ tests, compiles the shader with fxc, captures Studio (also under a contrast them
 [Hello Glass example](../examples/wpf/HelloGlass), publishes the x64, Arm64 and self-contained Studio builds and
 smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main and every pull request that
 touches the Windows port or the example; a failed publish, a Studio run that does not exit cleanly, a package that lacks
-its license files, a target or path-mapped sources, or an example that does not build, lacks an accessible name or does
-not close cleanly fails it. Reports of pushes and manual runs land on the `ci-windows` branch (logs, test results, fxc
-output, screenshots and the release file list with checksums); every run keeps the release set itself, the packages and
-all three Studio zips, as the `windows-release` workflow artifact.
+its license files, a target or path-mapped sources, or an example that does not build, lacks an accessible name, shows
+an unnamed image to UI Automation or does not close cleanly fails it. Reports of pushes and manual runs land on the
+`ci-windows` branch (logs, test results, fxc output, screenshots and the release file list with checksums); every run
+keeps the release set itself, the packages and all three Studio zips, as the `windows-release` workflow artifact. Its
+`feed` job compares those packages with the ones the project's NuGet feed serves (`feed.txt` in the report): the
+version, the target frameworks and the package sources of the commit each was packed from. The feed is deployed with
+the website, so that job fails without failing the run; `scripts/check-feed.sh` runs the same comparison against
+`artifacts/windows/nuget` before and after a deploy.
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.

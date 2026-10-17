@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -10,9 +11,11 @@ namespace LiquidGlass.CiTools;
 
 /// <summary>
 /// Launches the Hello Glass example (examples/wpf/HelloGlass) in the light Windows app mode, checks that its controls
-/// carry their accessible names, and captures its window three times: as it opens (the frosted card; the example's
-/// README screenshot), with the card turned Clear by its "Frosted" switch, and dark after the toolbar's appearance
-/// button. Then the toolbar's profile button must select the Settings tab, and the window must close cleanly.
+/// carry their accessible names and that no image reaches UI Automation without one (the wallpaper is decorative), and
+/// captures its window three times: as it opens (the frosted card; the README's screenshot.png), with the card turned
+/// Clear by its "Frosted" switch, and dark after the toolbar's appearance button (screenshot-dark.png). Then "Get
+/// started" must select the Explore tab and the toolbar's profile button the Settings tab, and the window must close
+/// cleanly.
 /// </summary>
 internal static class ExampleCapture
 {
@@ -20,7 +23,10 @@ internal static class ExampleCapture
     private const string AppsUseLightTheme = "AppsUseLightTheme";
 
     private static readonly string[] Names =
-        { "Switch appearance", "Profile", "Hello, Glass", "Get started", "Learn more", "Frosted", "Sections", "Home", "Explore", "Settings" };
+        { "Switch appearance", "Profile", "Get started", "Learn more", "Frosted", "Sections", "Home", "Explore", "Settings" };
+
+    // The card's own name; its title text has the same, so the card is found as a GlassSurface.
+    private const string CardName = "Hello, Glass";
 
     public static int Run(string exe, string outDirectory)
     {
@@ -42,7 +48,19 @@ internal static class ExampleCapture
                 Thread.Sleep(3500);
                 var root = AutomationElement.FromHandle(hwnd);
                 foreach (var name in Names) StudioCapture.Find(root, name);
-                log.AppendLine($"accessible names present: {string.Join(", ", Names)}");
+                var card = new AndCondition(
+                    new PropertyCondition(AutomationElement.NameProperty, CardName),
+                    new PropertyCondition(AutomationElement.ClassNameProperty, "GlassSurface"));
+                if (root.FindFirst(TreeScope.Descendants, card) is null) throw new InvalidOperationException($"no GlassSurface named '{CardName}'");
+                log.AppendLine($"accessible names present: card '{CardName}', '{string.Join("', '", Names)}'");
+                var images = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Image));
+                foreach (AutomationElement image in images)
+                    if (string.IsNullOrEmpty(image.Current.Name)) throw new InvalidOperationException($"an image without a name ({image.Current.ClassName}) is a control element");
+                log.AppendLine($"images in the control view: {images.Count}, none without a name");
+                var unnamed = new List<string>();
+                foreach (AutomationElement element in root.FindAll(TreeScope.Descendants, Condition.TrueCondition))
+                    if (string.IsNullOrEmpty(element.Current.Name)) unnamed.Add($"{element.Current.LocalizedControlType} ({element.Current.ClassName})");
+                log.AppendLine($"control elements without a name: {(unnamed.Count == 0 ? "none" : string.Join(", ", unnamed))}");
 
                 Save(hwnd, outDirectory, "hello-glass-light", log);
 
@@ -57,11 +75,8 @@ internal static class ExampleCapture
                 Thread.Sleep(900);
                 Save(hwnd, outDirectory, "hello-glass-dark", log);
 
-                Invoke(root, "Profile");
-                Thread.Sleep(900);
-                var settings = (SelectionItemPattern)StudioCapture.Find(root, "Settings").GetCurrentPattern(SelectionItemPattern.Pattern);
-                if (!settings.Current.IsSelected) throw new InvalidOperationException("Profile did not select the Settings tab");
-                log.AppendLine("Profile selects the Settings tab");
+                ExpectTab(root, "Get started", "Explore", log);
+                ExpectTab(root, "Profile", "Settings", log);
             }
             finally
             {
@@ -99,4 +114,14 @@ internal static class ExampleCapture
 
     private static void Invoke(AutomationElement root, string name)
         => ((InvokePattern)StudioCapture.Find(root, name).GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+
+    /// <summary>Invokes the button <paramref name="button"/>; the tab <paramref name="tab"/> must then be selected.</summary>
+    private static void ExpectTab(AutomationElement root, string button, string tab, StringBuilder log)
+    {
+        Invoke(root, button);
+        Thread.Sleep(900);
+        var item = (SelectionItemPattern)StudioCapture.Find(root, tab).GetCurrentPattern(SelectionItemPattern.Pattern);
+        if (!item.Current.IsSelected) throw new InvalidOperationException($"{button} did not select the {tab} tab");
+        log.AppendLine($"{button} selects the {tab} tab");
+    }
 }

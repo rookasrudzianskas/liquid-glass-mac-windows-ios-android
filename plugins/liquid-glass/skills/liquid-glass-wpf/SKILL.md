@@ -471,7 +471,9 @@ buttons; the glass re-aligns by itself.
   button with ExpandCollapse; the open panel a Menu named after the current header, raising MenuOpened and
   MenuClosed) and MenuItem with Invoke and, when checkable, Toggle (both choose the item exactly as a click does).
   Give every icon-only control `AutomationProperties.Name`; on a menu whose label changes, let the header name it
-  rather than a fixed name; name standalone surfaces that group content.
+  rather than a fixed name; name standalone surfaces that group content. An `Image` in `GlassScene.Content` is an
+  unnamed image to screen readers: draw a decorative wallpaper as a `Rectangle` with an `ImageBrush` fill (no
+  automation peer), and name a meaningful picture.
 - Keyboard: Tab, Space/Enter, arrows (tabs, slider, menu), Escape (menu). A 2-unit focus ring follows the outline and
   appears only for keyboard focus (`lg:GlassScene.IsFocusVisible`).
 - Windows *Transparency effects* off → opaque fill (`#F2F2F7`/`#1C1C1E` at 0.94) with the rim light; override with
