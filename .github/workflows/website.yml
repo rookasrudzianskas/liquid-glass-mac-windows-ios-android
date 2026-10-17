@@ -8,6 +8,9 @@ on:
       - "docs/**"
       - "spec/**"
       - "plugins/**"
+      - ".claude-plugin/**"
+      - "NOTICE.md"
+      - "AGENTS.md"
       - "assets/wallpapers/**"
       - "scripts/build-downloads.mjs"
       - ".github/workflows/website.yml"
@@ -17,9 +20,13 @@ on:
       - "docs/**"
       - "spec/**"
       - "plugins/**"
+      - ".claude-plugin/**"
+      - "NOTICE.md"
+      - "AGENTS.md"
       - "assets/wallpapers/**"
       - "scripts/build-downloads.mjs"
       - ".github/workflows/website.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,7 +43,7 @@ jobs:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

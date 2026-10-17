@@ -1,7 +1,9 @@
 name: Windows
 
-# Builds and verifies the WPF port on a real Windows machine, then reports back through git: every run force-pushes
-# one fresh commit with logs, test results, fxc shader bytecode and screenshots to the orphan branch `ci-windows`.
+# Builds and verifies the WPF port on a real Windows machine. Pushes to main and manual runs then report back through
+# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode and screenshots to
+# the orphan branch `ci-windows`. Pull requests run the same checks with a read-only token and keep the report as a
+# workflow artifact.
 on:
   push:
     branches: [main]
@@ -11,9 +13,17 @@ on:
       - "spec/shaders/**"
       - "assets/wallpapers/**"
       - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "platforms/windows/**"
+      - "spec/vectors.json"
+      - "spec/shaders/**"
+      - "assets/wallpapers/**"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: windows-${{ github.ref }}
@@ -35,7 +45,7 @@ jobs:
         shell: pwsh
         working-directory: platforms/windows
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -116,6 +126,7 @@ jobs:
         if: always()
         run: |
           $log = "$env:REPORT\publish.txt"
+          $failures = @()
           $variants = @(
             @{ Name = "framework-dependent"; Args = @("--self-contained", "false") },
             @{ Name = "self-contained"; Args = @("--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:EnableCompressionInSingleFile=true") }
@@ -123,7 +134,7 @@ jobs:
           foreach ($v in $variants) {
             $out = "$env:RUNNER_TEMP\studio-$($v.Name)"
             dotnet publish src\LiquidGlass.Studio -c Release -r win-x64 @($v.Args) -o $out 2>&1 | Out-File -Append "$env:REPORT\publish.log"
-            if ($LASTEXITCODE -ne 0) { "$($v.Name): publish FAILED" | Add-Content $log; continue }
+            if ($LASTEXITCODE -ne 0) { "$($v.Name): publish FAILED" | Add-Content $log; $failures += "$($v.Name) publish"; continue }
             $zip = "$env:RUNNER_TEMP\studio-$($v.Name).zip"
             Compress-Archive -Path "$out\*" -DestinationPath $zip -Force
             $start = Get-Date
@@ -132,8 +143,10 @@ jobs:
             $code = if ($finished) { $p.ExitCode } else { $p.Kill(); "timeout" }
             $mb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
             "$($v.Name): zip $mb MB, smoke test exit $code after $([math]::Round(((Get-Date) - $start).TotalSeconds, 1)) s" | Add-Content $log
+            if ($code -ne 0) { $failures += "$($v.Name) exit $code" }
           }
           Get-Content $log
+          if ($failures) { throw "Studio smoke test failed: $($failures -join ', ')" }
 
       - name: Summarize
         if: always()
@@ -150,16 +163,36 @@ jobs:
             "$($trx.Name): total $($c.total), passed $($c.passed), failed $($c.failed)" | Add-Content $summary
           }
 
-      - name: Publish the report to ci-windows
+      - name: Upload the report
         if: always()
-        working-directory: ${{ github.workspace }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-report
+          path: ${{ env.REPORT }}
+          if-no-files-found: warn
+
+  report:
+    name: Publish the report to ci-windows
+    needs: windows
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-report
+          path: report
+      - name: Push the report
+        working-directory: report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Set-Location $env:REPORT
           git init -q -b ci-windows
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config core.autocrlf input
           git add -A
-          git commit -q -m "Windows CI report for $($env:GITHUB_SHA.Substring(0,7)) (run $env:GITHUB_RUN_ID)"
-          git push -q -f "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git" ci-windows
+          git commit -q -m "Windows CI report for ${GITHUB_SHA::7} (run $GITHUB_RUN_ID)"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-windows

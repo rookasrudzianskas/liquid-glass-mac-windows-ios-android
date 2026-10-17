@@ -484,7 +484,9 @@ scripts/package.sh                                       # NuGet packages and St
 `LiquidGlass.Wpf.Tests` needs Windows (WPF, Direct3D 11): it checks the embedded shader bytecode, compiles the shader
 with D3DCompile, evaluates the HLSL library against the golden vectors on WARP within the GPU tolerance, and exercises
 the controls. The [Windows workflow](../.github/workflows/windows.yml) builds, tests, compiles the shader with fxc,
-captures Studio and smoke-tests published builds on every change.
+captures Studio and smoke-tests published builds on every push to main and every pull request that touches the Windows
+port; a failed publish or a Studio run that does not exit cleanly fails it. Reports of pushes and manual runs land on
+the `ci-windows` branch; pull requests keep theirs as a workflow artifact.
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.
