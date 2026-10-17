@@ -156,8 +156,10 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
     /// <inheritdoc />
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var gx = GrowX * _progress;
-        var gy = GrowY * _progress;
+        // The thumb grows only under full motion; reduced motion crossfades at the resting size.
+        var grow = GlassResolve.Motion(this) == GlassMotion.Full ? _progress : 0;
+        var gx = GrowX * grow;
+        var gy = GrowY * grow;
         var rect = new Rect(-gx, -gy, finalSize.Width + 2 * gx, finalSize.Height + 2 * gy);
         _body.Arrange(rect);
         _face.CornerRadius = new CornerRadius(rect.Height / 2);
@@ -171,6 +173,7 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
     {
         base.OnPropertyChanged(e);
         if (e.Property == GlassScene.AppearanceProperty || e.Property == GlassScene.MotionProperty) UpdateVisuals();
+        if (e.Property == GlassScene.MotionProperty) InvalidateArrange();
     }
 
     // Advanced by the frame loop; not part of the public surface.
@@ -180,7 +183,8 @@ public sealed class GlassValueThumb : FrameworkElement, IGlassAnimation
         var motion = GlassResolve.Motion(this);
         var full = motion == GlassMotion.Full;
         var elapsed = _clock - _transitionTime;
-        if (!full) _progress = _transitionTo;
+        // Reduced motion keeps the crossfade into glass (at the resting size, see ArrangeOverride); none removes it.
+        if (motion == GlassMotion.None) _progress = _transitionTo;
         else if (_pulse) _progress = GlassControlMotion.TapEnvelope(_clock - _pressStart);
         else _progress = _transitionFrom + (_transitionTo - _transitionFrom) * GlassControlMotion.EaseInOut(Math.Min(1, elapsed / GlassControlMotion.PressCrossfadeDuration));
 

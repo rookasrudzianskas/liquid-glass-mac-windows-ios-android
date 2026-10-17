@@ -38,6 +38,10 @@ public class GlassTabBar : ListBox, IGlassAnimation
     public static readonly DependencyProperty AppearanceProperty = GlassSurface.AppearanceProperty.AddOwner(typeof(GlassTabBar),
         new FrameworkPropertyMetadata(GlassAppearance.Automatic, FrameworkPropertyMetadataOptions.Inherits));
 
+    /// <summary>Motion of the bar and its lens (inherited). Reduced motion slides the lens without the stretch; none moves it at once.</summary>
+    public static readonly DependencyProperty MotionProperty = GlassSurface.MotionProperty.AddOwner(typeof(GlassTabBar),
+        new FrameworkPropertyMetadata(GlassMotion.Full, FrameworkPropertyMetadataOptions.Inherits));
+
     /// <summary>Corner radius of the bar. Default <c>capsule</c>.</summary>
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassTabBar),
         new FrameworkPropertyMetadata(GlassRadius.Capsule));
@@ -111,6 +115,13 @@ public class GlassTabBar : ListBox, IGlassAnimation
         set => SetValue(AppearanceProperty, value);
     }
 
+    /// <summary>Motion of the bar and its lens.</summary>
+    public GlassMotion Motion
+    {
+        get => (GlassMotion)GetValue(MotionProperty);
+        set => SetValue(MotionProperty, value);
+    }
+
     /// <summary>Corner radius of the bar.</summary>
     public GlassRadius Radius
     {
@@ -158,14 +169,14 @@ public class GlassTabBar : ListBox, IGlassAnimation
         var target = SelectedBox();
         if (target is not { } box || _lens is null) return false;
         var motion = GlassResolve.Motion(this);
-        if (!_ready || motion != GlassMotion.Full)
+        if (!_ready || motion == GlassMotion.None)
         {
             Jump(box);
             _ready = box.Length > 0;
         }
         else if (_drag is { Moved: true } drag)
         {
-            // Follow the finger, taking on the size of the item passing beneath it.
+            // Follow the finger, taking on the size of the item passing beneath it; larger glass follows more slowly.
             var boxes = ItemBoxes();
             var at = Along(Mouse.GetPosition(_lensHost)) - drag.Grab;
             var under = Nearest(at);
@@ -173,7 +184,7 @@ public class GlassTabBar : ListBox, IGlassAnimation
             var min = boxes.Min(b => b.Pos);
             var max = boxes.Max(b => b.Pos + b.Length);
             var center = GlassMath.Clamp(at, min + size / 2, max - size / 2);
-            var follow = GlassSprings.Track;
+            var follow = GlassResolve.Spring(GlassSprings.TrackWhileDragging(size, box.Thickness), motion);
             _pos.Animate(center - size / 2, follow);
             _length.Animate(size, follow);
             _cross.Animate(box.Cross, follow);
@@ -181,10 +192,12 @@ public class GlassTabBar : ListBox, IGlassAnimation
         }
         else
         {
-            _pos.Animate(box.Pos, GlassSprings.Track);
-            _cross.Animate(box.Cross, GlassSprings.Track);
-            _length.Animate(box.Length, GlassSprings.Track);
-            _thickness.Animate(box.Thickness, GlassSprings.Track);
+            // Reduced motion keeps the slide, critically damped and without the stretch.
+            var track = GlassResolve.Spring(GlassSprings.Track, motion);
+            _pos.Animate(box.Pos, track);
+            _cross.Animate(box.Cross, track);
+            _length.Animate(box.Length, track);
+            _thickness.Animate(box.Thickness, track);
         }
         foreach (var spring in new[] { _pos, _cross, _length, _thickness }) spring.Step(dt);
         Place();

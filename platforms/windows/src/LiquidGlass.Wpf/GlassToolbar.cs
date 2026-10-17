@@ -41,6 +41,10 @@ public class GlassToolbar : Control
     public static readonly DependencyProperty AppearanceProperty = GlassSurface.AppearanceProperty.AddOwner(typeof(GlassToolbar),
         new FrameworkPropertyMetadata(GlassAppearance.Automatic, FrameworkPropertyMetadataOptions.Inherits));
 
+    /// <summary>Motion of the clusters (inherited).</summary>
+    public static readonly DependencyProperty MotionProperty = GlassSurface.MotionProperty.AddOwner(typeof(GlassToolbar),
+        new FrameworkPropertyMetadata(GlassMotion.Full, FrameworkPropertyMetadataOptions.Inherits));
+
     /// <summary>Corner radius of the clusters. Default <c>capsule</c>.</summary>
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassToolbar),
         new FrameworkPropertyMetadata(GlassRadius.Capsule, OnClusterOptionChanged));
@@ -110,6 +114,13 @@ public class GlassToolbar : Control
     {
         get => (GlassAppearance)GetValue(AppearanceProperty);
         set => SetValue(AppearanceProperty, value);
+    }
+
+    /// <summary>Motion of the clusters.</summary>
+    public GlassMotion Motion
+    {
+        get => (GlassMotion)GetValue(MotionProperty);
+        set => SetValue(MotionProperty, value);
     }
 
     /// <summary>Corner radius of the clusters.</summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -69,6 +70,9 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
         set => SetValue(TintProperty, value);
     }
 
+    /// <summary>The thumb's spring under reduced motion: the measured response, critically damped.</summary>
+    private static readonly SpringOptions ReducedSpring = new(GlassControlMotion.SwitchResponse, 0);
+
     /// <summary>Distance the thumb travels between off and on.</summary>
     private static double Travel => GlassControlMotion.SwitchTrackWidth - 2 * 2 - GlassControlMotion.SwitchThumbWidth;
 
@@ -94,7 +98,14 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
     {
         if (_dragging) return true;
         var target = Target();
-        GlassControlMotion.SwitchSpringStep(ref _position, ref _velocity, target, dt);
+        if (GlassResolve.Motion(this) == GlassMotion.Full) GlassControlMotion.SwitchSpringStep(ref _position, ref _velocity, target, dt);
+        else
+        {
+            // Reduced motion: the same response, critically damped (no overshoot).
+            var next = SpringSolver.Step(new SpringState(_position, _velocity, target), ReducedSpring, dt);
+            _position = next.Value;
+            _velocity = next.Velocity;
+        }
         _offset.X = _position;
         GlassScene.FindScene(this)?.RequestRealign();
         return !(_position.Equals(target) && _velocity.Equals(0));
@@ -212,7 +223,7 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
     private void MoveThumb(bool animate)
     {
         if (_dragging) return;
-        if (!animate || !_positioned || GlassResolve.Motion(this) != GlassMotion.Full)
+        if (!animate || !_positioned || GlassResolve.Motion(this) == GlassMotion.None)
         {
             _positioned = true;
             _position = Target();
@@ -259,7 +270,11 @@ public class GlassSwitch : ToggleButton, IGlassAnimation
     }
 }
 
-/// <summary>Exposes a <see cref="GlassSwitch"/> to UI Automation as a toggle switch: a button with the Toggle pattern.</summary>
+/// <summary>
+/// Exposes a <see cref="GlassSwitch"/> to UI Automation as a toggle switch: a button with the Toggle pattern. Its
+/// localized control type is "toggle switch" in English; in other display languages it is WPF's localized name for a
+/// button, so a screen reader never mixes an English word into localized speech.
+/// </summary>
 public sealed class GlassSwitchAutomationPeer : ToggleButtonAutomationPeer
 {
     /// <summary>Creates the peer.</summary>
@@ -268,7 +283,8 @@ public sealed class GlassSwitchAutomationPeer : ToggleButtonAutomationPeer
     }
 
     /// <inheritdoc />
-    protected override string GetLocalizedControlTypeCore() => "toggle switch";
+    protected override string GetLocalizedControlTypeCore()
+        => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en" ? "toggle switch" : base.GetLocalizedControlTypeCore();
 
     /// <inheritdoc />
     protected override string GetClassNameCore() => nameof(GlassSwitch);

@@ -319,7 +319,8 @@ public class GlassSurface : ContentControl
             var oldSize = _size;
             _origin = origin;
             _size = size;
-            if (GlassResolve.Motion(_surface) != GlassMotion.Full || size.Width <= 0 || size.Height <= 0 || oldSize.Width <= 0)
+            var motion = GlassResolve.Motion(_surface);
+            if (motion == GlassMotion.None || size.Width <= 0 || size.Height <= 0 || oldSize.Width <= 0)
             {
                 GlassFrameLoop.Stop(this);
                 _surface.Lens?.SetShape(null);
@@ -338,10 +339,12 @@ public class GlassSurface : ContentControl
                 _width.Jump(oldSize.Width);
                 _height.Jump(oldSize.Height);
             }
-            _x.Animate(0, GlassSprings.Layout);
-            _y.Animate(0, GlassSprings.Layout);
-            _width.Animate(size.Width, GlassSprings.Layout);
-            _height.Animate(size.Height, GlassSprings.Layout);
+            // Reduced motion flows to the new size critically damped, without overshoot.
+            var layout = GlassResolve.Spring(GlassSprings.Layout, motion);
+            _x.Animate(0, layout);
+            _y.Animate(0, layout);
+            _width.Animate(size.Width, layout);
+            _height.Animate(size.Height, layout);
             // Draw the old outline in this very frame, before the new layout renders.
             _surface.Lens?.SetShape(new Rect(_x.Value, _y.Value, Math.Max(0, _width.Value), Math.Max(0, _height.Value)));
             GlassFrameLoop.Start(this);

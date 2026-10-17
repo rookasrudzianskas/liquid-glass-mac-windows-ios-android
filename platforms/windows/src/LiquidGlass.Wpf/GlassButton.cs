@@ -28,6 +28,10 @@ public class GlassButton : Button
     public static readonly DependencyProperty AppearanceProperty = GlassSurface.AppearanceProperty.AddOwner(typeof(GlassButton),
         new FrameworkPropertyMetadata(GlassAppearance.Automatic, FrameworkPropertyMetadataOptions.Inherits));
 
+    /// <summary>Motion of the button: <see cref="GlassMotion.Reduced"/> keeps transitions without grow, stretch or overshoot; <see cref="GlassMotion.None"/> removes them (inherited). The system's animation setting always applies.</summary>
+    public static readonly DependencyProperty MotionProperty = GlassSurface.MotionProperty.AddOwner(typeof(GlassButton),
+        new FrameworkPropertyMetadata(GlassMotion.Full, FrameworkPropertyMetadataOptions.Inherits));
+
     /// <summary>Corner radius. Default <c>capsule</c> (icon-only buttons default to <c>circle</c>).</summary>
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassButton),
         new FrameworkPropertyMetadata(GlassRadius.Capsule));
@@ -81,6 +85,13 @@ public class GlassButton : Button
     {
         get => (GlassAppearance)GetValue(AppearanceProperty);
         set => SetValue(AppearanceProperty, value);
+    }
+
+    /// <summary>Motion of the button.</summary>
+    public GlassMotion Motion
+    {
+        get => (GlassMotion)GetValue(MotionProperty);
+        set => SetValue(MotionProperty, value);
     }
 
     /// <summary>Corner radius.</summary>
