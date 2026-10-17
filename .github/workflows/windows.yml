@@ -1,10 +1,12 @@
 name: Windows
 
 # Builds and verifies the WPF port on a real Windows machine. Pushes to main and manual runs then report back through
-# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode, screenshots, the
-# NuGet packages and the framework-dependent Studio zips to the orphan branch `ci-windows`. Pull requests run the same
-# checks with a read-only token and keep the report as a workflow artifact. Every run also keeps the complete release
-# set (packages and all three Studio zips, built as continuous-integration builds) as the `windows-release` artifact.
+# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode, screenshots and the
+# list of release files with their checksums to the orphan branch `ci-windows`. No binaries go there: every clone of
+# the repository that fetches all branches (Swift Package Manager's cache does) would download them. Pull requests run
+# the same checks with a read-only token and keep the report as a workflow artifact. Every run keeps the complete
+# release set (packages and all three Studio zips, built as continuous-integration builds) as the `windows-release`
+# artifact.
 on:
   push:
     branches: [main]
@@ -13,6 +15,8 @@ on:
       - "spec/vectors.json"
       - "spec/shaders/**"
       - "assets/wallpapers/**"
+      - "LICENSE"
+      - "NOTICE.md"
       - ".github/workflows/windows.yml"
   pull_request:
     paths:
@@ -20,6 +24,8 @@ on:
       - "spec/vectors.json"
       - "spec/shaders/**"
       - "assets/wallpapers/**"
+      - "LICENSE"
+      - "NOTICE.md"
       - ".github/workflows/windows.yml"
   workflow_dispatch:
 
@@ -204,13 +210,11 @@ jobs:
       - name: List the release artifacts
         if: always()
         run: |
+          # The report lists the release files; the files themselves are the windows-release artifact.
           $list = "$env:REPORT\release.txt"
-          New-Item -ItemType Directory -Force -Path "$env:REPORT\release" | Out-Null
           foreach ($file in Get-ChildItem $env:RELEASE -Recurse -File | Sort-Object FullName) {
             $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$($file.FullName.Substring($env:RELEASE.Length + 1)): $($file.Length) bytes, sha256 $hash" | Add-Content $list
-            # The report branch keeps the packages and the framework-dependent zips; the self-contained zip is too large for it.
-            if ($file.Name -notlike "*self-contained*") { Copy-Item $file.FullName "$env:REPORT\release\" }
           }
           Get-Content $list -ErrorAction SilentlyContinue
 
