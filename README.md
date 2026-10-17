@@ -34,6 +34,7 @@ Each port draws the glass itself on the GPU, with Metal, AGSL or an HLSL pixel s
 - [Quick start](#quick-start)
 - [Components](#components)
 - [Accessibility and fallbacks](#accessibility-and-fallbacks)
+- [Limitations](#limitations)
 - [Liquid Glass Studio](#liquid-glass-studio)
 - [Agent skills](#agent-skills)
 - [Repository layout](#repository-layout)
@@ -245,9 +246,23 @@ Every option, default and platform-specific addition is in the guides: [SwiftUI]
 - **Controls keep their platform roles**, labels, values and keyboard behavior for VoiceOver, TalkBack and UI Automation, with focus rings on desktop and Dynamic Type or font scaling on touch. Glass itself is decorative.
 - **Glass never crashes and never draws nothing.** Where the GPU path is unavailable (Android 12 and earlier, Windows without pixel shader 3.0 or in software rendering), it draws a fallback material with the rim light: over the platform's blur where there is one (Android 12, Regular glass on Windows), otherwise a translucent fill.
 
+## Limitations
+
+Each guide lists its port's limits in full ([SwiftUI](docs/apple.md#limitations), [Jetpack Compose](docs/android.md#limitations), [WPF](docs/windows.md#limitations)). These are the ones people meet first:
+
+- **Glass refracts the scene's content layer, not the views beside it.** Whatever should show through the glass goes into `GlassContent` (`GlassScene.Content` in WPF); other views in the scene, and the labels on the glass, are not refracted.
+- **SwiftUI: views backed by UIKit or AppKit** (a native `ScrollView`, `List`, `TextField`, `Map`, `WebView` or any `UIViewRepresentable`) cannot be drawn into the glass layer, so glass over them shows nothing of them. Keep them in the foreground, and scroll a backdrop with `GlassScrollView`.
+- **Jetpack Compose: 16 GPU surfaces per scene** (`GlassDefaults.MaxSurfacesPerScene`). Surfaces beyond the limit draw the fallback material over a platform blur; nest scenes to go further.
+- **Rotation:** the SwiftUI and Compose ports follow an ancestor's translation and scale, not its rotation: inside a rotated view SwiftUI misaligns the refraction and Compose draws the axis-aligned bounds. WPF follows rotation and skew too.
+- **WPF: menus stay inside their window**, floating in the scene so they can refract its backdrop.
+
 ## Liquid Glass Studio
 
 Each platform ships the same demo app, with the same four pages, so screenshots line up across platforms: **Hero** (a draggable Regular card, a floating toolbar and a tab bar), **Controls** (every button size and tint, sliders, switches, tab bars and menus), **Materials lab** (live material, appearance, refraction, radius and tint on a draggable lens) and **Progressive blur** (a scrolling list under blurred edges).
+
+<p align="center">
+  <img src="docs/images/apple/macos-controls.png" width="640" alt="Liquid Glass Studio on macOS: the Controls page with glass buttons, a toolbar, sliders, switches and a tab bar over a wave wallpaper">
+</p>
 
 Prebuilt apps are on the [downloads page](https://liquid-glass-engineering.vercel.app/downloads), with SHA-256 checksums:
 
@@ -308,7 +323,7 @@ jitpack.yml                           JitPack build of the Android library
 | Windows | .NET 10 SDK (builds on macOS and Linux; the WPF tests need Windows) | `cd platforms/windows && scripts/dotnet.sh test tests/LiquidGlass.Core.Tests` |
 | Website | Node 22 (20.19 or later) | `cd website && npm ci && npm run build` |
 
-When Xcode is installed but not the selected developer directory, prefix the Apple commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The full commands, including GPU tests, the demo apps and packaging, are under *Building and testing* in each guide: [Apple](docs/apple.md#building-and-testing), [Android](docs/android.md#building-and-testing), [Windows](docs/windows.md#building-from-source).
+When Xcode is installed but not the selected developer directory, prefix the Apple commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The full commands, including GPU tests, the demo apps and packaging, are under *Building and testing* in each guide: [Apple](docs/apple.md#building-and-testing), [Android](docs/android.md#building-and-testing), [Windows](docs/windows.md#building-and-testing).
 
 After changing anything in `spec/`, `LICENSE` or `NOTICE.md`, regenerate the golden vectors and the skills' copies, and check the plugin:
 

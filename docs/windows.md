@@ -18,8 +18,9 @@ verified against the same golden vectors.
 - [Accessibility](#accessibility)
 - [Performance](#performance)
 - [Fallbacks](#fallbacks)
+- [Limitations](#limitations)
 - [Liquid Glass Studio](#liquid-glass-studio)
-- [Building from source](#building-from-source)
+- [Building and testing](#building-and-testing)
 - [FAQ](#faq)
 
 ## Install
@@ -489,6 +490,16 @@ when a driver refuses a pixel shader (without a handler WPF throws on the UI thr
 failed, so a rejected shader of the application's own on that thread also switches glass to the fallback material, and
 no longer throws; applications can still subscribe to the event themselves.
 
+## Limitations
+
+- Glass refracts the scene's `Content`, progressive blurs and the glass that encloses it. Ordinary elements among the
+  scene's children are not refracted: put what should show through the glass into `Content`.
+- Glass inside the scene's `Content` would refract itself; it draws the opaque material.
+- A menu floats within its scene so it can refract the backdrop; it cannot extend outside the window.
+- `RenderTargetBitmap` renders in software, so a snapshot of glass shows the fallback material, not the shader (see
+  [Fallbacks](#fallbacks)).
+- The copy beneath a surface is limited to the GPU's maximum texture size (16384 on current hardware); WPF scales it
+  down beyond that.
 
 ## Liquid Glass Studio
 
@@ -513,7 +524,7 @@ directly: `--page hero|controls|materials|blur --appearance system|light|dark --
 
 ![Controls in dark appearance](images/windows/controls-dark.png)
 
-## Building from source
+## Building and testing
 
 The solution is `platforms/windows/LiquidGlass.sln`: `LiquidGlass.Core`, `LiquidGlass.Wpf`, `LiquidGlass.Studio`,
 `LiquidGlass.Core.Tests`, `LiquidGlass.Wpf.Tests` and `tools/LiquidGlass.CiTools`.

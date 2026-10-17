@@ -76,7 +76,7 @@ npm run build      # typecheck, build, prerender and link check
 npm run lint
 ```
 
-The full commands for every platform, including packaging, are in the guides: [Apple](docs/apple.md#building-and-testing), [Android](docs/android.md#building-and-testing) and [Windows](docs/windows.md#building-from-source).
+The full commands for every platform, including packaging, are in the guides: [Apple](docs/apple.md#building-and-testing), [Android](docs/android.md#building-and-testing) and [Windows](docs/windows.md#building-and-testing).
 
 ## Agent skills
 

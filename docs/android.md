@@ -29,9 +29,9 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 8. [Performance](#performance)
 9. [Fallbacks](#fallbacks)
 10. [Limitations](#limitations)
-11. [FAQ](#faq)
-12. [Liquid Glass Studio (demo app)](#liquid-glass-studio)
-13. [Building and testing](#building-and-testing)
+11. [Liquid Glass Studio (demo app)](#liquid-glass-studio)
+12. [Building and testing](#building-and-testing)
+13. [FAQ](#faq)
 
 ## Install
 
@@ -372,20 +372,6 @@ Glass never crashes and never draws nothing.
 - Glass in a different window (a `Dialog` or `Popup`) cannot refract the scene behind it and draws the fallback material; `GlassMenu` uses the scene overlay instead of a window for this reason.
 - Overlapping surfaces composite in order (shallower first, then registration order). A surface above another refracts the content, not the glass beneath it.
 
-## FAQ
-
-**Can I use Material 3 components with it?** Yes. Put Material content inside `GlassContent` as the backdrop, or inside glass surfaces as their content. Material's `Text` takes its color from Material's theme, so use `GlassText`, or pass `color = LocalGlassContentColor.current`.
-
-**Why don't I see refraction on my emulator?** The GPU path needs an Android 13+ system image with GPU emulation (`-gpu host` or `swiftshader_indirect`). Older images draw the fallback.
-
-**Does it work with `LazyColumn` behind the glass?** Yes, scrolling content is the backdrop like anything else. The Studio's progressive blur page is a `LazyColumn` under a glass toolbar and tab bar.
-
-**Can glass sit inside a scrolling list?** Yes. Glass surfaces in a scrolling `Column` or `LazyColumn` outside the `GlassContent` move with it, and clipping by the list is honored.
-
-**How do I make glass react to the backdrop's brightness?** Choose the appearance per surface: `appearance = GlassAppearance.Dark` over dark content. The Studio does this for its tab bar.
-
-**Is it the same glass as on iOS, macOS and Windows?** Yes: the same functions, constants and golden vectors drive every port. The Kotlin math is unit-tested against `spec/vectors.json` to 1e-4, and the GPU output against that math.
-
 ## Liquid Glass Studio
 
 <p align="center">
@@ -422,3 +408,17 @@ cd platforms/android
 ```
 
 Outputs go to `artifacts/android/`: `liquid-glass-compose-1.0.0.aar` and a Maven repository in `maven/`. A release build of the Studio is signed with the key named in `platforms/android/local-signing.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; never committed), or with the debug key when that file is absent. CI ([`.github/workflows/android.yml`](../.github/workflows/android.yml)) runs the unit tests, lint, the library and APK builds, and the GPU tests on an Android 14 emulator.
+
+## FAQ
+
+**Can I use Material 3 components with it?** Yes. Put Material content inside `GlassContent` as the backdrop, or inside glass surfaces as their content. Material's `Text` takes its color from Material's theme, so use `GlassText`, or pass `color = LocalGlassContentColor.current`.
+
+**Why don't I see refraction on my emulator?** The GPU path needs an Android 13+ system image with GPU emulation (`-gpu host` or `swiftshader_indirect`). Older images draw the fallback.
+
+**Does it work with `LazyColumn` behind the glass?** Yes, scrolling content is the backdrop like anything else. The Studio's progressive blur page is a `LazyColumn` under a glass toolbar and tab bar.
+
+**Can glass sit inside a scrolling list?** Yes. Glass surfaces in a scrolling `Column` or `LazyColumn` outside the `GlassContent` move with it, and clipping by the list is honored.
+
+**How do I make glass react to the backdrop's brightness?** Choose the appearance per surface: `appearance = GlassAppearance.Dark` over dark content. The Studio does this for its tab bar.
+
+**Is it the same glass as on iOS, macOS and Windows?** Yes: the same functions, constants and golden vectors drive every port. The Kotlin math is unit-tested against `spec/vectors.json` to 1e-4, and the GPU output against that math.
