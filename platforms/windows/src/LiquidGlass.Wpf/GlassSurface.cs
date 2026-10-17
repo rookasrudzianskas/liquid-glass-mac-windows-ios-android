@@ -376,5 +376,10 @@ public sealed class GlassSurfaceAutomationPeer : FrameworkElementAutomationPeer
     protected override string GetClassNameCore() => nameof(GlassSurface);
 
     /// <inheritdoc />
-    protected override bool IsControlElementCore() => !string.IsNullOrEmpty(GetName());
+    /// <remarks>
+    /// Only a named surface is a group screen readers announce; one that just draws glass (a toolbar's cluster, a
+    /// backdrop panel) leaves its content to its parent. Reads <see cref="AutomationPeer.GetNameCore"/>: the public
+    /// <see cref="AutomationPeer.GetName"/> may not be called while UI Automation asks this peer for a property.
+    /// </remarks>
+    protected override bool IsControlElementCore() => !string.IsNullOrEmpty(GetNameCore());
 }

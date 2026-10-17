@@ -771,6 +771,30 @@ public class ControlTests
     }
 
     [Fact]
+    public void OnlyANamedSurfaceIsAControlElement()
+    {
+        Sta.Run(() =>
+        {
+            var plain = new GlassSurface { Width = 200, Height = 80 };
+            var named = new GlassSurface { Width = 200, Height = 80 };
+            AutomationProperties.SetName(named, "Profile card");
+            var toolbar = new GlassToolbar { Items = { new Button { Content = "Edit" }, new GlassToolbarSpacer(), new Button { Content = "Share" } } };
+            var window = Sta.Show(Scene(new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { plain, named, toolbar } }));
+
+            // A surface that only draws glass stays out of the control view; a named one is a group screen readers announce.
+            var plainPeer = UIElementAutomationPeer.CreatePeerForElement(plain);
+            Assert.Equal(AutomationControlType.Group, plainPeer.GetAutomationControlType());
+            Assert.False(plainPeer.IsControlElement());
+            Assert.True(UIElementAutomationPeer.CreatePeerForElement(named).IsControlElement());
+            // The toolbar's clusters are unnamed surfaces, so its buttons are its control-view children.
+            var clusters = Descendants(UIElementAutomationPeer.CreatePeerForElement(toolbar)).Where(p => p.GetClassName() == nameof(GlassSurface)).ToList();
+            Assert.Equal(2, clusters.Count);
+            Assert.All(clusters, cluster => Assert.False(cluster.IsControlElement()));
+            window.Close();
+        });
+    }
+
+    [Fact]
     public void TabLensTakesTheBarsMaterial()
     {
         Sta.Run(() =>
