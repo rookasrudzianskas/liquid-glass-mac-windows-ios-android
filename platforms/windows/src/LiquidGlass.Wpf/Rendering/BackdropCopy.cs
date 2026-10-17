@@ -13,6 +13,7 @@ internal sealed class BackdropCopy
 {
     private readonly Visual _target;
     private readonly VisualBrush _brush;
+    private readonly MatrixTransform _inverse = new();
     private Matrix? _mapping;
     private Size _size;
 
@@ -78,10 +79,11 @@ internal sealed class BackdropCopy
         // M⁻¹(q), the rectangle point that sits over it on screen.
         var inverse = m;
         inverse.Invert();
+        _inverse.Matrix = inverse;
         _brush.ViewportUnits = BrushMappingMode.Absolute;
         _brush.Viewbox = bounds;
         _brush.Viewport = bounds;
-        _brush.Transform = new MatrixTransform(inverse);
+        _brush.Transform = _inverse;
     }
 
     /// <summary>Releases the target.</summary>
