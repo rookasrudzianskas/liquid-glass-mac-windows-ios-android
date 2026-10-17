@@ -27,6 +27,47 @@ public class ControlTests
         return scene;
     }
 
+    /// <summary>
+    /// Every default style and template in Themes/Generic.xaml loads: a control whose style cannot be built fails only
+    /// when it is first shown, so show one of each (with a toolbar's button and toggle styles and an open menu's items).
+    /// </summary>
+    [Fact]
+    public void EveryDefaultStyleLoads()
+    {
+        Sta.Run(() =>
+        {
+            var toolbarButton = new Button { Content = "A" };
+            var toolbarToggle = new ToggleButton { Content = "B" };
+            var item = new GlassMenuItem { Header = "Item", IsCheckable = true, IsChecked = true, Icon = "", InputGestureText = "Ctrl+C" };
+            var menu = new GlassMenu { Header = "Menu", Items = { item, new Separator() } };
+            var controls = new FrameworkElement[]
+            {
+                new GlassSurface { Width = 80, Height = 40 },
+                new GlassButton { Content = "Button" },
+                new GlassButton { Content = "", IsIconOnly = true },
+                new GlassSlider { Width = 120, Value = 0.5, Maximum = 1 },
+                new GlassSwitch { Content = "Switch" },
+                new GlassTabBar { Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" } }, SelectedIndex = 0 },
+                new GlassToolbar { Items = { toolbarButton, new GlassToolbarSpacer(), toolbarToggle } },
+                menu,
+                new GlassProgressiveBlur { Height = 40 },
+            };
+            var window = Sta.Show(Scene(new StackPanel { Children = { new WrapPanel() } }), 900, 420);
+            var panel = (WrapPanel)((StackPanel)((GlassScene)window.Content).Children[0]).Children[0];
+            foreach (var control in controls) panel.Children.Add(control);
+            Sta.Pump();
+            menu.IsOpen = true;
+            Sta.Pump();
+            foreach (var control in controls.OfType<Control>().Append(toolbarButton).Append(toolbarToggle).Append(item))
+            {
+                Assert.True(control.IsLoaded, $"{control.GetType().Name} did not load");
+                Assert.True(VisualTreeHelper.GetChildrenCount(control) > 0, $"{control.GetType().Name} has no template");
+            }
+            Assert.IsType<Grid>(VisualTreeHelper.GetChild(item, 0));
+            window.Close();
+        });
+    }
+
     [Fact]
     public void ForegroundFollowsAppearanceAndTint()
     {

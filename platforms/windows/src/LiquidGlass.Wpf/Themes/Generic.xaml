@@ -160,7 +160,7 @@
               <Setter TargetName="Root" Property="Opacity" Value="0.45" />
             </Trigger>
             <!-- Contrast theme: the rest of the track is the window color, outlined in the text color. -->
-            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True">
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True">
               <Setter TargetName="RestTrack" Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
               <Setter TargetName="RestTrack" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
               <Setter TargetName="RestTrack" Property="BorderThickness" Value="1" />
@@ -356,7 +356,7 @@
             <!-- Contrast theme: hover, press and the checked state are a solid highlight with highlight text. -->
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -365,7 +365,7 @@
             </MultiDataTrigger>
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding Path=(ToggleButton.IsChecked), RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -374,7 +374,7 @@
             </MultiDataTrigger>
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -464,7 +464,7 @@
             <!-- Contrast theme: the highlighted item is a solid highlight with highlight text; keyboard focus adds a border. -->
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -473,7 +473,7 @@
             </MultiDataTrigger>
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding IsKeyboardFocused, RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -483,7 +483,7 @@
             </MultiDataTrigger>
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Path=(SystemParameters.HighContrast), RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Path=(SystemParameters.HighContrast)}" Value="True" />
                 <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}}" Value="True" />
               </MultiDataTrigger.Conditions>
               <Setter TargetName="Highlight" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
