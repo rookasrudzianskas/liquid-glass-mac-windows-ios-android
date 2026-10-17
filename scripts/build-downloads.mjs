@@ -85,7 +85,7 @@ const MAVEN_LOCAL_JUNK =
 const REQUIREMENTS = {
   macos: "macOS 14 Sonoma or later",
   iosSimulator: "iOS 17 Simulator (Xcode 16 or later)",
-  xcframework: "iOS 17+ / macOS 14+",
+  xcframework: "iOS 17+ / macOS 14+; Xcode 16 or later",
   androidApp: "Android 7.0 (API 24) or later; glass rendering on Android 13 (API 33)+",
   androidLibrary: "Jetpack Compose, minSdk 24; glass rendering on Android 13 (API 33)+",
   source: "Git snapshot of the repository; see the README for each platform's toolchain",
@@ -755,6 +755,20 @@ function planDownload(ctx, entry, outRel) {
 // Apple: artifacts/apple/
 // -------------------------------------------------------------------------------------------
 
+// AppleDouble files ("._name", extended attributes and resource forks) and a __MACOSX folder in a
+// zip. Archive Utility and ditto fold them back into attributes; unzip and other tools write them
+// out as real files, inside an app bundle too, where they break the code signature seal.
+function appleDoubleEntries(zipFile) {
+  try {
+    return openZip(zipFile)
+      .entries.map((e) => e.name)
+      .filter((name) => /(^|\/)\._[^/]+$/.test(name) || /^__MACOSX(\/|$)/.test(name));
+  } catch (err) {
+    warn(`could not read ${zipFile}: ${err.message}`);
+    return [];
+  }
+}
+
 // iOS app bundles are flat (Info.plist at the top); macOS bundles have Contents/.
 function isIosAppBundle(entry) {
   if (mentionsIos(entry.name)) return true;
@@ -809,6 +823,14 @@ function collectApple(ctx) {
   ];
   for (const slot of slots) {
     const entry = pickBest(slot.candidates, slot.id);
+    if (entry?.stat.isFile() && slot.kind === "app") {
+      const junk = appleDoubleEntries(entry.abs);
+      if (junk.length) {
+        const problem = `${entry.display} holds ${junk.length} AppleDouble entries (${junk[0]}${junk.length > 1 ? ", ..." : ""}): unzip writes them into the app bundle and breaks its signature. Zip it with ditto -c -k --norsrc --noextattr --noqtn --keepParent`;
+        warn(problem);
+        ctx.zipProblems.push(problem);
+      }
+    }
     const planned = entry ? planDownload(ctx, entry, `downloads/${slot.fileName}`) : null;
     addItem(ctx, {
       id: slot.id,
@@ -1756,14 +1778,15 @@ function collectSkills(ctx) {
   const names = [...EXPECTED_SKILLS, ...[...found.keys()].filter((n) => !EXPECTED_SKILLS.includes(n)).sort(compareBytes)];
   for (const name of names) {
     const skill = found.get(name);
-    const rel = `downloads/skills/${name}.zip`;
+    // Flat, with a distinct name: SHA256SUMS lists the same name the browser saves the file as.
+    const rel = `downloads/skill-${name}.zip`;
     const planned = skill && planOutput(ctx, rel, { kind: "zip", entries: skill.entries });
     addItem(ctx, {
       id: `skill-${name}`,
       name: `${name} agent skill`,
       platform: "all",
       kind: "skill",
-      fileName: `${name}.zip`,
+      fileName: `skill-${name}.zip`,
       version: ctx.version,
       requirements: REQUIREMENTS.skills,
       required: false,
@@ -2008,6 +2031,7 @@ function main() {
     stats: { written: 0, unchanged: 0 },
     nugetPackages: [], // { id, version, tfms, display } per published package id, for the release checks
     uncommittedSkills: [],
+    zipProblems: [], // app zips that would not extract cleanly with unzip, for the release checks
   };
 
   // The owned output folders must not overlap the inputs.
@@ -2113,6 +2137,9 @@ function releaseProblems(ctx, manifest, { network }) {
       problems.push(`${pkg.display} targets ${have.join(", ") || "nothing"}, but ${project.file} declares ${want.join(", ")}: rebuild the package`);
     }
   }
+
+  // App zips extract cleanly with any unzip tool.
+  problems.push(...ctx.zipProblems);
 
   // Every skill the website lists is committed, and the expected ones exist.
   for (const name of ctx.uncommittedSkills) problems.push(`skill ${name} is not committed (plugins/liquid-glass/skills/${name}/SKILL.md)`);
