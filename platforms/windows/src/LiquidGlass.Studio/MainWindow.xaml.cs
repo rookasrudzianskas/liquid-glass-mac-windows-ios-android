@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shell;
 using System.Windows.Threading;
@@ -15,6 +16,7 @@ namespace LiquidGlass.Studio;
 public partial class MainWindow : Window
 {
     private const double ContentCorner = 8;
+    private const int WmSysColorChange = 0x0015;
 
     private readonly StudioOptions _options;
     private readonly Dictionary<StudioPage, StudioPageBase> _pages = new();
@@ -48,11 +50,17 @@ public partial class MainWindow : Window
         };
         Navigation.SelectedIndex = (int)options.Page;
         PageHost.SizeChanged += (_, _) => ClipContent();
+        // A contrast theme (or a change between them) repaints the chrome in the theme's colors.
+        SystemParameters.StaticPropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SystemParameters.HighContrast)) Dispatcher.BeginInvoke(new Action(UpdateChrome));
+        };
         UpdateChrome();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(OnWindowMessage);
         _mica = WindowBackdrop.TryApplyMica(this);
         if (_mica)
         {
@@ -104,22 +112,40 @@ public partial class MainWindow : Window
         PageHost.Content = view;
     }
 
+    private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        // The system colors changed (another contrast theme, or a custom one edited).
+        if (message == WmSysColorChange && SystemParameters.HighContrast) Dispatcher.BeginInvoke(new Action(UpdateChrome));
+        return IntPtr.Zero;
+    }
+
     private void UpdateChrome()
     {
         var dark = GlassScene.GetIsDark(AppearancePicker);
         _dark = dark;
-        var palette = new ResourceDictionary
-        {
-            Source = new Uri(dark ? "Shell/StudioDark.xaml" : "Shell/StudioLight.xaml", UriKind.Relative),
-        };
+        var contrast = SystemParameters.HighContrast;
+        var palette = contrast
+            ? ContrastPalette()
+            : new ResourceDictionary { Source = new Uri(dark ? "Shell/StudioDark.xaml" : "Shell/StudioLight.xaml", UriKind.Relative) };
         var merged = Application.Current.Resources.MergedDictionaries;
         merged[merged.Count - 1] = palette;
         WindowBackdrop.SetDarkTitleBar(this, dark);
-        // Mica shows through the chrome; without it the chrome is the solid Windows 11 surface color.
-        if (_mica) Background = Brushes.Transparent;
+        // Mica shows through the chrome; without it, and in a contrast theme, the chrome is a solid color.
+        if (_mica && !contrast) Background = Brushes.Transparent;
         else SetResourceReference(BackgroundProperty, "Studio.WindowBackground");
         foreach (var page in _pages.Values) page.SetDark(dark);
     }
+
+    /// <summary>The chrome in the contrast theme's colors: window, window text and highlight.</summary>
+    private static ResourceDictionary ContrastPalette() => new()
+    {
+        ["Studio.WindowBackground"] = SystemColors.WindowBrush,
+        ["Studio.Foreground"] = SystemColors.WindowTextBrush,
+        ["Studio.Secondary"] = SystemColors.WindowTextBrush,
+        ["Studio.NavHover"] = Brushes.Transparent,
+        ["Studio.NavSelected"] = SystemColors.HighlightBrush,
+        ["Studio.ContentStroke"] = SystemColors.WindowTextBrush,
+    };
 
     private void ClipContent()
     {
