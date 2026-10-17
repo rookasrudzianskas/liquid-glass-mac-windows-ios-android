@@ -221,8 +221,17 @@ public class RenderingTests
             var bitmap6 = Sigma(InBitmap, 239);
             var bitmap5 = Sigma(InBitmap, 160 + level5 * 80);
             var passes = string.Join("; ", blur.LevelRadii.Select(level => string.Join(" + ", level.Select(r => (r * scale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)))));
+            // For comparison: the same passes nested inside one another instead of chained through brushes.
+            blur.NestPasses = true;
+            Sta.Pump();
+            Sta.Wait(0.5);
+            var nested = ScreenPixels.CaptureWhen(window, root,
+                s => s.Green((int)(280 * scale), (int)(20 * scale)) - s.Green((int)(20 * scale), (int)(20 * scale)) > 200, 20);
+            var nested6 = nested is null ? double.NaN : Sigma((x, y) => nested.Green(x, y), 239);
+            var nested5 = nested is null ? double.NaN : Sigma((x, y) => nested.Green(x, y), 160 + level5 * 80);
+            blur.NestPasses = false;
             var detail = $"on screen σ {screen6:F2} (level 6) and {screen5:F2} (level 5){(screen is null ? ", the frame never reached the screen" : "")}; " +
-                         $"RenderTargetBitmap σ {bitmap6:F2} and {bitmap5:F2}; passes in device pixels: {passes}";
+                         $"RenderTargetBitmap σ {bitmap6:F2} and {bitmap5:F2}; nested passes on screen σ {nested6:F2} and {nested5:F2}; passes in device pixels: {passes}";
             // WPF's software renderer (RenderTargetBitmap) and its hardware pipeline draw BlurEffect alike (the CI blur
             // probe measures both); both must render the plan. A runner whose screen never shows the frame leaves only
             // the bitmap to check.

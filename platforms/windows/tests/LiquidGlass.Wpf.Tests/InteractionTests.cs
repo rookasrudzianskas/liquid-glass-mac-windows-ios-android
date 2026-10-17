@@ -123,6 +123,78 @@ public class InteractionTests
         });
     }
 
+    /// <summary>
+    /// Reduced motion keeps transitions, critically damped, without stretch or overshoot (only <see cref="GlassMotion.None"/>
+    /// removes them): the tab lens slides, the switch thumb travels, the menu panel grows out of its trigger.
+    /// </summary>
+    [Fact]
+    public void ReducedMotionKeepsTransitionsWithoutOvershoot()
+    {
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var tabs = new GlassTabBar
+                {
+                    Motion = GlassMotion.Reduced,
+                    Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" }, new GlassTabBarItem { Content = "Three" } },
+                    SelectedIndex = 0,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                };
+                var toggle = new GlassSwitch { Content = "Wi-Fi", HorizontalAlignment = HorizontalAlignment.Left };
+                GlassScene.SetMotion(toggle, GlassMotion.Reduced);
+                var menu = new GlassMenu { Header = "Sort", Motion = GlassMotion.Reduced, HorizontalAlignment = HorizontalAlignment.Left, Items = { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" } } };
+                var scene = new GlassScene { Content = new Border { Background = Brushes.Teal }, Children = { new StackPanel { Children = { tabs, toggle, menu } } } };
+                var window = Sta.Show(scene, 420, 360);
+                Wait(0.3);
+
+                var lens = (GlassSurface)tabs.Template.FindName("PART_Lens", tabs);
+                var host = (Canvas)tabs.Template.FindName("PART_LensHost", tabs);
+                var third = (GlassTabBarItem)tabs.ItemContainerGenerator.ContainerFromIndex(2);
+                var start = Canvas.GetLeft(lens);
+                var target = third.TransformToVisual(host).Transform(default).X;
+                var thumb = (GlassValueThumb)toggle.Template.FindName("PART_Thumb", toggle);
+                var lefts = new List<double>();
+                var stretches = new List<double>();
+                var offsets = new List<double>();
+                var widths = new List<double>();
+                EventHandler sample = (_, _) =>
+                {
+                    lefts.Add(Canvas.GetLeft(lens));
+                    stretches.Add(((ScaleTransform)lens.RenderTransform).ScaleX);
+                    offsets.Add(((TranslateTransform)thumb.RenderTransform).X);
+                    if (menu.Panel?.Lens is { } panelLens) widths.Add(panelLens.ShapeBounds.Width);
+                };
+                CompositionTarget.Rendering += sample;
+                tabs.SelectedIndex = 2;
+                toggle.IsChecked = true;
+                menu.IsOpen = true;
+                Wait(1.2);
+                CompositionTarget.Rendering -= sample;
+
+                Assert.True(lefts.Count(l => l > start + 1 && l < target - 1) >= 2, "the tab lens should slide through intermediate positions");
+                Assert.True(lefts.Max() <= target + 0.05, $"the tab lens overshot: {lefts.Max():F2} past {target:F2}");
+                Assert.Equal(target, Canvas.GetLeft(lens), 1);
+                Assert.All(stretches, s => Assert.Equal(1, s, 6));
+
+                var travel = offsets.Last();
+                Assert.True(travel > 1, "the switch thumb should travel");
+                Assert.True(offsets.Count(o => o > 0.5 && o < travel - 0.5) >= 2, "the switch thumb should move over several frames");
+                Assert.True(offsets.Max() <= travel + 0.05, $"the switch thumb overshot: {offsets.Max():F2} past {travel:F2}");
+
+                var panelWidth = menu.Panel!.ActualWidth;
+                Assert.True(widths.Count(w => w < panelWidth - 1) >= 2, "the menu panel should grow out of its trigger over several frames");
+                Assert.True(widths.Max() <= panelWidth + 0.05, $"the menu panel overshot: {widths.Max():F2} past {panelWidth:F2}");
+                window.Close();
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
+    }
+
     [Fact]
     public void LosingTheMouseCaptureReleasesAPress()
     {

@@ -194,9 +194,15 @@ public class ControlTests
             var toggle = new GlassSwitch { Content = "Wi-Fi" };
             var window = Sta.Show(Scene(toggle));
             var peer = UIElementAutomationPeer.CreatePeerForElement(toggle);
-            // A toggle switch, as Windows' own: a button with the Toggle pattern.
+            // A toggle switch, as Windows' own: a button with the Toggle pattern. The words are English only in an
+            // English display language; elsewhere the type is WPF's localized one, never English mid-sentence.
             Assert.Equal(AutomationControlType.Button, peer.GetAutomationControlType());
+            var culture = System.Globalization.CultureInfo.CurrentUICulture;
+            System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en-US");
             Assert.Equal("toggle switch", peer.GetLocalizedControlType());
+            System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("de-DE");
+            Assert.NotEqual("toggle switch", peer.GetLocalizedControlType());
+            System.Globalization.CultureInfo.CurrentUICulture = culture;
             Assert.Equal("Wi-Fi", peer.GetName());
             var pattern = (IToggleProvider)peer.GetPattern(PatternInterface.Toggle);
             pattern.Toggle();
@@ -569,6 +575,156 @@ public class ControlTests
             }
             Sta.Pump();
             Assert.Equal(expected, surface.RenderedMode);
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void IconGlyphsDrawAtTheIconFontsOnlyWeight()
+    {
+        Sta.Run(() =>
+        {
+            Assert.True(IconGlyph.IsGlyph("\uE712"));
+            Assert.True(IconGlyph.IsGlyph(new TextBlock { Text = "\uE734" }));
+            Assert.False(IconGlyph.IsGlyph("Edit"));
+            Assert.False(IconGlyph.IsGlyph("\uE712 More"));
+            var icon = new GlassButton { IsIconOnly = true, Content = "\uE734" };
+            var text = new GlassButton { Content = "Share" };
+            var menu = new GlassMenu { IsIconOnly = true, Header = "\uE712", Items = { new GlassMenuItem { Header = "Rename" } } };
+            var textMenu = new GlassMenu { Header = "Sort", Items = { new GlassMenuItem { Header = "Name" } } };
+            var toolbarIcon = new Button { Content = "\uE72B" };
+            var toolbarText = new Button { Content = "Edit" };
+            var toolbar = new GlassToolbar { Items = { toolbarIcon, toolbarText } };
+            var window = Sta.Show(Scene(new StackPanel { Children = { icon, text, menu, textMenu, toolbar } }), 400, 360);
+            // Icon fonts have one weight: glyphs draw at it; text keeps the glass controls' SemiBold.
+            Assert.Equal(FontWeights.Normal, icon.FontWeight);
+            Assert.Equal(FontWeights.SemiBold, text.FontWeight);
+            Assert.Equal(FontWeights.Normal, menu.Trigger!.FontWeight);
+            Assert.Equal(FontWeights.SemiBold, textMenu.Trigger!.FontWeight);
+            Assert.Equal(FontWeights.Normal, toolbarIcon.FontWeight);
+            Assert.Equal(FontWeights.SemiBold, toolbarText.FontWeight);
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void GlassButtonsAndMenusInAToolbarTakeTheToolbarLook()
+    {
+        Sta.Run(() =>
+        {
+            var inside = new GlassButton { Content = "Done" };
+            var menu = new GlassMenu { Header = "Sort", Items = { new GlassMenuItem { Header = "Name" } } };
+            var outside = new GlassButton { Content = "Alone" };
+            var toolbar = new GlassToolbar { Items = { inside, menu } };
+            var window = Sta.Show(Scene(new StackPanel { Children = { toolbar, outside } }), 420, 200);
+            // In a toolbar the cluster is the glass: no glass of their own, the toolbar's highlight instead.
+            Assert.Null(inside.Template.FindName("PART_Surface", inside));
+            Assert.NotNull(inside.Template.FindName("Highlight", inside));
+            Assert.Null(menu.Trigger!.Template.FindName("PART_Surface", menu.Trigger));
+            Assert.NotNull(menu.Trigger.Template.FindName("Highlight", menu.Trigger));
+            // Elsewhere a glass button keeps its glass.
+            Assert.IsType<GlassSurface>(outside.Template.FindName("PART_Surface", outside));
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void MenuOpensWhenOpenBeforeItLoadsAndFollowsItsOptions()
+    {
+        Sta.Run(() =>
+        {
+            var name = new GlassMenuItem { Header = "Name", IsCheckable = true, IsChecked = true };
+            var date = new GlassMenuItem { Header = "Date modified", IsCheckable = true };
+            var clicks = 0;
+            var checks = 0;
+            date.Click += (_, _) => clicks++;
+            date.Checked += (_, _) => checks++;
+            // IsOpen set before the menu is loaded, as in XAML or from a binding that starts true.
+            var menu = new GlassMenu
+            {
+                Header = "Sort by name",
+                IsOpen = true,
+                FontSize = 18,
+                Foreground = Brushes.DarkRed,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Items = { name, date },
+            };
+            var small = new GlassMenu { Header = "Small", Size = GlassButtonSize.Small, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
+            var scene = Scene(menu, small);
+            var window = Sta.Show(scene);
+            Sta.Pump();
+            Assert.True(menu.IsOpen);
+            var panel = scene.PopupLayer.Children.OfType<GlassSurface>().Single();
+            Assert.Equal(Visibility.Visible, panel.Visibility);
+
+            // The trigger takes the text size and color the application gave the menu, as the items do; without one,
+            // it keeps the size its Size calls for.
+            Assert.Equal(18, menu.Trigger!.FontSize);
+            Assert.Equal(18, panel.FontSize);
+            Assert.Equal(Colors.DarkRed, ((SolidColorBrush)menu.Trigger.Foreground).Color);
+            Assert.Equal(12, small.Trigger!.FontSize);
+
+            // The open panel is named after the header as it is now.
+            var panelPeer = UIElementAutomationPeer.CreatePeerForElement(panel);
+            Assert.Equal("Sort by name", panelPeer.GetName());
+            menu.Header = "Sort by date";
+            Assert.Equal("Sort by date", panelPeer.GetName());
+
+            // UI Automation's Toggle chooses a checkable item as a click does: Click and Checked run, the menu closes.
+            ((IToggleProvider)UIElementAutomationPeer.CreatePeerForElement(date).GetPattern(PatternInterface.Toggle)).Toggle();
+            Sta.Pump();
+            Assert.True(date.IsChecked);
+            Assert.Equal(1, clicks);
+            Assert.Equal(1, checks);
+            Assert.False(menu.IsOpen);
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void MenuCommandsReachTheElementThatHasFocus()
+    {
+        Sta.Run(() =>
+        {
+            var box = new TextBox { Text = "hello", Width = 120, HorizontalAlignment = HorizontalAlignment.Left };
+            var copy = new GlassMenuItem { Header = "Copy", Command = ApplicationCommands.Copy };
+            var menu = new GlassMenu { Header = "Edit", HorizontalAlignment = HorizontalAlignment.Left, Items = { copy } };
+            var window = Sta.Show(Scene(new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { box, menu } }));
+            FocusManager.SetFocusedElement(window, box);
+            box.Focus();
+            box.SelectAll();
+            // Focusing the trigger (as clicking it does) leaves the window's focused element alone: the menu is a focus scope.
+            menu.Trigger!.Focus();
+            Assert.Same(box, FocusManager.GetFocusedElement(window));
+            menu.IsOpen = true;
+            Sta.Pump();
+            CommandManager.InvalidateRequerySuggested();
+            Sta.Pump();
+            // Copy routes from the item to the text box, which can copy its selection.
+            Assert.True(copy.IsEnabled, "Copy should be available for the text selected in the box");
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void ControlsTakeMotionLikeMaterialAndAppearance()
+    {
+        Sta.Run(() =>
+        {
+            var button = (GlassButton)System.Windows.Markup.XamlReader.Parse(
+                "<lg:GlassButton xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
+                "xmlns:lg='clr-namespace:LiquidGlass.Wpf;assembly=LiquidGlass.Wpf' Motion='None' Content='A' />");
+            Assert.Equal(GlassMotion.None, button.Motion);
+            Assert.Equal(GlassMotion.None, GlassResolve.Motion(button));
+            Assert.Equal(GlassMotion.Reduced, GlassResolve.Motion(new GlassTabBar { Motion = GlassMotion.Reduced }));
+            Assert.Equal(GlassMotion.None, GlassResolve.Motion(new GlassToolbar { Motion = GlassMotion.None }));
+            Assert.Equal(GlassMotion.Reduced, GlassResolve.Motion(new GlassMenu { Motion = GlassMotion.Reduced }));
+            // Inherited, like Material and Appearance.
+            var inner = new GlassButton();
+            var toolbar = new GlassToolbar { Motion = GlassMotion.None, Items = { inner } };
+            var window = Sta.Show(Scene(toolbar), 300, 120);
+            Assert.Equal(GlassMotion.None, GlassResolve.Motion(inner));
             window.Close();
         });
     }
