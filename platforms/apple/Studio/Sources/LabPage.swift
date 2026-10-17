@@ -17,12 +17,18 @@ struct LabPage: View {
                 lensArea
                 panel
                     .frame(width: wide ? 340 : nil)
+                    // Room for the lens above a tall panel (the largest text
+                    // sizes); the panel scrolls within what is left.
+                    .frame(maxHeight: wide ? nil : max(240, proxy.size.height - Self.lensRoom))
             }
             .padding(.horizontal, StudioLayout.pagePadding)
             .padding(.top, 12)
             .padding(.bottom, StudioLayout.tabBarClearance)
         }
     }
+
+    /// The height kept for the lens when the panel is under it.
+    private static let lensRoom: CGFloat = 250
 
     private var lensArea: some View {
         GlassSurface(
@@ -35,7 +41,6 @@ struct LabPage: View {
                 Text("Drag me")
                     .font(.headline)
             }
-            .modifier(OnTint(tinted: settings.tint != .none))
             .frame(width: 210, height: 210)
         }
         .offset(lensOffset)
@@ -50,29 +55,40 @@ struct LabPage: View {
 
     private var panel: some View {
         GlassSurface(material: .regular, radius: 28) {
-            VStack(alignment: .leading, spacing: 14) {
-                GlassTabBar(selection: $settings.material) {
-                    GlassTab("Clear", value: GlassMaterial.clear)
-                    GlassTab("Regular", value: GlassMaterial.regular)
-                }
-                GlassTabBar(selection: $settings.appearance) {
-                    GlassTab("Auto", value: GlassAppearance.automatic)
-                    GlassTab("Light", value: GlassAppearance.light)
-                    GlassTab("Dark", value: GlassAppearance.dark)
-                }
-                LabeledSlider(title: "Refraction", value: $settings.refraction, range: 0...120, format: "%.0f")
-                HStack(spacing: 12) {
-                    LabeledSlider(title: "Radius", value: $settings.radius, range: 0...110, format: "%.0f")
-                        .disabled(settings.capsule)
-                    GlassSwitch("Capsule", isOn: $settings.capsule)
-                        .fixedSize()
-                }
-                swatches
-                wallpapers
+            ViewThatFits(in: .vertical) {
+                panelControls
+                ScrollView { panelControls }
+                    .scrollIndicators(.hidden)
             }
-            .controlSize(.small)
-            .padding(18)
         }
+    }
+
+    private var panelControls: some View {
+        // The pickers are Regular glass like the panel they sit on (glass
+        // doesn't refract other glass, so Clear pickers would show the sharp
+        // wallpaper through the frosted panel).
+        VStack(alignment: .leading, spacing: 14) {
+            GlassTabBar(selection: $settings.material, material: .regular) {
+                GlassTab("Clear", value: GlassMaterial.clear)
+                GlassTab("Regular", value: GlassMaterial.regular)
+            }
+            GlassTabBar(selection: $settings.appearance, material: .regular) {
+                GlassTab("Auto", value: GlassAppearance.automatic)
+                GlassTab("Light", value: GlassAppearance.light)
+                GlassTab("Dark", value: GlassAppearance.dark)
+            }
+            LabeledSlider(title: "Refraction", value: $settings.refraction, range: 0...120, format: "%.0f")
+            HStack(spacing: 12) {
+                LabeledSlider(title: "Radius", value: $settings.radius, range: 0...110, format: "%.0f")
+                    .disabled(settings.capsule)
+                GlassSwitch("Capsule", isOn: $settings.capsule)
+                    .fixedSize()
+            }
+            swatches
+            wallpapers
+        }
+        .controlSize(.small)
+        .padding(18)
     }
 
     private var swatches: some View {
@@ -137,14 +153,5 @@ private struct LabeledSlider: View {
             }
             GlassSlider(value: $value, in: range) { Text(title) }
         }
-    }
-}
-
-/// White content on tinted glass.
-private struct OnTint: ViewModifier {
-    let tinted: Bool
-
-    func body(content: Content) -> some View {
-        if tinted { content.foregroundStyle(.white) } else { content }
     }
 }

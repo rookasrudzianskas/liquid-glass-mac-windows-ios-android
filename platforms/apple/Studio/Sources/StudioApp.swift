@@ -23,6 +23,7 @@ struct StudioRoot: View {
     @State private var appearance = GlassAppearance(rawValue: UserDefaults.standard.string(forKey: "appearance") ?? "") ?? .automatic
     @State private var lab = LabSettings()
     @State private var stories = GlassScrollPosition()
+    @State private var storyFilter: String?
 
     var body: some View {
         GlassScene(appearance: appearance) {
@@ -54,7 +55,7 @@ struct StudioRoot: View {
         case .hero: Wallpaper.aurora.view
         case .controls: Wallpaper.midnight.view
         case .lab: lab.wallpaper.view
-        case .blur: StoriesBackdrop(position: stories)
+        case .blur: StoriesBackdrop(position: stories, filter: storyFilter)
         }
     }
 
@@ -64,7 +65,7 @@ struct StudioRoot: View {
         case .hero: HeroPage(appearance: $appearance, page: $page)
         case .controls: ControlsPage()
         case .lab: LabPage(settings: lab)
-        case .blur: StoriesPage(position: stories)
+        case .blur: StoriesPage(position: stories, filter: $storyFilter)
         }
     }
 

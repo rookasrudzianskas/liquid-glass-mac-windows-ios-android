@@ -12,20 +12,36 @@ struct HeroPage: View {
     var body: some View {
         VStack(spacing: 0) {
             toolbar
-            Spacer(minLength: 24)
-            card
-                .offset(offset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { offset = $0.translation }
-                        .onEnded { _ in
-                            // Let the card drift home on a gel-like spring.
-                            withAnimation(.spring(duration: 0.6, bounce: 0.3)) { offset = .zero }
-                        }
-                )
-            Spacer(minLength: StudioLayout.tabBarClearance)
+            // The card floats in the middle; at the largest text sizes, when
+            // it no longer fits above the tab bar, it scrolls instead.
+            ViewThatFits(in: .vertical) {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 24)
+                    draggableCard
+                    Spacer(minLength: StudioLayout.tabBarClearance)
+                }
+                ScrollView {
+                    card
+                        .padding(.top, 24)
+                        .padding(.bottom, StudioLayout.tabBarClearance)
+                }
+                .scrollIndicators(.hidden)
+            }
         }
         .padding(.horizontal, StudioLayout.pagePadding)
+    }
+
+    private var draggableCard: some View {
+        card
+            .offset(offset)
+            .gesture(
+                DragGesture()
+                    .onChanged { offset = $0.translation }
+                    .onEnded { _ in
+                        // Let the card drift home on a gel-like spring.
+                        withAnimation(.spring(duration: 0.6, bounce: 0.3)) { offset = .zero }
+                    }
+            )
     }
 
     private var toolbar: some View {
@@ -33,15 +49,15 @@ struct HeroPage: View {
             GlassButton("Studio", systemImage: "drop.fill") { page = .hero }
             GlassToolbarSpacer()
             GlassButton(icon: appearanceSymbol, label: "Appearance") { cycleAppearance() }
-            GlassButton(icon: "square.and.arrow.up", label: "Share") {}
+            ShareButton()
             GlassMenu(icon: "ellipsis", label: "More") {
                 GlassMenuItem("Controls", systemImage: "slider.horizontal.3") { page = .controls }
                 GlassMenuItem("Materials lab", systemImage: "drop") { page = .lab }
                 GlassMenuItem("Progressive blur", systemImage: "text.below.photo") { page = .blur }
                 GlassMenuDivider()
-                GlassMenuItem("Light", systemImage: "sun.max") { appearance = .light }
-                GlassMenuItem("Dark", systemImage: "moon") { appearance = .dark }
-                GlassMenuItem("Match system", systemImage: "circle.lefthalf.filled") { appearance = .automatic }
+                GlassMenuItem("Light", systemImage: "sun.max", checked: appearance == .light) { appearance = .light }
+                GlassMenuItem("Dark", systemImage: "moon", checked: appearance == .dark) { appearance = .dark }
+                GlassMenuItem("Match system", systemImage: "circle.lefthalf.filled", checked: appearance == .automatic) { appearance = .automatic }
             }
         }
         .padding(.top, 8)
@@ -69,7 +85,7 @@ struct HeroPage: View {
                     .opacity(0.75)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
-                    GlassButton("Controls", systemImage: "arrow.right", prominent: true) { page = .controls }
+                    GlassButton("Controls", systemImage: "arrow.forward", prominent: true) { page = .controls }
                     GlassButton("Lab", systemImage: "drop") { page = .lab }
                 }
                 .padding(.top, 4)

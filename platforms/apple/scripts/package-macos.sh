@@ -21,9 +21,11 @@ The demo of the LiquidGlass Swift package: native Liquid Glass in SwiftUI
 and Metal. Source: platforms/apple/Studio in
 https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android
 
-The app is ad-hoc signed, not notarized. The first time you open it,
-right-click (or Control-click) "Liquid Glass Studio" and choose Open, then
-confirm. If macOS still refuses, run:
+The app is ad-hoc signed, not notarized, so macOS blocks its first launch.
+On macOS 15 or later: open it once, then open System Settings > Privacy &
+Security and click Open Anyway next to "Liquid Glass Studio". On macOS 14:
+Control-click (or right-click) the app, choose Open, then confirm. Or, on
+any version, run:
 
   xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"
 

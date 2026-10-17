@@ -6,6 +6,8 @@ import SwiftUI
 /// stories exactly where they are while they move.
 struct StoriesBackdrop: View {
     let position: GlassScrollPosition
+    /// The category shown, or `nil` for every story.
+    let filter: String?
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -13,13 +15,13 @@ struct StoriesBackdrop: View {
         GlassScrollView(position: position) {
             VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Stories")
+                    Text(filter ?? "Stories")
                         .font(.largeTitle.bold())
                     Text("Scroll: the top and bottom edges blur progressively under the glass.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                ForEach(Story.all) { story in
+                ForEach(Story.all.filter { filter == nil || $0.category == filter }) { story in
                     StoryCard(story: story)
                 }
             }
@@ -44,6 +46,7 @@ struct StoriesBackdrop: View {
 /// The glass over the stories: a toolbar and the progressive edges.
 struct StoriesPage: View {
     let position: GlassScrollPosition
+    @Binding var filter: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,7 +54,13 @@ struct StoriesPage: View {
                 GlassProgressiveBlur(edge: .top, size: 128)
                     .ignoresSafeArea(edges: .top)
                 GlassToolbar(material: .regular) {
-                    GlassButton(icon: "line.3.horizontal.decrease", label: "Filter") {}
+                    GlassMenu(icon: "line.3.horizontal.decrease", label: "Filter") {
+                        GlassMenuItem("All stories", checked: filter == nil) { show(nil) }
+                        GlassMenuDivider()
+                        ForEach(Story.categories, id: \.self) { category in
+                            GlassMenuItem(category, checked: filter == category) { show(category) }
+                        }
+                    }
                     GlassToolbarSpacer()
                     GlassButton(icon: "arrow.up", label: "Scroll to top") { position.scrollTo(edge: .top) }
                     GlassMenu(icon: "ellipsis", label: "More") {
@@ -66,6 +75,12 @@ struct StoriesPage: View {
             GlassProgressiveBlur(edge: .bottom, size: 120)
                 .ignoresSafeArea(edges: .bottom)
         }
+    }
+
+    /// Shows one category (or every story) from the top.
+    private func show(_ category: String?) {
+        filter = category
+        position.scrollTo(edge: .top, animated: false)
     }
 }
 
@@ -101,6 +116,13 @@ struct Story: Identifiable {
     let title: String
     let excerpt: String
     let wallpaper: Wallpaper
+
+    /// The categories, in the order the stories first use them.
+    static var categories: [String] {
+        all.reduce(into: []) { names, story in
+            if !names.contains(story.category) { names.append(story.category) }
+        }
+    }
 
     static let all: [Story] = [
         Story(id: 0, category: "Optics", title: "Light, bent on purpose",

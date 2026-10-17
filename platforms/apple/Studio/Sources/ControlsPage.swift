@@ -16,26 +16,51 @@ struct ControlsPage: View {
     enum Range: Hashable { case day, week, month }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Text("Controls")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
-                    .padding(.top, 8)
-                buttons
-                iconButtons
-                toolbar
-                values
-                tabs
-                menus
+        GeometryReader { proxy in
+            ScrollView {
+                Group {
+                    if proxy.size.width >= Self.twoColumnWidth {
+                        // Wide windows (Mac, iPad landscape): two columns, so
+                        // every control shows clear of the floating tab bar.
+                        VStack(alignment: .leading, spacing: 28) {
+                            title
+                            HStack(alignment: .top, spacing: 40) {
+                                VStack(alignment: .leading, spacing: 28) { buttons; iconButtons; toolbar }
+                                VStack(alignment: .leading, spacing: 28) { values; tabs; menus }
+                            }
+                        }
+                        .frame(maxWidth: 1040)
+                    } else {
+                        VStack(alignment: .leading, spacing: 28) {
+                            title
+                            buttons
+                            iconButtons
+                            toolbar
+                            values
+                            tabs
+                            menus
+                        }
+                        .frame(maxWidth: 620)
+                    }
+                }
+                .padding(.horizontal, StudioLayout.pagePadding)
+                .padding(.bottom, StudioLayout.tabBarClearance + 16)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, StudioLayout.pagePadding)
-            .padding(.bottom, StudioLayout.tabBarClearance + 16)
-            .frame(maxWidth: 620)
-            .frame(maxWidth: .infinity)
+            .scrollIndicators(.hidden)
+            .modifier(ScrollEdge())
         }
-        .scrollIndicators(.hidden)
+    }
+
+    /// From this width the page lays out in two columns.
+    static let twoColumnWidth: CGFloat = 980
+
+    private var title: some View {
+        Text("Controls")
+            .font(.largeTitle.bold())
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
+            .padding(.top, 8)
     }
 
     private var buttons: some View {
@@ -81,7 +106,7 @@ struct ControlsPage: View {
                 GlassButton(icon: "italic", label: "Italic") {}
                 GlassButton(icon: "underline", label: "Underline") {}
                 GlassToolbarSpacer(.fixed)
-                GlassButton(icon: "square.and.arrow.up", label: "Share") {}
+                ShareButton()
             }
         }
     }
