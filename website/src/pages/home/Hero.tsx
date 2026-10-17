@@ -31,9 +31,8 @@ const defaultWallpaper = (theme: "light" | "dark"): WallpaperName =>
  * The static wallpaper under the canvas, as CSS backgrounds so the one that
  * matches <html data-theme> (set before first paint) is the only download.
  */
-function HeroFallback() {
-  const light = defaultWallpaper("light");
-  const dark = defaultWallpaper("dark");
+/** A stage's wallpaper before WebGL draws, chosen by CSS from the theme on <html> (no flash before mounting). */
+export function WallpaperFallback({ light, dark }: { light: WallpaperName; dark: WallpaperName }) {
   const vars = (name: WallpaperName, prefix: string) => ({
     [`--${prefix}-s1`]: `url("/wallpapers/${name}-1024.webp")`,
     [`--${prefix}-s2`]: `url("/wallpapers/${name}-2048.webp")`,
@@ -57,7 +56,20 @@ export function Hero() {
   const tone = current ? wallpaperInfo[current].tone : undefined;
   const lightTone = wallpaperInfo[defaultWallpaper("light")].tone;
   const darkTone = wallpaperInfo[defaultWallpaper("dark")].tone;
+  // The wash under the copy that keeps it legible on this wallpaper (home.css).
+  // Phones get their own strength (the copy spans the whole width there).
+  const lightInfo = wallpaperInfo[defaultWallpaper("light")];
+  const darkInfo = wallpaperInfo[defaultWallpaper("dark")];
+  const scrimStyle = {
+    "--hero-scrim-light": lightInfo.scrim,
+    "--hero-scrim-light-narrow": lightInfo.scrimNarrow,
+    "--hero-scrim-dark": darkInfo.scrim,
+    "--hero-scrim-dark-narrow": darkInfo.scrimNarrow,
+    ...(current ? { "--hero-scrim-wide": wallpaperInfo[current].scrim, "--hero-scrim-narrow": wallpaperInfo[current].scrimNarrow } : null),
+  } as CSSProperties;
   const tintHex = TINTS[tint]?.hex ?? null;
+  const tintName = TINTS[tint]?.name ?? "None";
+  const materialName = material === "regular" ? "Regular" : "Clear";
   const items = wallpaperNames.map((name) => ({
     id: name,
     label: LABELS[name] ?? name,
@@ -65,8 +77,8 @@ export function Hero() {
   }));
 
   return (
-    <section className="hero" data-tone={tone} data-tone-light={lightTone} data-tone-dark={darkTone} aria-labelledby="hero-title">
-      <GlassStage backdrop={current ? { kind: "wallpaper", name: current } : null} appearance={theme} className="hero__stage" fallback={<HeroFallback />}>
+    <section className="hero" data-tone={tone} data-tone-light={lightTone} data-tone-dark={darkTone} style={scrimStyle} aria-labelledby="hero-title">
+      <GlassStage backdrop={current ? { kind: "wallpaper", name: current } : null} appearance={theme} className="hero__stage" fallback={<WallpaperFallback light={defaultWallpaper("light")} dark={defaultWallpaper("dark")} />}>
         <div className="hero__copy">
           <p className="hero__eyebrow">iOS · macOS · Android · Windows</p>
           <h1 id="hero-title" className="hero__title">
@@ -109,8 +121,8 @@ export function Hero() {
               <div>
                 <p className="hero-card__title">Liquid Glass</p>
                 <p className="hero-card__meta">
-                  {material === "regular" ? "Regular" : "Clear"} · refraction {refraction ? 60 : 0}
-                  {tintHex ? ` · ${TINTS[tint]?.name.toLowerCase()} tint` : ""}
+                  {materialName} · refraction {refraction ? 60 : 0}
+                  {tintHex ? ` · ${tintName.toLowerCase()} tint` : ""}
                 </p>
               </div>
             </div>
@@ -138,23 +150,29 @@ export function Hero() {
             aria-label="Clear glass lens. Drag it with the pointer, or focus it and use the arrow keys."
           />
 
+          {/* Each button shows its state in the icon too (a frosted or clear drop, the tint's
+              color, a filled sparkle), because narrow toolbars hide the labels. */}
           <Glass className="hero-toolbar" material={material} radius="capsule" tint={tintHex} interactive stretch enterDelay={220} role="toolbar" aria-label="Glass options">
             <button
               type="button"
               className="toolbar-button"
-              aria-label={`Material: ${material === "regular" ? "Regular" : "Clear"}. Switch to ${material === "regular" ? "Clear" : "Regular"}`}
+              title={`Material: ${materialName}`}
+              aria-label={`Material: ${materialName}. Switch to ${material === "regular" ? "Clear" : "Regular"}`}
               onClick={() => setMaterial((m) => (m === "regular" ? "clear" : "regular"))}
             >
-              <DropIcon size={18} />
-              <span>{material === "regular" ? "Regular" : "Clear"}</span>
+              <DropIcon size={18} fill={material === "regular" ? "currentColor" : "none"} fillOpacity={0.4} />
+              <span className="toolbar-button__label">{materialName}</span>
             </button>
-            <button type="button" className="toolbar-button" onClick={() => setTint((t) => (t + 1) % TINTS.length)} aria-label={`Tint: ${TINTS[tint]?.name}. Change tint`}>
-              <PaletteIcon size={18} />
-              <span>{TINTS[tint]?.name === "None" ? "Tint" : TINTS[tint]?.name}</span>
+            <button type="button" className="toolbar-button" title={`Tint: ${tintName}`} onClick={() => setTint((t) => (t + 1) % TINTS.length)} aria-label={`Tint: ${tintName}. Change tint`}>
+              <span className="toolbar-button__icon">
+                <PaletteIcon size={18} />
+                {tintHex ? <span className="toolbar-button__dot" style={{ background: tintHex }} /> : null}
+              </span>
+              <span className="toolbar-button__label">{tintHex ? tintName : "Tint"}</span>
             </button>
-            <button type="button" className="toolbar-button" aria-pressed={refraction} onClick={() => setRefraction((r) => !r)}>
-              <SparkleIcon size={18} />
-              <span>Refraction</span>
+            <button type="button" className="toolbar-button" title={`Refraction: ${refraction ? "on" : "off"}`} aria-pressed={refraction} onClick={() => setRefraction((r) => !r)}>
+              <SparkleIcon size={18} fill={refraction ? "currentColor" : "none"} />
+              <span className="toolbar-button__label">Refraction</span>
             </button>
           </Glass>
 

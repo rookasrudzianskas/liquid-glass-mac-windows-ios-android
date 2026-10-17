@@ -2,26 +2,62 @@
 
 .hero {
   --hero-fg: #111113;
-  --hero-fg-2: rgba(17, 17, 19, 0.72);
+  --hero-fg-2: rgba(17, 17, 19, 0.9);
   --hero-btn-bg: #111113;
   --hero-btn-fg: #ffffff;
+  --hero-glass-bg: rgba(255, 255, 255, 0.36);
+  /* A soft wash under the copy in the tone's own color. Its strength comes from
+     wallpapers.json (content.mjs measures each wallpaper behind the copy). */
+  --hero-scrim-rgb: 255, 255, 255;
 }
 
 .hero[data-tone="dark"],
 [data-theme="light"] .hero:not([data-tone])[data-tone-light="dark"],
 [data-theme="dark"] .hero:not([data-tone])[data-tone-dark="dark"] {
   --hero-fg: #ffffff;
-  --hero-fg-2: rgba(255, 255, 255, 0.8);
+  --hero-fg-2: rgba(255, 255, 255, 0.9);
   --hero-btn-bg: #ffffff;
   --hero-btn-fg: #111113;
+  --hero-glass-bg: rgba(255, 255, 255, 0.1);
+  --hero-scrim-rgb: 0, 0, 0;
 }
 
+/* The wash for the current wallpaper; before mounting, the theme picks the
+   default wallpaper's (Hero.tsx sets all of them). */
+.hero {
+  --hero-scrim: var(--hero-scrim-wide, 0);
+}
+
+.hero:not([data-tone]) {
+  --hero-scrim: var(--hero-scrim-light, 0);
+}
+
+[data-theme="dark"] .hero:not([data-tone]) {
+  --hero-scrim: var(--hero-scrim-dark, 0);
+}
+
+@media (max-width: 820px) {
+  .hero {
+    --hero-scrim: var(--hero-scrim-narrow, 0);
+  }
+  .hero:not([data-tone]) {
+    --hero-scrim: var(--hero-scrim-light-narrow, 0);
+  }
+  [data-theme="dark"] .hero:not([data-tone]) {
+    --hero-scrim: var(--hero-scrim-dark-narrow, 0);
+  }
+}
+
+/* The copy and the glass are one composition, centered in the screen below the
+   nav: it fits a 1280x720 laptop and leaves no empty band on large displays. */
 .hero__stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: max(700px, 100svh);
-  padding: calc(var(--nav-h) + clamp(24px, 5vh, 64px)) var(--gutter) 20px;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: calc(var(--nav-h) + clamp(12px, 2.5vh, 40px)) var(--gutter) 16px;
   color: var(--hero-fg);
 }
 
@@ -33,12 +69,29 @@
   transition: color 0.5s;
 }
 
+.hero__copy::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -16% -14%;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--hero-scrim-rgb), var(--hero-scrim, 0)) 0%,
+    rgba(var(--hero-scrim-rgb), calc(var(--hero-scrim, 0) * 0.96)) 45%,
+    rgba(var(--hero-scrim-rgb), calc(var(--hero-scrim, 0) * 0.82)) 62%,
+    rgba(var(--hero-scrim-rgb), calc(var(--hero-scrim, 0) * 0.55)) 76%,
+    rgba(var(--hero-scrim-rgb), calc(var(--hero-scrim, 0) * 0.24)) 89%,
+    rgba(var(--hero-scrim-rgb), 0) 100%
+  );
+  pointer-events: none;
+}
+
 .hero__eyebrow {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--hero-fg-2);
-  margin-bottom: 18px;
+  margin-bottom: clamp(10px, 2vh, 18px);
 }
 
 .hero__title {
@@ -50,13 +103,12 @@
 
 .hero__title-2 {
   font-weight: 620;
-  opacity: 0.92;
 }
 
 .hero__lead {
   max-width: 620px;
-  margin: clamp(16px, 2.6vh, 24px) auto 0;
-  font-size: clamp(17px, 1.6vw, 21px);
+  margin: clamp(14px, 2.6vh, 24px) auto 0;
+  font-size: clamp(17px, min(1.6vw, 2.7vh), 21px);
   line-height: 1.45;
   letter-spacing: -0.012em;
   color: var(--hero-fg-2);
@@ -67,7 +119,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
-  margin-top: clamp(20px, 3.4vh, 32px);
+  margin-top: clamp(18px, 3.4vh, 32px);
 }
 
 .hero .button--primary {
@@ -77,22 +129,34 @@
 
 .hero .button--glass {
   color: var(--hero-fg);
+  background: var(--hero-glass-bg);
 }
 
+.hero .button--glass:hover {
+  background: color-mix(in srgb, var(--hero-glass-bg), rgba(255, 255, 255, 0.5) 16%);
+}
+
+/* The glass: card, lens and toolbar in a row, the wallpaper tab bar a fixed gap
+   below. Each piece is laid out in flow; dragging only adds a transform. */
 .hero__play {
   position: relative;
-  flex: 1;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  grid-template-areas:
+    "card lens toolbar"
+    "tabbar tabbar tabbar";
+  justify-content: center;
+  align-items: center;
+  column-gap: clamp(20px, 2.6vw, 40px);
+  row-gap: clamp(28px, 5vh, 56px);
   width: 100%;
   max-width: 1120px;
-  min-height: 330px;
-  margin-top: clamp(12px, 2.4vh, 28px);
+  margin-top: clamp(16px, 3vh, 36px);
 }
 
 .hero-card {
-  position: absolute;
   z-index: 2;
-  left: calc(50% - 420px);
-  top: 36px;
+  grid-area: card;
   width: 340px;
   padding: 20px 20px 18px;
   display: grid;
@@ -151,29 +215,27 @@
 }
 
 .hero-lens {
-  position: absolute;
   z-index: 2;
-  left: calc(50% - 40px);
-  top: 18px;
+  grid-area: lens;
   width: 156px;
   height: 156px;
 }
 
 .hero-toolbar {
-  position: absolute;
   z-index: 2;
-  left: calc(50% + 150px);
-  top: 84px;
+  grid-area: toolbar;
   display: flex;
   align-items: center;
   gap: 2px;
   height: 52px;
+  margin-top: 16px;
   padding: 4px;
 }
 
 .toolbar-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   height: 44px;
   padding: 0 14px;
@@ -183,13 +245,20 @@
   color: inherit;
   font-size: 15px;
   font-weight: 620;
+  white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
 }
 
 .toolbar-button:hover {
   background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.toolbar-button[aria-pressed="true"] {
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .toolbar-button[aria-pressed="false"] {
@@ -201,11 +270,24 @@
   border-radius: 999px;
 }
 
-.hero-tabbar-slot {
+.toolbar-button__icon {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The current tint, as a dot on the palette. */
+.toolbar-button__dot {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
+  right: -3px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.hero-tabbar-slot {
+  grid-area: tabbar;
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -216,20 +298,12 @@
   z-index: 2;
 }
 
-@media (max-width: 1080px) {
-  /* One centered row with 20px gaps: card (340), lens (156), icon-only toolbar
-     (176). 712px fits from 821px up, so nothing overlaps on load. */
-  .hero-card {
-    left: calc(50% - 356px);
-  }
-  .hero-lens {
-    left: calc(50% + 4px);
-  }
-  .hero-toolbar {
-    left: calc(50% + 180px);
-    top: 84px;
-  }
-  .hero-toolbar span {
+/* Where the row has no room for the labels (card 340, lens 156, labelled
+   toolbar about 340 and two gaps need about 900px), and on the smallest
+   phones, the toolbar shows its icons; their titles and accessible names
+   still say what each one does. */
+@media (min-width: 821px) and (max-width: 999px), (max-width: 379px) {
+  .hero-toolbar .toolbar-button__label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -239,40 +313,41 @@
   }
   .hero-toolbar .toolbar-button {
     width: 56px;
-    justify-content: center;
     padding: 0;
   }
 }
 
+/* Phones and tablets: the lens over the card's corner, then the toolbar and the tab bar. */
 @media (max-width: 820px) {
-  .hero__stage {
-    padding-top: calc(var(--nav-h) + 40px);
-  }
   .hero__play {
-    min-height: 430px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "glass"
+      "toolbar"
+      "tabbar";
+    row-gap: 20px;
   }
   .hero-card {
-    left: calc(50% - min(170px, 50% - 4px));
-    top: 72px;
+    grid-area: glass;
+    justify-self: center;
+    align-self: start;
     width: min(340px, 100% - 8px);
+    margin-top: 68px;
   }
   .hero-lens {
-    left: auto;
-    right: max(0px, calc(50% - 200px));
-    top: 4px;
+    grid-area: glass;
+    justify-self: end;
+    align-self: start;
     width: 112px;
     height: 112px;
+    margin-right: max(0px, calc(50% - 200px));
   }
   .hero-toolbar {
-    right: auto;
-    left: calc(50% - 150px);
-    top: 300px;
+    justify-self: center;
+    margin-top: 0;
   }
-}
-
-@media (max-width: 820px) and (min-width: 560px) {
-  .hero-toolbar {
-    left: calc(50% - 90px);
+  .hero-tabbar-slot {
+    margin-top: 4px;
   }
 }
 
@@ -284,10 +359,6 @@
   }
   .hero-tabbar {
     width: calc(100% - 4px);
-  }
-  .hero-toolbar {
-    left: calc(50% - 88px);
-    top: 284px;
   }
 }
 
@@ -350,7 +421,7 @@
   font-weight: 760;
   letter-spacing: -0.05em;
   line-height: 1;
-  background: var(--spectrum);
+  background: var(--spectrum-text);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -918,6 +989,13 @@
   text-align: center;
 }
 
+/* Dark glass over Midnight's bright cyan and pink bands: a deeper body keeps the
+   white copy at 4.5:1 or more. The transparent border leaves the rim light uncovered. */
+[data-theme="dark"] .stage[data-renderer="webgl"] .cta__card {
+  border: 2px solid transparent;
+  background: rgba(8, 10, 24, 0.32) padding-box;
+}
+
 .cta__title {
   font-size: clamp(32px, 5vw, 60px);
   font-weight: 740;
@@ -929,7 +1007,8 @@
   margin: 16px auto 0;
   max-width: 520px;
   font-size: clamp(17px, 1.7vw, 20px);
-  color: var(--glass-fg-2);
+  /* Stronger than --glass-fg-2: frosted glass over a bright wallpaper needs it for 4.5:1. */
+  color: color-mix(in srgb, var(--glass-fg) 84%, transparent);
 }
 
 .cta__buttons {

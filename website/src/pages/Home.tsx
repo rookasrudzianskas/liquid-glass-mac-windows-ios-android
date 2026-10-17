@@ -1,18 +1,19 @@
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
 import screens from "../generated/screens.json";
 import { Link, REPO_URL } from "../router";
 import { Glass, GlassStage } from "../glass/react";
-import { wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
+import { wallpaperNames } from "../glass/backdrop";
 import type { WallpaperName } from "../glass/backdrop";
 import { useTheme } from "../theme";
 import { Static } from "../components/Static";
 import { docHref } from "../docs";
 import type { Head } from "../router";
-import { Hero } from "./home/Hero";
+import { Hero, WallpaperFallback } from "./home/Hero";
 import { Platforms } from "./home/Platforms";
 import { Controls } from "./home/Controls";
 import { BevelDiagram, CornerDiagram, RefractionDiagram, RimDiagram, SpringDiagram, ToneDiagram } from "./home/Diagrams";
 import { ArrowRightIcon, DownloadIcon, GaugeIcon, GitHubIcon, LayersIcon, ShieldIcon } from "../components/Icons";
+import { useScrollRegions } from "../lib/scroll-regions";
 
 const PIPELINE = [
   { name: "Backdrop", detail: "scene content, once" },
@@ -73,12 +74,15 @@ const SCREEN_LABELS: Record<string, string> = { apple: "macOS and iOS", android:
 
 function Screens() {
   const order = ["apple", "android", "windows"];
+  // A strip that scrolls sideways gets a tab stop (its list keeps its name).
+  const ref = useRef<HTMLElement>(null);
+  useScrollRegions(ref, ".screens__list", (el) => el.getAttribute("aria-label") ?? "Screenshots");
   const groups = Object.entries(screens as Record<string, Screen[]>)
     .filter(([, list]) => list.length)
     .sort(([a], [b]) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
   if (!groups.length) return null;
   return (
-    <section className="section screens" aria-labelledby="screens-title">
+    <section ref={ref} className="section screens" aria-labelledby="screens-title">
       <div className="section__inner">
         <header className="section-head">
           <p className="eyebrow">Liquid Glass Studio</p>
@@ -104,22 +108,21 @@ function Screens() {
   );
 }
 
+const pick = (name: string) => (wallpaperNames.includes(name as WallpaperName) ? name : wallpaperNames[0]) as WallpaperName;
+// Light glass over Ocean in light appearance; in dark appearance the dark glass sits on
+// Midnight, since over Ocean's bright waves white text falls below 4.5:1 (home.css deepens it too).
+const CTA_WALLPAPER = { light: pick("ocean"), dark: pick("midnight") };
+
 function CallToAction() {
   const { theme, mounted } = useTheme();
-  const name = (wallpaperNames.includes("ocean" as WallpaperName) ? "ocean" : wallpaperNames[0]) as WallpaperName;
+  const name = CTA_WALLPAPER[theme];
   return (
     <section className="section cta" aria-labelledby="cta-title">
       <GlassStage
         backdrop={mounted ? { kind: "wallpaper", name } : null}
         appearance={theme}
         className="cta__stage"
-        fallback={
-          <picture className="stage__fallback">
-            <source type="image/avif" srcSet={wallpaperSrcSet(name, "avif")} sizes="min(1180px, 100vw)" />
-            <source type="image/webp" srcSet={wallpaperSrcSet(name, "webp")} sizes="min(1180px, 100vw)" />
-            <img src={`/wallpapers/${name}-1536.jpg`} alt="" width={3072} height={3072} loading="lazy" decoding="async" />
-          </picture>
-        }
+        fallback={<WallpaperFallback light={CTA_WALLPAPER.light} dark={CTA_WALLPAPER.dark} />}
       >
         <Glass className="cta__card" material="regular" radius={40} interactive enterDelay={80}>
           <h2 id="cta-title" className="cta__title">

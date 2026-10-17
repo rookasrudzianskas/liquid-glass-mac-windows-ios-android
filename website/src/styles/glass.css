@@ -8,12 +8,12 @@
   isolation: isolate;
   background: #2a2340;
   --glass-fg: #111113;
-  --glass-fg-2: rgba(17, 17, 19, 0.62);
+  --glass-fg-2: rgba(17, 17, 19, 0.78);
 }
 
 [data-theme="dark"] .stage {
   --glass-fg: #ffffff;
-  --glass-fg-2: rgba(255, 255, 255, 0.66);
+  --glass-fg-2: rgba(255, 255, 255, 0.8);
 }
 
 .stage__fallback,
