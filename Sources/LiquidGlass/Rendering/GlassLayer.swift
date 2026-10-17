@@ -86,8 +86,14 @@ enum GlassRendering {
 /// frosted for the Regular material, run through the glass shader. It is
 /// drawn beneath the surface's content and extends `padding` points past the
 /// surface so the outline can grow and stretch.
-struct GlassLayer: View {
-    let size: CGSize
+///
+/// The size is animatable. Layout (and so the geometry reader that measures
+/// the surface) only knows a surface's final size, while SwiftUI animates the
+/// content's frame toward it; animating the size here with the same
+/// transaction keeps the outline on the content while it grows or shrinks,
+/// instead of jumping to the final outline at once.
+struct GlassLayer: View, Animatable {
+    var size: CGSize
     let style: GlassRenderStyle
     let outline: GlassOutlineState
     let padding: CGFloat
@@ -96,6 +102,11 @@ struct GlassLayer: View {
     let localBackdrop: AnyView?
 
     @Environment(\.glassBackdrop) private var backdrop
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(size.width, size.height) }
+        set { size = CGSize(width: newValue.first, height: newValue.second) }
+    }
 
     var body: some View {
         // Placed by a left-to-right parent (see GlassSurfaceCore), so the
@@ -110,21 +121,24 @@ struct GlassLayer: View {
 
     @ViewBuilder
     private func optics(layer: CGSize) -> some View {
+        let glass = parameters
         if let backdrop {
             if style.reduceTransparency {
                 Self.shaderCanvas
                     .frame(width: layer.width, height: layer.height)
-                    .layerEffect(shader(layer: layer, mode: 1), maxSampleOffset: .zero)
+                    .layerEffect(glass.shader(layer: layer, mode: 1), maxSampleOffset: .zero)
             } else {
+                let reach = GlassRendering.sampleReach(refraction: style.refraction, frosted: frosted, dark: style.dark)
                 copy(of: backdrop, layer: layer)
-                    .layerEffect(
-                        shader(layer: layer, mode: 0),
-                        maxSampleOffset: GlassRendering.sampleReach(refraction: style.refraction, frosted: frosted, dark: style.dark)
-                    )
+                    .layerEffect(glass.shader(layer: layer, mode: 0), maxSampleOffset: reach)
             }
         } else {
             fallback(layer: layer)
         }
+    }
+
+    private var parameters: GlassShaderParameters {
+        GlassShaderParameters(style: style, outline: outline, padding: padding, frosted: frosted)
     }
 
     private var frosted: Bool { style.material == .regular && !style.reduceTransparency }
@@ -181,16 +195,28 @@ struct GlassLayer: View {
                 .opacity(outline.opacity)
             Self.shaderCanvas
                 .frame(width: layer.width, height: layer.height)
-                .layerEffect(shader(layer: layer, mode: 2), maxSampleOffset: .zero)
+                .layerEffect(parameters.shader(layer: layer, mode: 2), maxSampleOffset: .zero)
         }
     }
 
     private var outlineRect: CGRect {
         outline.rect ?? CGRect(origin: .zero, size: size)
     }
+}
 
-    private func shader(layer: CGSize, mode: Float) -> Shader {
-        let rect = outlineRect
+/// The glass shader's arguments for one surface.
+struct GlassShaderParameters {
+    let style: GlassRenderStyle
+    let outline: GlassOutlineState
+    let padding: CGFloat
+    let frosted: Bool
+
+    /// The shader for a layer of `layer` points: the surface fills it, less
+    /// the padding on every side, unless an explicit outline is set.
+    func shader(layer: CGSize, mode: Float) -> Shader {
+        let rect = outline.rect ?? CGRect(
+            x: 0, y: 0, width: max(0, layer.width - 2 * padding), height: max(0, layer.height - 2 * padding)
+        )
         let center = CGPoint(x: rect.midX + padding + outline.translation.width, y: rect.midY + padding + outline.translation.height)
         let glow = GlassOptics.glow(width: rect.width, height: rect.height, dark: style.dark)
         let margin: Float = frosted ? Float(3 * GlassOptics.frostSigma) : 0.5

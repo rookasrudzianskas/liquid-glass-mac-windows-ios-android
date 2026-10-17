@@ -428,6 +428,25 @@ final class BehaviorTests: XCTestCase {
         XCTAssertEqual(tabs.height, GlassControlMetrics.tabBarHeight(.regular), "tab bar")
     }
 
+    /// The glass layer's size is animatable, so a surface that SwiftUI
+    /// animates to a new size keeps its outline on the content's animated
+    /// frame (layout reports only the final size).
+    func testGlassLayerSizeAnimates() {
+        let style = GlassRenderStyle(
+            material: .clear, dark: false, radius: .capsule, refraction: 60, tint: nil, nested: false,
+            increaseContrast: false, reduceTransparency: false, pixel: 1
+        )
+        var layer = GlassLayer(size: CGSize(width: 120, height: 40), style: style, outline: GlassOutlineState(), padding: 10, localBackdrop: nil)
+        let from = layer.animatableData
+        var to = from
+        to.first = 300
+        // Halfway through, as an animation interpolates it.
+        var halfway = from
+        halfway.first += (to.first - from.first) * 0.5
+        layer.animatableData = halfway
+        XCTAssertEqual(layer.size, CGSize(width: 210, height: 40))
+    }
+
     // MARK: API shape
 
     /// Labels computed at runtime, roles and the shared options compile.
