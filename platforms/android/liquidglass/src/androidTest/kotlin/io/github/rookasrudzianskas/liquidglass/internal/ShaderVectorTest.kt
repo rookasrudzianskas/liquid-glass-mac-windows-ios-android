@@ -76,74 +76,83 @@ class ShaderVectorTest {
     private class Inputs(val a: FloatArray, val b: FloatArray = ZERO, val c: FloatArray = ZERO, val d: FloatArray = ZERO)
 
     /** Evaluates [mode] of the test program for every input; each result is a float4. */
-    private fun evaluate(mode: Int, inputs: List<Inputs>): List<FloatArray> {
-        val width = inputs.size
-        val shader = RuntimeShader(PROGRAM)
-        // The glass program declares the content child; this program never samples it.
-        shader.setInputShader("content", BitmapShader(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
-        val paint = Paint().apply {
-            isAntiAlias = false
-            isDither = false
-            blendMode = BlendMode.SRC
-        }
-        val node = RenderNode("ShaderVectorTest").apply { setPosition(0, 0, width, ROWS) }
-        val canvas = node.beginRecording(width, ROWS)
-        inputs.forEachIndexed { i, input ->
-            // Setting a uniform makes a new native shader; the recorded draw keeps the one it was drawn with.
-            shader.setFloatUniform("uMode", mode.toFloat())
-            shader.setFloatUniform("uA", input.a.padded())
-            shader.setFloatUniform("uB", input.b.padded())
-            shader.setFloatUniform("uC", input.c.padded())
-            shader.setFloatUniform("uD", input.d.padded())
-            paint.shader = shader
-            canvas.drawRect(i.toFloat(), 0f, i + 1f, ROWS.toFloat(), paint)
-        }
-        node.endRecording()
-        val pixels = render(node, width)
-        return List(width) { i ->
-            FloatArray(4) { component ->
-                val o = (component * width + i) * 4
-                decode(pixels[o], pixels[o + 1], pixels[o + 2])
-            }
-        }
-    }
+    private fun evaluate(mode: Int, inputs: List<Inputs>): List<FloatArray> = Gpu.evaluate(mode, inputs)
 
-    /** Renders [node] on the GPU into an 8-bit RGBA buffer and returns its bytes, row by row (unsigned). */
-    private fun render(node: RenderNode, width: Int): IntArray {
-        var result: IntArray? = null
-        InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            val usage = HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or HardwareBuffer.USAGE_CPU_READ_OFTEN
-            val reader = ImageReader.newInstance(width, ROWS, PixelFormat.RGBA_8888, 1, usage)
-            val renderer = HardwareRenderer()
-            try {
-                renderer.setSurface(reader.surface)
-                renderer.setContentRoot(node)
-                renderer.createRenderRequest().setWaitForPresent(true).syncAndDraw()
-                val deadline = SystemClock.uptimeMillis() + TIMEOUT_MS
-                var image = reader.acquireLatestImage()
-                while (image == null && SystemClock.uptimeMillis() < deadline) {
-                    SystemClock.sleep(5)
-                    image = reader.acquireLatestImage()
+    /**
+     * The GPU side, in a class of its own: its signatures (lambdas included) name Android 10 and 13
+     * classes, so keeping them off the test class lets the runner load it on every Android version
+     * and skip it below 13.
+     */
+    private object Gpu {
+        fun evaluate(mode: Int, inputs: List<Inputs>): List<FloatArray> {
+            val width = inputs.size
+            val shader = RuntimeShader(PROGRAM)
+            // The glass program declares the content child; this program never samples it.
+            shader.setInputShader("content", BitmapShader(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
+            val paint = Paint().apply {
+                isAntiAlias = false
+                isDither = false
+                blendMode = BlendMode.SRC
+            }
+            val node = RenderNode("ShaderVectorTest").apply { setPosition(0, 0, width, ROWS) }
+            val canvas = node.beginRecording(width, ROWS)
+            inputs.forEachIndexed { i, input ->
+                // Setting a uniform makes a new native shader; the recorded draw keeps the one it was drawn with.
+                shader.setFloatUniform("uMode", mode.toFloat())
+                shader.setFloatUniform("uA", input.a.padded())
+                shader.setFloatUniform("uB", input.b.padded())
+                shader.setFloatUniform("uC", input.c.padded())
+                shader.setFloatUniform("uD", input.d.padded())
+                paint.shader = shader
+                canvas.drawRect(i.toFloat(), 0f, i + 1f, ROWS.toFloat(), paint)
+            }
+            node.endRecording()
+            val pixels = render(node, width)
+            return List(width) { i ->
+                FloatArray(4) { component ->
+                    val o = (component * width + i) * 4
+                    decode(pixels[o], pixels[o + 1], pixels[o + 2])
                 }
-                checkNotNull(image) { "the GPU never produced a frame" }
-                image.use {
-                    val plane = it.planes[0]
-                    val buffer = plane.buffer
-                    val bytes = IntArray(width * ROWS * 4)
-                    for (y in 0 until ROWS) {
-                        for (x in 0 until width) {
-                            val at = y * plane.rowStride + x * plane.pixelStride
-                            for (c in 0..3) bytes[(y * width + x) * 4 + c] = buffer.get(at + c).toInt() and 0xFF
-                        }
-                    }
-                    result = bytes
-                }
-            } finally {
-                renderer.destroy()
-                reader.close()
             }
         }
-        return checkNotNull(result)
+
+        /** Renders [node] on the GPU into an 8-bit RGBA buffer and returns its bytes, row by row (unsigned). */
+        private fun render(node: RenderNode, width: Int): IntArray {
+            var result: IntArray? = null
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val usage = HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or HardwareBuffer.USAGE_CPU_READ_OFTEN
+                val reader = ImageReader.newInstance(width, ROWS, PixelFormat.RGBA_8888, 1, usage)
+                val renderer = HardwareRenderer()
+                try {
+                    renderer.setSurface(reader.surface)
+                    renderer.setContentRoot(node)
+                    renderer.createRenderRequest().setWaitForPresent(true).syncAndDraw()
+                    val deadline = SystemClock.uptimeMillis() + TIMEOUT_MS
+                    var image = reader.acquireLatestImage()
+                    while (image == null && SystemClock.uptimeMillis() < deadline) {
+                        SystemClock.sleep(5)
+                        image = reader.acquireLatestImage()
+                    }
+                    checkNotNull(image) { "the GPU never produced a frame" }
+                    image.use {
+                        val plane = it.planes[0]
+                        val buffer = plane.buffer
+                        val bytes = IntArray(width * ROWS * 4)
+                        for (y in 0 until ROWS) {
+                            for (x in 0 until width) {
+                                val at = y * plane.rowStride + x * plane.pixelStride
+                                for (c in 0..3) bytes[(y * width + x) * 4 + c] = buffer.get(at + c).toInt() and 0xFF
+                            }
+                        }
+                        result = bytes
+                    }
+                } finally {
+                    renderer.destroy()
+                    reader.close()
+                }
+            }
+            return checkNotNull(result)
+        }
     }
 
     private var worst = 0f

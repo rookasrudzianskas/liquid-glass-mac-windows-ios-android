@@ -105,6 +105,12 @@ class GlassDensityTest {
                 }
             }
             awaitFrames(scenario, 12)
+            // The scene is laid out at the phone density whatever the screen's, and only what fits the window is copied.
+            assertTrue(
+                "the ${(SceneWidth * DENSITY).roundToInt()} x ${(SceneHeight * DENSITY).roundToInt()} px scene does not fit the " +
+                    "${scene.width.roundToInt()} x ${scene.height.roundToInt()} px window: run on a screen at least 720 px wide",
+                scene.width >= SceneWidth * DENSITY - 1f && scene.height >= SceneHeight * DENSITY - 1f,
+            )
             val deadline = SystemClock.uptimeMillis() + 8_000L
             var failure: String?
             do {

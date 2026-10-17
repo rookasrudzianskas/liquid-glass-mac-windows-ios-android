@@ -111,6 +111,9 @@ jobs:
           api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
+          # A 1080 x 2400, 420 dpi phone: GlassDensityTest lays its scene out at 2.625 px per dp
+          # (714 px wide), which the default 320 px screen cannot hold.
+          profile: pixel_6
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           working-directory: platforms/android
