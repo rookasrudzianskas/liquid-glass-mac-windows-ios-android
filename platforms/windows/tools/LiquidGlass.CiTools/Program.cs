@@ -19,6 +19,7 @@ internal static class Program
                 "gallery" => Gallery.Run(options.Require("out"), options.Require("wallpaper")),
                 "studio" => StudioCapture.Run(options.Require("exe"), options.Require("out")),
                 "blur" => BlurProbe.Run(options.Require("out")),
+                "example" => ExampleCapture.Run(options.Require("exe"), options.Require("out")),
                 _ => Usage(),
             };
         }
@@ -31,7 +32,7 @@ internal static class Program
 
     private static int Usage()
     {
-        Console.Error.WriteLine("usage: LiquidGlass.CiTools probe --out <dir>\n       LiquidGlass.CiTools gallery --out <dir> --wallpaper <jpg>\n       LiquidGlass.CiTools studio --exe <LiquidGlassStudio.exe> --out <dir>\n       LiquidGlass.CiTools blur --out <dir>");
+        Console.Error.WriteLine("usage: LiquidGlass.CiTools probe --out <dir>\n       LiquidGlass.CiTools gallery --out <dir> --wallpaper <jpg>\n       LiquidGlass.CiTools studio --exe <LiquidGlassStudio.exe> --out <dir>\n       LiquidGlass.CiTools blur --out <dir>\n       LiquidGlass.CiTools example --exe <HelloGlass.exe> --out <dir>");
         return 2;
     }
 }

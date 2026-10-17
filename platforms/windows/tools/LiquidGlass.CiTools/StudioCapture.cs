@@ -126,20 +126,21 @@ internal static class StudioCapture
         }
     }
 
-    private static IntPtr WaitForWindow(Process process, TimeSpan timeout)
+    /// <summary>The process's main window, once it shows one.</summary>
+    internal static IntPtr WaitForWindow(Process process, TimeSpan timeout)
     {
         var watch = Stopwatch.StartNew();
         while (watch.Elapsed < timeout)
         {
             process.Refresh();
-            if (process.HasExited) throw new InvalidOperationException($"Studio exited with code {process.ExitCode}");
+            if (process.HasExited) throw new InvalidOperationException($"{Path.GetFileName(process.StartInfo.FileName)} exited with code {process.ExitCode}");
             if (process.MainWindowHandle != IntPtr.Zero) return process.MainWindowHandle;
             Thread.Sleep(200);
         }
-        throw new TimeoutException("Studio did not show a window");
+        throw new TimeoutException($"{Path.GetFileName(process.StartInfo.FileName)} did not show a window");
     }
 
-    private static AutomationElement Find(AutomationElement root, string name)
+    internal static AutomationElement Find(AutomationElement root, string name)
         => root.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, name))
            ?? throw new InvalidOperationException($"no element named '{name}'");
 
@@ -230,7 +231,7 @@ internal static class StudioCapture
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(IntPtr hwnd);
+    internal static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

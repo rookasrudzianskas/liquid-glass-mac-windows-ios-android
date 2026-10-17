@@ -1,17 +1,18 @@
 name: Windows
 
-# Builds and verifies the WPF port on a real Windows machine. Pushes to main and manual runs then report back through
-# git: the `report` job force-pushes one fresh commit with logs, test results, fxc shader bytecode, screenshots and the
-# list of release files with their checksums to the orphan branch `ci-windows`. No binaries go there: every clone of
-# the repository that fetches all branches (Swift Package Manager's cache does) would download them. Pull requests run
-# the same checks with a read-only token and keep the report as a workflow artifact. Every run keeps the complete
-# release set (packages and all three Studio zips, built as continuous-integration builds) as the `windows-release`
-# artifact.
+# Builds and verifies the WPF port, and the Hello Glass example (examples/wpf), on a real Windows machine. Pushes to main
+# and manual runs then report back through git: the `report` job force-pushes one fresh commit with logs, test results,
+# fxc shader bytecode, screenshots of Studio and the example, and the list of release files with their checksums to the
+# orphan branch `ci-windows`. No binaries go there: every clone of the repository that fetches all branches (Swift
+# Package Manager's cache does) would download them. Pull requests run the same checks with a read-only token and keep
+# the report as a workflow artifact. Every run keeps the complete release set (packages and all three Studio zips, built
+# as continuous-integration builds) as the `windows-release` artifact.
 on:
   push:
     branches: [main]
     paths:
       - "platforms/windows/**"
+      - "examples/wpf/**"
       - "spec/vectors.json"
       - "spec/shaders/**"
       - "assets/wallpapers/**"
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - "platforms/windows/**"
+      - "examples/wpf/**"
       - "spec/vectors.json"
       - "spec/shaders/**"
       - "assets/wallpapers/**"
@@ -140,6 +142,19 @@ jobs:
             Tee-Object -FilePath "$env:REPORT\studio.log"
           Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = '.NET Runtime', 'Application Error' } -MaxEvents 4 -ErrorAction SilentlyContinue |
             Format-List TimeCreated, ProviderName, Message | Out-File "$env:REPORT\studio\runtime-events.txt"
+
+      - name: Build and capture the Hello Glass example
+        if: always()
+        run: |
+          # examples/wpf/HelloGlass built as a developer builds it, then launched and captured on this machine: the
+          # screenshot in its README is example/hello-glass-light.png from this report.
+          $example = "$PWD\..\..\examples\wpf\HelloGlass"
+          New-Item -ItemType Directory -Force -Path "$env:REPORT\example" | Out-Null
+          dotnet build $example -c Release 2>&1 | Tee-Object -FilePath "$env:REPORT\example\build.log"
+          if ($LASTEXITCODE -ne 0) { throw "the Hello Glass example did not build" }
+          dotnet run --project tools\LiquidGlass.CiTools -c Release --no-build -- example --exe "$example\bin\Release\net8.0-windows\HelloGlass.exe" --out "$env:REPORT\example" 2>&1 |
+            Tee-Object -FilePath "$env:REPORT\example\capture.log"
+          if ($LASTEXITCODE -ne 0) { throw "the Hello Glass example did not run as expected" }
 
       - name: Publish and smoke-test Studio
         if: always()
@@ -325,6 +340,7 @@ jobs:
           Get-Content "$env:REPORT\publish.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           Get-Content "$env:REPORT\release.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           Get-Content "$env:REPORT\studio\studio.txt" -ErrorAction SilentlyContinue | Add-Content $summary
+          Get-Content "$env:REPORT\example\example.txt" -ErrorAction SilentlyContinue | ForEach-Object { "example $_" } | Add-Content $summary
           Get-Content "$env:REPORT\consumer.txt" -ErrorAction SilentlyContinue | Select-String ": runs, shader " | ForEach-Object { "consumer $($_.Line)" } | Add-Content $summary
           Get-Content "$env:REPORT\blur\blur.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
