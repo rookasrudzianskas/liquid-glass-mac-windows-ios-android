@@ -1,0 +1,66 @@
+name: Bug report
+description: Glass renders, moves or builds incorrectly on one of the platforms.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The FAQ at the end of each guide ([Apple](https://liquid-glass-engineering.vercel.app/docs/apple), [Android](https://liquid-glass-engineering.vercel.app/docs/android), [Windows](https://liquid-glass-engineering.vercel.app/docs/windows)) covers the common surprises, such as glass that draws the fallback material. Report security problems privately as described in [SECURITY.md](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/SECURITY.md).
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS or iPadOS (SwiftUI)
+        - macOS (SwiftUI)
+        - Android (Jetpack Compose)
+        - Windows (WPF)
+        - Website or playground
+        - Agent skills
+        - Specification or reference
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Library version
+      description: The package version, or the commit if you build from source.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS, device and GPU
+      description: OS version, device or emulator, and the GPU. On Windows, paste the output of `GlassDiagnostics.Describe()`.
+      placeholder: "iOS 18.5 on iPhone 15 Pro · Android 14 on Pixel 8 · Windows 11 24H2, Intel Iris Xe"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected to see and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: |
+        The smallest code that shows the problem, or the Liquid Glass Studio page and options that reproduce it
+        (for example `--page controls --appearance dark` on Windows, `-page controls -appearance dark` on Apple,
+        `--es page controls --es appearance dark` on Android).
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recordings
+      description: Drop images or videos here. For a rendering problem, the same Studio page on another platform side by side helps most.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Build errors, crash logs or console output.
+      render: text

@@ -1,0 +1,37 @@
+name: Feature request
+description: A component, option or platform that Liquid Glass Engineering should support.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every port implements the same [component contract](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/COMPONENTS.md), so say whether the request is for one platform or for all of them.
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Platforms
+      options:
+        - label: iOS and macOS (SwiftUI)
+        - label: Android (Jetpack Compose)
+        - label: Windows (WPF)
+        - label: Website, playground or agent skills
+        - label: A new platform or renderer
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The interface you are building and what is missing or hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The API or behavior you have in mind, with a code sketch if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Screenshots, videos or links to the look you are after, and any workaround you use now.

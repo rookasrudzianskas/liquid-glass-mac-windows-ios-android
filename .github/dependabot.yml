@@ -1,0 +1,43 @@
+# Weekly dependency updates. Minor and patch updates of an ecosystem arrive as one grouped pull request;
+# major updates get a pull request each, so CI checks them one at a time.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: CI
+    groups:
+      actions:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: Website
+    groups:
+      website:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gradle
+    directory: /platforms/android
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: Android
+    groups:
+      android:
+        update-types: [minor, patch]
+
+  - package-ecosystem: nuget
+    directory: /platforms/windows
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: Windows
+    groups:
+      windows:
+        update-types: [minor, patch]
