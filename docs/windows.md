@@ -80,10 +80,10 @@ everything else goes in the scene's children, laid out like a single-cell `Grid`
     </lg:GlassScene.Content>
 
     <lg:GlassToolbar VerticalAlignment="Top" Margin="0,20,0,0">
-      <Button Content="&#xE72B;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="Back" />
+      <Button Content="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Back" />
       <Button Content="Library" />
       <lg:GlassToolbarSpacer Sizing="Fixed" />
-      <Button Content="&#xE72D;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="Share" />
+      <Button Content="&#xE72D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Share" />
     </lg:GlassToolbar>
 
     <lg:GlassSurface Material="Regular" Radius="28" Width="380" Padding="28"
@@ -104,9 +104,14 @@ everything else goes in the scene's children, laid out like a single-cell `Grid`
 </Window>
 ```
 
-The same from C#:
+A card from C#, in a window's constructor:
 
 ```csharp
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using LiquidGlass;
 using LiquidGlass.Wpf;
 
@@ -120,19 +125,25 @@ scene.Children.Add(new GlassSurface
     Radius = 28,
     Width = 380,
     Padding = new Thickness(28),
-    Content = new TextBlock { Text = "Liquid Glass", FontSize = 32 },
+    HorizontalAlignment = HorizontalAlignment.Center,
+    VerticalAlignment = VerticalAlignment.Center,
+    Content = new TextBlock { Text = "Liquid Glass", FontSize = 32, FontWeight = FontWeights.SemiBold },
 });
 Content = scene;
 ```
 
 Turn on `UseLayoutRounding` on the window so outlines sit on whole device pixels; the rim light is one pixel thin.
+Icon samples use `Segoe Fluent Icons, Segoe MDL2 Assets`: Windows 11 has the first, Windows 10 the second. The library's
+icon font is also available as `{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}}`,
+and its text font as `ResourceId=Font`.
 
 ## How it works
 
 The scene draws its `Content` once. Every glass surface in the scene, at any depth, holds a live `VisualBrush`
 copy of what lies beneath it: the scene's backdrop, any progressive blur, and the glass of the surfaces that enclose
-it. The copy is aligned to the surface's exact position (including while it moves, scales under a press or animates)
-and extends past it as far as refraction and frost reach. The glass pixel shader (HLSL, pixel shader 3.0, a
+it. The copy is aligned to the surface's exact position (including while it moves, scales under a press or animates,
+and under rotation, skew or a right-to-left boundary between the scene and the glass) and extends past it as far as
+refraction and frost reach. The glass pixel shader (HLSL, pixel shader 3.0, a
 line-by-line translation of [`spec/shaders/liquid-glass.glsl`](../spec/shaders/liquid-glass.glsl)) then refracts the
 copy through the 20-unit bevel, tones it, adds the rim light and the pointer glow, and WPF composites the result over
 the real backdrop. Regular glass reads a copy frosted by WPF's `BlurEffect` (σ 7.33); the shader adds the wide
@@ -167,7 +178,7 @@ The region glass may refract. Its attached properties set the defaults that ever
 | `Material` (attached, inherited) | `GlassMaterial` | `Clear` | `Clear` or `Regular`. |
 | `Appearance` (attached, inherited) | `GlassAppearance` | `Automatic` | `Automatic` follows the Windows app mode. |
 | `Motion` (attached, inherited) | `GlassMotion` | `Full` | `Full`, `Reduced`, `None`. Windows' animation setting always applies. |
-| `RenderMode` (attached, inherited) | `GlassRenderMode` | `Automatic` | `Automatic`, `Shader`, `Fallback`. |
+| `RenderMode` (attached, inherited) | `GlassRenderMode` | `Automatic` | `Automatic`: the shader wherever it can run, otherwise the fallback material (`Shader` means the same). `Fallback`: always the fallback material. |
 | `ReduceTransparency` (attached, inherited) | `bool?` | null | Opaque fill instead of glass; null follows Windows. |
 | `IncreaseContrast` (attached, inherited) | `bool` | false | 1-unit inner border and the Regular material. |
 | `IsDark` (attached, read-only) | `bool` | | Whether a glass control draws dark glass. |
@@ -214,7 +225,7 @@ and 40 units, labels 14 semibold Segoe UI Variable.
 ```xml
 <lg:GlassButton Content="Share" Click="OnShare" />
 <lg:GlassButton Content="Continue" Size="Large" Tint="#0A84FF" Command="{Binding Next}" />
-<lg:GlassButton IsIconOnly="True" Content="&#xE734;" FontFamily="Segoe Fluent Icons"
+<lg:GlassButton IsIconOnly="True" Content="&#xE734;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                 AutomationProperties.Name="Favorite" />
 ```
 
@@ -241,11 +252,11 @@ clusters spring to their new size when items come and go.
 
 ```xml
 <lg:GlassToolbar HorizontalAlignment="Stretch" Margin="24,20">
-  <Button Content="&#xE72B;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="Back" />
+  <Button Content="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Back" />
   <Button Content="Journal" />
   <lg:GlassToolbarSpacer />
-  <ToggleButton Content="&#xE734;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="Favorite" />
-  <Button Content="&#xE712;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="More" />
+  <ToggleButton Content="&#xE734;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="Favorite" />
+  <Button Content="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="More" />
 </lg:GlassToolbar>
 ```
 
@@ -255,7 +266,9 @@ toolbar.Items.Insert(2, new GlassToolbarSpacer { Sizing = GlassSpacerSizing.Fixe
 ```
 
 Properties: `Items`, `Orientation`, `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction`, `Tint`,
-`IsInteractive` (true), `Material`, `Appearance`. UI Automation: `ToolBar`.
+`IsInteractive` (true), `Material`, `Appearance`. UI Automation: `ToolBar`. The toolbar style draws a keyboard focus
+ring in the glass's foreground color around plain buttons (not the window's focus visual), shown for keyboard focus
+only.
 
 ### GlassTabBar
 
@@ -271,8 +284,10 @@ others at 0.85.
 </lg:GlassTabBar>
 ```
 
-`ItemsSource`, `SelectedItem`, `SelectionChanged` and data templates work as on any `ListBox`. UI Automation: `Tab`
-with `TabItem` children and the Selection pattern.
+`ItemsSource`, `SelectedItem`, `SelectionChanged` and data templates work as on any `ListBox`. Once an item is selected,
+one always is: Ctrl+click on the selected tab and `SelectedIndex = -1` keep the selection, and removing the selected item
+selects its neighbor. UI Automation: `Tab` with `TabItem` children and the Selection pattern (selection required,
+single).
 
 ### GlassSlider
 
@@ -299,7 +314,8 @@ thumb, click, or press Space. `Content` is the label, drawn before the track.
 <lg:GlassSwitch Content="Focus" Tint="#5E5CE6" />
 ```
 
-`Tint` colors the track when on (default: the Windows accent color). UI Automation: the Toggle pattern.
+`Tint` colors the track when on (default: the Windows accent color). UI Automation: a toggle switch (a button with the
+Toggle pattern), as Windows' own.
 
 ### GlassMenu
 
@@ -317,9 +333,12 @@ material.
   <lg:GlassMenuItem Header="Copy" Icon="&#xE8C8;" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
 </lg:GlassMenu>
 
-<lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="Segoe Fluent Icons" AutomationProperties.Name="More">
-  <lg:GlassMenuItem Header="Rename" FontFamily="Segoe UI Variable Text" />
+<lg:GlassMenu IsIconOnly="True" Header="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" AutomationProperties.Name="More">
+  <lg:GlassMenuItem Header="Rename" />
 </lg:GlassMenu>
+
+<!-- Items from data: each becomes a GlassMenuItem showing the item with ItemTemplate. -->
+<lg:GlassMenu Header="Open recent" ItemsSource="{Binding RecentFiles}" />
 ```
 
 ```csharp
@@ -332,20 +351,28 @@ menu.Opened += (_, _) => Log("opened");
 | `IsOpen` | false | Two-way bindable. |
 | `Placement` | `Bottom` | `Bottom` or `Top`; flips when there is no room. |
 | `PanelMaterial` | `Regular` | Material of the panel. |
-| `PanelRadius` | 28 | Corner radius of the panel. |
-| `Size`, `IsIconOnly`, `Tint` | | Of the trigger button. |
+| `PanelRadius` | 28 | Corner radius of the panel (`GlassRadius`: units, `capsule` or `circle`). |
+| `Size`, `IsIconOnly` | | Of the trigger button. |
+| `Tint` | null | Tints the trigger and the panel. |
+| `ItemsSource`, `ItemTemplate`, `ItemContainerStyle` | | As on any `ItemsControl`; data items get `GlassMenuItem` containers. |
 | `Opened`, `Closed` | events | |
 
-`GlassMenuItem` (a `ButtonBase`): `Header`, `Icon`, `InputGestureText`, `IsCheckable`, `IsChecked`,
-`StaysOpenOnClick`, `Command`, `Click`. UI Automation: the menu is a Button with ExpandCollapse; items are MenuItems
-with Invoke (and Toggle when checkable).
+`GlassMenuItem` (a `ButtonBase`): `Header` (the label; it keeps the label current when it changes), `Icon`,
+`InputGestureText`, `IsCheckable`, `IsChecked`, `StaysOpenOnClick`, `Command`, `Click`. Items draw in the glass text
+font whatever font the trigger uses, so an icon font on an icon-only menu does not reach them; set `FontFamily` on an
+item (or in `ItemContainerStyle`) to change it. Items' routed events (such as `Click`) bubble through the panel in the
+scene's popup layer, not through the menu: handle them on the item, or use commands.
+
+UI Automation: the trigger button, which takes keyboard focus, is a Button with ExpandCollapse and the menu's state;
+the open panel is a Menu (raising MenuOpened and MenuClosed) whose items are MenuItems with Invoke, which chooses the
+item exactly as a click does (and Toggle when checkable).
 
 ![A menu grown out of its trigger on the Controls page](images/windows/controls-menu-light.png)
 
 ### GlassProgressiveBlur
 
 Progressive edge blur over the scene's backdrop: six blur levels whose strength rises toward `Edge` across a band
-`Size` units deep (OPTICS §7). Glass above the band refracts the blurred backdrop. Place it among the scene's
+`Size` units deep ([OPTICS §7](../spec/OPTICS.md#7-progressive-blur)). Glass above the band refracts the blurred backdrop. Place it among the scene's
 children, stretched over the area whose edge should blur; it takes no input.
 
 ```xml
@@ -359,8 +386,10 @@ children, stretched over the area whose edge should blur; it takes no input.
 </lg:GlassScene>
 ```
 
-`Edge` (`Top`, `Bottom`, `Left`, `Right`), `Size` (80), `Blur` (σ at the edge, 20, at most 33), `Source` (an element to
-blur outside a scene; default: the scene's backdrop).
+`Edge` (`Top`, `Bottom`, `Left`, `Right`), `Size` (80), `Blur` (σ at the edge, 20, at most `MaxBlur` = 33, rendered
+exactly at every display scale), `Source` (an element to blur outside a scene; default: the scene's backdrop). WPF
+draws one blur of at most 100 device pixels of radius, so on high-DPI displays the strongest levels are drawn as
+nested blurs whose variances add up to the level's σ.
 
 ![A journal scrolling under blurred edges, a toolbar and a tab bar](images/windows/blur-light.png)
 
@@ -393,7 +422,7 @@ curvature; large radii blend into a capsule, so animating the radius never jumps
 **Tint.** Colors the glass (never the content) by transmitting the backdrop's luminance through the pigment. On
 `GlassSlider` and `GlassSwitch` it colors the fill and track instead (default: the Windows accent).
 
-**Motion.** Springs follow OPTICS §6 (press 0.24/0.20, release 0.50/0.42, glow 0.42/0, morph 0.42/0.18, layout
+**Motion.** Springs follow [OPTICS §6](../spec/OPTICS.md#6-interaction) (press 0.24/0.20, release 0.50/0.42, glow 0.42/0, morph 0.42/0.18, layout
 0.40/0.16, track 0.18/0). `Reduced` removes grow, stretch and overshoot; `None` removes transitions. When Windows'
 *Animation effects* are off, `Full` behaves as `Reduced`.
 
@@ -406,18 +435,23 @@ and the canvas it moves on) in `GlassTabBar`; `PART_Host` in `GlassToolbar`; `PA
 
 ## Accessibility
 
-- **UI Automation.** Buttons, switches (Toggle), sliders (RangeValue), tab bars (Tab/TabItem, Selection), toolbars
-  (ToolBar), menus (ExpandCollapse) and menu items (MenuItem, Invoke, Toggle) expose the expected roles and
-  patterns. Give icon-only controls an `AutomationProperties.Name`.
+- **UI Automation.** Buttons, switches (toggle switch, Toggle), sliders (RangeValue), tab bars (Tab/TabItem,
+  Selection), toolbars (ToolBar), menus (the focused trigger button with ExpandCollapse, the open panel a Menu) and menu
+  items (MenuItem, Invoke, Toggle) expose the expected roles and patterns. Give icon-only controls an
+  `AutomationProperties.Name`; on a menu whose label changes, let the header name it rather than a fixed name.
 - **Keyboard.** Tab moves between controls; Space and Enter press buttons and the press glass responds; arrows move
   tab selection, slider values and menu focus; Escape closes menus. A 2-unit focus ring follows each control's
   outline and appears only for keyboard focus.
-- **Contrast themes.** With a Windows contrast theme active, glass draws with system colors (`ControlBrush` fill,
-  `ControlTextBrush` border and text, `Highlight` for selection) and no transparency.
+- **Contrast themes.** With a Windows contrast theme active, glass draws with system colors and no transparency:
+  `ControlBrush` fill with a `ControlTextBrush` border and text; menu items and toolbar buttons show hover, press,
+  keyboard focus and the checked state as a solid `Highlight` fill with `HighlightText`; slider fills and switches that
+  are on use `Highlight`, with the slider's rest and a switch's track outlined in `ControlText`; thumbs are solid
+  system colors; focus rings use `Highlight` or `ControlText`. The settings follow the theme live.
 - **Transparency effects.** When Windows' *Transparency effects* are off, glass is replaced by an opaque fill
   (`#F2F2F7` at 0.94 light, `#1C1C1E` at 0.94 dark) that keeps the rim light. Override with
   `GlassScene.ReduceTransparency`.
-- **Increase contrast.** `lg:GlassScene.IncreaseContrast="True"` adds a 1-unit inner border and uses Regular glass.
+- **Increase contrast.** `lg:GlassScene.IncreaseContrast="True"` adds a 1-unit inner border (beneath the rim light, as
+  on every port) and uses Regular glass.
 - **Animation effects.** Off means reduced motion everywhere.
 
 ## Performance
@@ -439,14 +473,20 @@ Glass never draws nothing and never crashes.
 | Situation | What glass draws |
 | --- | --- |
 | Pixel shader 3.0 in hardware (normal) | The glass shader. |
-| No pixel shader 3.0, software rendering (`RenderOptions.ProcessRenderMode = SoftwareOnly`), a window in software mode, Remote Desktop without GPU acceleration, fewer than 1024 shader instruction slots | The fallback material: the frosted copy for Regular, a veil fitted to the material's tone curve, the rim light rasterized from the same model as the shader, the pointer glow and focus ring. |
+| No pixel shader 3.0, a render tier below 2, software rendering (`RenderOptions.ProcessRenderMode = SoftwareOnly`), a window in software mode, a Remote Desktop session that renders in software, fewer than 1024 shader instruction slots | The fallback material: the frosted copy for Regular, a veil fitted to the material's tone curve, the rim light rasterized from the same model as the shader, the pointer glow and focus ring. |
 | `RenderMode="Fallback"` | The fallback material, always. Use it for `RenderTargetBitmap` snapshots, which WPF renders in software. |
 | Transparency effects off, `ReduceTransparency`, glass outside a `GlassScene`, glass inside the scene's `Content` | The opaque material with the rim light. |
 | Contrast theme | System colors. |
 | d3dcompiler_47.dll missing and bytecode stale | The fallback material. |
+| The graphics driver rejects the shader | The fallback material, from then on, in every window of the process. |
 
-`GlassDiagnostics.Describe()` returns the render tier, pixel shader support and shader status, for logs and about
-boxes.
+`GlassDiagnostics.Describe()` returns the render tier, pixel shader support and shader status (including a rejection by
+the driver), for logs and about boxes.
+
+On every UI thread that shows glass, the library handles `PixelShader.InvalidPixelShaderEncountered`, which WPF raises
+when a driver refuses a pixel shader (without a handler WPF throws on the UI thread). WPF does not say which shader
+failed, so a rejected shader of the application's own on that thread also switches glass to the fallback material, and
+no longer throws; applications can still subscribe to the event themselves.
 
 
 ## Liquid Glass Studio
@@ -462,10 +502,13 @@ Windows 11:
    increased contrast, with a draggable lens.
 4. **Progressive blur:** a scrolling journal under blurred edges, a toolbar and a tab bar.
 
-Download `LiquidGlassStudio-win-x64.zip` (needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)),
-`LiquidGlassStudio-win-arm64.zip`, or the self-contained `LiquidGlassStudio-win-x64-self-contained.zip`, unzip and run
-`LiquidGlassStudio.exe`. Command-line options open a page directly:
-`--page hero|controls|materials|blur --appearance system|light|dark --render-mode automatic|fallback`.
+Download it from the [downloads page](https://liquid-glass-engineering.vercel.app/downloads):
+`LiquidGlassStudio-win-x64.zip` and `LiquidGlassStudio-win-arm64.zip` need the
+[.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64 or Arm64 respectively);
+`LiquidGlassStudio-win-x64-self-contained.zip` needs nothing. Unzip and run `LiquidGlassStudio.exe`. The app is not
+code-signed, so Windows SmartScreen may show *Windows protected your PC* on the first run: choose **More info**, then
+**Run anyway**, after checking the zip's SHA-256 against the one on the downloads page. Command-line options open a page
+directly: `--page hero|controls|materials|blur --appearance system|light|dark --render-mode automatic|fallback`.
 
 ![Controls in dark appearance](images/windows/controls-dark.png)
 
@@ -481,12 +524,19 @@ scripts/dotnet.sh test tests/LiquidGlass.Core.Tests      # anywhere
 scripts/package.sh                                       # NuGet packages and Studio zips into artifacts/windows
 ```
 
+`package.sh` makes continuous-integration builds (deterministic, source paths mapped to `/_/`, Source Link to the
+commit), puts `LICENSE` and `NOTICE.md` into both packages and every zip, and leaves PDBs and IntelliSense files out of
+the zips.
+
 `LiquidGlass.Wpf.Tests` needs Windows (WPF, Direct3D 11): it checks the embedded shader bytecode, compiles the shader
 with D3DCompile, evaluates the HLSL library against the golden vectors on WARP within the GPU tolerance, and exercises
-the controls. The [Windows workflow](../.github/workflows/windows.yml) builds, tests, compiles the shader with fxc,
-captures Studio and smoke-tests published builds on every push to main and every pull request that touches the Windows
-port; a failed publish or a Studio run that does not exit cleanly fails it. Reports of pushes and manual runs land on
-the `ci-windows` branch; pull requests keep theirs as a workflow artifact.
+the controls on .NET 10, .NET 8 and .NET Framework 4.8. The [Windows workflow](../.github/workflows/windows.yml) builds,
+tests, compiles the shader with fxc, captures Studio (also under a contrast theme), publishes the x64, Arm64 and
+self-contained Studio builds and smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main
+and every pull request that touches the Windows port; a failed publish, a Studio run that does not exit cleanly or a
+package that lacks its license files, a target or path-mapped sources fails it. Reports of pushes and manual runs land
+on the `ci-windows` branch (with the packages and the framework-dependent zips); every run keeps the full release set
+as the `windows-release` workflow artifact.
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.
@@ -494,7 +544,10 @@ workflow's fxc output; until then the library compiles the shader at run time.
 ## FAQ
 
 **Why does my glass look like plain translucency?** Check `RenderedMode` on a surface, or `GlassDiagnostics.Describe()`.
-Remote Desktop, virtual machines without GPU acceleration and `RenderTargetBitmap` draw the fallback material.
+Remote Desktop sessions that render in software, `RenderOptions.ProcessRenderMode = SoftwareOnly`, a render tier below
+2, a GPU without pixel shader 3.0 (or with fewer than 1024 instruction slots), a driver that rejected the shader and
+`RenderTargetBitmap` draw the fallback material. Virtual machines without a GPU usually still run the shader, through
+WARP.
 
 **Can glass refract other controls?** Glass refracts the scene's `Content`, progressive blurs and the glass that
 encloses it. Put what should be refracted into `Content`.
