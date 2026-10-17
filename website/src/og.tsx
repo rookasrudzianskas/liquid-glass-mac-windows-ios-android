@@ -6,7 +6,7 @@
 import "./styles/base.css";
 import { GlassRenderer } from "./glass/renderer";
 import type { SurfaceFrame } from "./glass/renderer";
-import { shapeOutline } from "@lg/reference";
+import { defaultRefraction, shapeOutline } from "@lg/reference";
 
 const W = 1200;
 const H = 630;
@@ -17,8 +17,9 @@ const say = (t: string) => {
   if (status) status.textContent = t;
 };
 
-function surface(x: number, y: number, width: number, height: number, radius: number, material: "clear" | "regular", dark: boolean, refraction = 60): SurfaceFrame {
-  return { x, y, width, height, radius, refraction, material, dark, nested: false, tint: null, opacity: 1, glowX: 0, glowY: 0, glow: 0, glowRadius: 1, contrast: false };
+// No surface sets a refraction, so each follows its size (OPTICS.md section 2).
+function surface(x: number, y: number, width: number, height: number, radius: number, material: "clear" | "regular", dark: boolean): SurfaceFrame {
+  return { x, y, width, height, radius, refraction: defaultRefraction(width, height), material, dark, nested: false, tint: null, opacity: 1, glowX: 0, glowY: 0, glow: 0, glowRadius: 1, contrast: false };
 }
 
 async function main() {

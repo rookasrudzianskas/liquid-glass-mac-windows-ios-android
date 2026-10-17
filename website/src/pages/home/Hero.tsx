@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Glass, GlassStage, GlassTabBar } from "../../glass/react";
+import { Glass, GlassStage, GlassTabBar, useDefaultRefraction } from "../../glass/react";
 import { wallpaperInfo, wallpaperNames } from "../../glass/backdrop";
 import type { WallpaperName } from "../../glass/backdrop";
 import type { Material } from "../../glass/renderer";
@@ -49,6 +49,9 @@ export function Hero() {
   const [material, setMaterial] = useState<Material>("regular");
   const [tint, setTint] = useState(0);
   const [refraction, setRefraction] = useState(true);
+  // With refraction on, the glass sets none and follows its size (OPTICS.md section 2).
+  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRefraction = useDefaultRefraction(cardRef);
   // Until mounted the theme is unknown to React (the head script set it on
   // <html>), so markup stays theme-neutral and CSS picks the right tone.
   const current = mounted ? (picked ?? defaultWallpaper(theme)) : null;
@@ -103,10 +106,11 @@ export function Hero() {
 
         <div className="hero__play">
           <Glass
+            ref={cardRef}
             className="hero-card"
             material={material}
             radius={30}
-            refraction={refraction ? 60 : 0}
+            refraction={refraction ? undefined : 0}
             tint={tintHex}
             draggable
             bounds="parent"
@@ -121,7 +125,7 @@ export function Hero() {
               <div>
                 <p className="hero-card__title">Liquid Glass</p>
                 <p className="hero-card__meta">
-                  {materialName} · refraction {refraction ? 60 : 0}
+                  {materialName} · refraction {refraction ? (cardRefraction ?? "auto") : 0}
                   {tintHex ? ` · ${tintName.toLowerCase()} tint` : ""}
                 </p>
               </div>
@@ -140,7 +144,7 @@ export function Hero() {
             className="hero-lens"
             material="clear"
             radius="capsule"
-            refraction={refraction ? 60 : 0}
+            refraction={refraction ? undefined : 0}
             draggable
             bounds="parent"
             interactive

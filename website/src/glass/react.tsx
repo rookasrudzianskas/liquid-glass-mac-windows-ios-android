@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, HTMLAttributes, ReactNode, RefObject } from "react";
-import { pressScale, springStep, springs } from "@lg/reference";
+import { defaultRefraction, pressScale, springStep, springs } from "@lg/reference";
 import type { SpringState } from "@lg/reference";
 import { GlassScene } from "./scene";
 import type { Appearance, Radius, RendererKind, Surface, SurfaceOptions } from "./scene";
@@ -173,10 +173,30 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
 export interface SurfaceProps {
   material?: Material;
   radius?: Radius;
+  /** Optical travel at the rim. Unset, it follows the resting size: min(60, 0.75 × shorter side). */
   refraction?: number;
   tint?: string | null;
   nested?: boolean;
   appearance?: Appearance;
+}
+
+/**
+ * The refraction a surface without one uses (OPTICS.md section 2), from the element's
+ * resting (layout) size; null until the element is measured.
+ */
+export function useDefaultRefraction(ref: RefObject<HTMLElement | null>): number | null {
+  const [value, setValue] = useState<number | null>(null);
+  useIsoLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setValue(defaultRefraction(el.offsetWidth, el.offsetHeight));
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return value;
 }
 
 /** Register an element as a glass surface of the enclosing stage. */
@@ -186,7 +206,7 @@ export function useSurface(ref: RefObject<HTMLElement | null>, props: SurfacePro
   const options: SurfaceOptions = {
     material: props.material ?? "clear",
     radius: props.radius ?? 16,
-    refraction: props.refraction ?? 60,
+    refraction: props.refraction ?? null,
     tint: hexToRgb(props.tint),
     nested: props.nested ?? false,
     ...(props.appearance ? { appearance: props.appearance } : {}),
@@ -237,7 +257,7 @@ export interface GlassProps extends SurfaceProps, Omit<HTMLAttributes<HTMLDivEle
 export function Glass({
   material = "clear",
   radius = 16,
-  refraction = 60,
+  refraction,
   tint = null,
   nested = false,
   appearance,
@@ -316,20 +336,20 @@ export interface GlassTabBarProps {
   tint?: string | null;
   className?: string;
   enterDelay?: number;
-  lensRefraction?: number;
 }
 
 /**
  * Tabs with a moving glass lens (COMPONENTS.md behavior 4): the lens slides
  * on the track spring, stretches with its speed and can be dragged.
  */
-export function GlassTabBar({ items, value, onChange, label, material = "regular", tint = null, className, enterDelay = 0, lensRefraction = 24 }: GlassTabBarProps) {
+export function GlassTabBar({ items, value, onChange, label, material = "regular", tint = null, className, enterDelay = 0 }: GlassTabBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const lensRef = useRef<HTMLDivElement>(null);
   const { scene } = useStage();
   const [barMotion, setBarMotion] = useState<SurfaceMotion | null>(null);
   const barSurface = useRef<Surface | null>(null);
-  const lens = useSurface(lensRef, { material: "clear", radius: "capsule", refraction: lensRefraction, nested: true });
+  // The lens sets no refraction, as on every native port: it follows the lens's size.
+  const lens = useSurface(lensRef, { material: "clear", radius: "capsule", nested: true });
   const valueRef = useRef(value);
   valueRef.current = value;
   const onChangeRef = useRef(onChange);
@@ -430,6 +450,8 @@ export function GlassTabBar({ items, value, onChange, label, material = "regular
       press = springStep(press, pressSpring, dt);
       const width = Math.max(1, w.value);
       const height = lensEl.offsetHeight || 1;
+      // Its unset refraction follows the tab it settles on, not its width in flight.
+      lens.restingSize = { width: Math.max(1, w.target), height };
       const { sx, sy } = pressScale(width, height, press.value, 0, 0, x.velocity, 0, reduced);
       lensEl.style.width = `${width.toFixed(2)}px`;
       const transform = `translate3d(${x.value.toFixed(2)}px, 0, 0) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;

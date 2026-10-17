@@ -4,7 +4,7 @@
 // (including the press/stretch transforms the motion controllers write), so
 // labels on the glass and the refracting pixels never drift apart.
 
-import { glow as glowParams } from "@lg/reference";
+import { defaultRefraction, glow as glowParams } from "@lg/reference";
 import { GlassRenderer } from "./renderer";
 import type { BackdropImage, ContentRect, Material, SurfaceFrame } from "./renderer";
 
@@ -15,7 +15,8 @@ export type RendererKind = "pending" | "webgl" | "css";
 export interface SurfaceOptions {
   material: Material;
   radius: Radius;
-  refraction: number;
+  /** Optical travel at the rim; null follows the surface's resting size (OPTICS.md section 2). */
+  refraction: number | null;
   tint: readonly [number, number, number] | null;
   nested: boolean;
   /** Overrides the stage appearance for this surface. */
@@ -32,6 +33,11 @@ export interface Surface {
   glowClientY: number;
   glow: number;
   order: number;
+  /**
+   * The size the surface settles at, when its layout box is itself animating (the tab
+   * lens springing between tabs of different widths); null uses the layout box.
+   */
+  restingSize: { width: number; height: number } | null;
 }
 
 /** A DOM element painted into the backdrop as a solid shape, so glass refracts it. */
@@ -258,7 +264,7 @@ export class GlassScene {
   private hasBackdrop = false;
 
   add(el: HTMLElement, options: SurfaceOptions): Surface {
-    const surface: Surface = { el, options, opacity: 1, glowClientX: 0, glowClientY: 0, glow: 0, order: order++ };
+    const surface: Surface = { el, options, opacity: 1, glowClientX: 0, glowClientY: 0, glow: 0, order: order++, restingSize: null };
     this.surfaces.add(surface);
     this.surfaceResize.observe(el);
     this.invalidate();
@@ -389,7 +395,10 @@ export class GlassScene {
         width,
         height,
         radius: s.options.radius === "capsule" ? -1 : s.options.radius,
-        refraction: s.options.refraction,
+        // Unset refraction is measured on the resting size: the layout box, which the
+        // press, stretch and entrance transforms leave alone, so pressing a control does
+        // not change it (or the size an animating box settles at).
+        refraction: s.options.refraction ?? defaultRefraction(s.restingSize?.width ?? s.el.offsetWidth, s.restingSize?.height ?? s.el.offsetHeight),
         material: this.increasedContrast ? "regular" : s.options.material,
         dark,
         nested: s.options.nested,

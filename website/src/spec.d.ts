@@ -51,6 +51,7 @@ declare module "@lg/reference" {
   ): { distance: number; nx: number; ny: number };
   export function shapeOutline(width: number, height: number, radius: Radius, segments?: number): [number, number][];
   export function edgeProfile(distance: number, bevel?: number): number;
+  export function defaultRefraction(width: number, height: number): number;
   export function refractionOffset(distance: number, nx: number, ny: number, refraction?: number): { dx: number; dy: number };
   export function coverage(distance: number, pixel: number): number;
   export function luma(r: number, g: number, b: number): number;

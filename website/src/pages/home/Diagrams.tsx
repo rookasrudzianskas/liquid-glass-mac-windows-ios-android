@@ -1,7 +1,7 @@
 // Diagrams of the optical model, computed from spec/reference.mjs itself:
 // the curves on this page are the functions every port is tested against.
 
-import { clearTone, edgeProfile, regularTone, rimOverlay, shapeField, shapeOutline, shapeParams, springStep, springs } from "@lg/reference";
+import { clearTone, defaultRefraction, edgeProfile, regularTone, rimOverlay, shapeField, shapeOutline, shapeParams, springStep, springs } from "@lg/reference";
 import type { SpringOptions } from "@lg/reference";
 
 const f = (n: number) => n.toFixed(2);
@@ -94,6 +94,8 @@ export function RefractionDiagram() {
   const sw = 280;
   const sh = 150;
   const { extent, exponent } = shapeParams(sw, sh, 44);
+  // The shape sets no refraction, so it uses the default for its size (60 at 280 x 150).
+  const refraction = defaultRefraction(sw, sh);
   const outline = shapeOutline(sw, sh, 44, 32).map(([x, y]) => [x + (w - sw) / 2, y + (h - sh) / 2] as [number, number]);
   const arrows: { x: number; y: number; dx: number; dy: number; e: number }[] = [];
   const step = 11;
@@ -103,7 +105,7 @@ export function RefractionDiagram() {
       if (fld.distance > -1 || fld.distance < -20) continue;
       const e = edgeProfile(fld.distance);
       if (e < 0.04) continue;
-      arrows.push({ x: x + w / 2, y: y + h / 2, dx: -fld.nx * e * 60 * 0.42, dy: -fld.ny * e * 60 * 0.42, e });
+      arrows.push({ x: x + w / 2, y: y + h / 2, dx: -fld.nx * e * refraction * 0.42, dy: -fld.ny * e * refraction * 0.42, e });
     }
   }
   return (
@@ -127,7 +129,7 @@ export function RefractionDiagram() {
         />
       ))}
       <text x={w / 2} y={h / 2 + 4} textAnchor="middle" className="diagram__label">
-        offset = −n · edge · 60
+        offset = −n · edge · refraction
       </text>
     </svg>
   );
