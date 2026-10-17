@@ -10,7 +10,7 @@
       <Image Source="/Assets/aurora.jpg" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
     </lg:GlassScene.Content>
 
-    <!-- The bars float over the wallpaper's dark top and bottom, so they are dark glass in either appearance. -->
+    <!-- The bars are dark glass in either appearance: white labels stay legible over the wallpaper's deep colors. -->
     <lg:GlassToolbar Appearance="Dark" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="20,16,20,0">
       <Button Content="&#xE706;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
               AutomationProperties.Name="Switch appearance" ToolTip="Switch between light and dark"
