@@ -690,7 +690,9 @@ public class ControlTests
             var box = new TextBox { Text = "hello", Width = 120, HorizontalAlignment = HorizontalAlignment.Left };
             var copy = new GlassMenuItem { Header = "Copy", Command = ApplicationCommands.Copy };
             var menu = new GlassMenu { Header = "Edit", HorizontalAlignment = HorizontalAlignment.Left, Items = { copy } };
-            var window = Sta.Show(Scene(new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { box, menu } }));
+            var toolbarCopy = new Button { Content = "Copy", Command = ApplicationCommands.Copy };
+            var toolbar = new GlassToolbar { HorizontalAlignment = HorizontalAlignment.Left, Items = { toolbarCopy } };
+            var window = Sta.Show(Scene(new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { box, toolbar, menu } }));
             FocusManager.SetFocusedElement(window, box);
             box.Focus();
             box.SelectAll();
@@ -701,8 +703,9 @@ public class ControlTests
             Sta.Pump();
             CommandManager.InvalidateRequerySuggested();
             Sta.Pump();
-            // Copy routes from the item to the text box, which can copy its selection.
+            // Copy routes from the item, and from the toolbar button, to the text box, which can copy its selection.
             Assert.True(copy.IsEnabled, "Copy should be available for the text selected in the box");
+            Assert.True(toolbarCopy.IsEnabled, "the toolbar's Copy should be available for the text selected in the box");
             window.Close();
         });
     }

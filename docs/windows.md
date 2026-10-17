@@ -272,7 +272,9 @@ toolbar.Items.Insert(2, new GlassToolbarSpacer { Sizing = GlassSpacerSizing.Fixe
 ```
 
 Properties: `Items`, `Orientation`, `Inset` (4), `Spacing` (4), `Radius` (`capsule`), `Refraction`, `Tint`,
-`IsInteractive` (true), `Material`, `Appearance`, `Motion`. UI Automation: `ToolBar`. The toolbar style draws a keyboard focus
+`IsInteractive` (true), `Material`, `Appearance`, `Motion`. UI Automation: `ToolBar`. The toolbar is a focus scope,
+as WPF's `ToolBar` is, so a button's routed command such as `ApplicationCommands.Copy` acts on the element that has
+focus in the window. The toolbar style draws a keyboard focus
 ring in the glass's foreground color around plain buttons (not the window's focus visual), shown for keyboard focus
 only.
 

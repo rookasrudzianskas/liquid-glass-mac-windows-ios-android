@@ -84,6 +84,9 @@ public class GlassToolbar : Control
         GlassScene.AddContentForegroundOwner(typeof(GlassToolbar));
         FocusableProperty.OverrideMetadata(typeof(GlassToolbar), new FrameworkPropertyMetadata(false));
         KeyboardNavigation.TabNavigationProperty.OverrideMetadata(typeof(GlassToolbar), new FrameworkPropertyMetadata(KeyboardNavigationMode.Continue));
+        // A focus scope, as WPF's ToolBar is: a button's routed command (Copy, Paste) that nothing in the toolbar handles
+        // goes on to the element that has focus in the window, and clicking a button leaves that element focused there.
+        FocusManager.IsFocusScopeProperty.OverrideMetadata(typeof(GlassToolbar), new FrameworkPropertyMetadata(true));
         // Plain buttons in the toolbar draw their focus ring in their template (in the glass's foreground); show it for
         // keyboard focus only, as the glass controls do.
         EventManager.RegisterClassHandler(typeof(GlassToolbar), Keyboard.GotKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(OnItemGotFocus));
