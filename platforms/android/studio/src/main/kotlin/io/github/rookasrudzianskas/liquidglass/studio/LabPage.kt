@@ -3,6 +3,9 @@ package io.github.rookasrudzianskas.liquidglass.studio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -205,10 +208,21 @@ private fun <T> Segmented(options: List<Pair<String, T>>, selected: T, onSelect:
     ) {
         for ((name, value) in options) {
             val on = value == selected
+            val source = remember { MutableInteractionSource() }
+            val pressed by source.collectIsPressedAsState()
+            val focused by source.collectIsFocusedAsState()
+            val fill = when {
+                on -> StudioColors.Blue
+                pressed -> foreground.copy(alpha = 0.12f)
+                else -> Color.Transparent
+            }
             Box(
                 Modifier
-                    .background(if (on) StudioColors.Blue else Color.Transparent, CircleShape)
-                    .selectable(selected = on, role = Role.RadioButton) { onSelect(value) }
+                    // Pressed and focused states follow the chip's capsule (no rectangular default indication).
+                    .then(if (focused) Modifier.border(2.dp, FocusColor, CircleShape) else Modifier)
+                    .clip(CircleShape)
+                    .background(fill)
+                    .selectable(selected = on, interactionSource = source, indication = null, role = Role.RadioButton) { onSelect(value) }
                     .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
                 GlassText(name, style = StudioType.Caption, color = if (on) Color.White else foreground)
@@ -216,6 +230,9 @@ private fun <T> Segmented(options: List<Pair<String, T>>, selected: T, onSelect:
         }
     }
 }
+
+/** Keyboard focus ring of the lab's own choices, matching the library's controls. */
+private val FocusColor = StudioColors.Blue
 
 /** The outline of a segmented control: a capsule on one line, rounded when its options wrap. */
 private val SegmentedShape = RoundedCornerShape(18.dp)
@@ -226,7 +243,7 @@ private val SegmentedShape = RoundedCornerShape(18.dp)
 private fun LabValue(label: String, value: String) {
     FlowRow(Modifier.fillMaxWidth().clearAndSetSemantics {}, horizontalArrangement = Arrangement.SpaceBetween) {
         GlassText(label, style = StudioType.Label)
-        GlassText(value, style = StudioType.Label, color = LocalGlassContentColor.current.copy(alpha = ValueAlpha))
+        GlassText(value, style = StudioType.Value, color = LocalGlassContentColor.current.copy(alpha = ValueAlpha))
     }
 }
 
@@ -251,13 +268,22 @@ private fun TintChoice(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun Swatch(name: String, color: Color, selected: Boolean, onClick: () -> Unit) {
     val foreground = LocalGlassContentColor.current
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val focused by source.collectIsFocusedAsState()
+    val ring = when {
+        focused -> FocusColor
+        selected -> foreground.copy(alpha = 0.9f)
+        else -> foreground.copy(alpha = if (pressed) 0.6f else 0.25f)
+    }
     Box(
         Modifier
             .size(26.dp)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .clip(CircleShape)
+            .selectable(selected = selected, interactionSource = source, indication = null, role = Role.RadioButton, onClick = onClick)
             .semantics { contentDescription = "$name tint" }
-            .border(if (selected) 2.dp else 1.dp, foreground.copy(alpha = if (selected) 0.9f else 0.25f), CircleShape)
-            .padding(4.dp)
+            .border(if (selected || focused) 2.dp else 1.dp, ring, CircleShape)
+            .padding(if (pressed) 5.dp else 4.dp)
             .background(if (color == Color.Unspecified) foreground.copy(alpha = 0.12f) else color, CircleShape),
     )
 }

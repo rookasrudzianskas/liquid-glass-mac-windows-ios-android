@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
@@ -140,6 +141,8 @@ private fun BoxScope.StudioTabBar(page: Int, appearance: GlassAppearance?, onPag
             .align(Alignment.BottomCenter)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+            // In landscape and on tablets the bar keeps a phone's proportions instead of spanning the screen.
+            .widthIn(max = 560.dp)
             .fillMaxWidth(),
     )
 }

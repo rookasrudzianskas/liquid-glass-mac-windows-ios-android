@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
@@ -47,10 +49,12 @@ import io.github.rookasrudzianskas.liquidglass.GlassAppearance
 import io.github.rookasrudzianskas.liquidglass.GlassButton
 import io.github.rookasrudzianskas.liquidglass.GlassButtonSize
 import io.github.rookasrudzianskas.liquidglass.GlassDefaults
+import io.github.rookasrudzianskas.liquidglass.GlassEdge
 import io.github.rookasrudzianskas.liquidglass.GlassIcon
 import io.github.rookasrudzianskas.liquidglass.GlassMaterial
 import io.github.rookasrudzianskas.liquidglass.GlassMenu
 import io.github.rookasrudzianskas.liquidglass.GlassMenuItem
+import io.github.rookasrudzianskas.liquidglass.GlassProgressiveBlur
 import io.github.rookasrudzianskas.liquidglass.GlassShape
 import io.github.rookasrudzianskas.liquidglass.GlassSlider
 import io.github.rookasrudzianskas.liquidglass.GlassSurface
@@ -65,14 +69,19 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoxScope.ControlsPage() {
+    // The status bar keeps the wallpaper, softened toward the top edge; the controls scroll away beneath its edge
+    // (clipped there, glass included), so the clock never sits on a button.
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    GlassProgressiveBlur(GlassEdge.Top, Modifier.align(Alignment.TopCenter), size = statusBar + 12.dp, blur = 14.dp)
     Column(
         Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .clipToBounds()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
         GlassText("Controls", Modifier.padding(top = 12.dp), style = StudioType.Title)
 
         SectionLabel("Buttons")
@@ -169,7 +178,7 @@ private fun SectionLabel(text: String, alpha: Float = 0.72f) {
 private fun ValueRow(label: String, value: String) {
     FlowRow(Modifier.fillMaxWidth().padding(top = 4.dp).clearAndSetSemantics {}, horizontalArrangement = Arrangement.SpaceBetween) {
         GlassText(label, style = StudioType.Label)
-        GlassText(value, style = StudioType.Label, color = LocalGlassContentColor.current.copy(alpha = ValueAlpha))
+        GlassText(value, style = StudioType.Value, color = LocalGlassContentColor.current.copy(alpha = ValueAlpha))
     }
 }
 
