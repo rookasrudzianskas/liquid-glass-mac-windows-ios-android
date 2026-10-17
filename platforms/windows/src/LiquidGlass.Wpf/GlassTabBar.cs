@@ -11,7 +11,8 @@ using LiquidGlass.Wpf.Rendering;
 namespace LiquidGlass.Wpf;
 
 /// <summary>
-/// A capsule tab bar: a Clear glass lens slides between the items on the track spring and stretches with its speed.
+/// A capsule tab bar: a glass lens of the bar's material slides between the items on the track spring and stretches
+/// with its speed.
 /// The lens can be dragged across the bar to choose an item; arrow keys move the selection; the selected label is at
 /// full opacity and the others at 0.85. Once an item is selected, one always is: Ctrl+click and clearing the selection
 /// keep it (removing the selected item selects a neighbor). Exposes the Tab and TabItem automation roles.
@@ -46,9 +47,9 @@ public class GlassTabBar : ListBox, IGlassAnimation
     public static readonly DependencyProperty RadiusProperty = GlassSurface.RadiusProperty.AddOwner(typeof(GlassTabBar),
         new FrameworkPropertyMetadata(GlassRadius.Capsule));
 
-    /// <summary>Refraction of the bar. Default 60.</summary>
+    /// <summary>Refraction of the bar and its lens. Default NaN: each follows its own size, min(60, 0.75 × the shorter side).</summary>
     public static readonly DependencyProperty RefractionProperty = GlassSurface.RefractionProperty.AddOwner(typeof(GlassTabBar),
-        new FrameworkPropertyMetadata(GlassOptics.DefaultRefraction));
+        new FrameworkPropertyMetadata(double.NaN));
 
     /// <summary>Tint of the bar and its lens, or null.</summary>
     public static readonly DependencyProperty TintProperty = GlassSurface.TintProperty.AddOwner(typeof(GlassTabBar),

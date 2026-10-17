@@ -305,7 +305,7 @@
                            Padding="{TemplateBinding Padding}">
             <Grid>
               <Canvas x:Name="PART_LensHost">
-                <lg:GlassSurface x:Name="PART_Lens" Material="Clear" Radius="capsule"
+                <lg:GlassSurface x:Name="PART_Lens" Radius="capsule"
                                  Refraction="{TemplateBinding Refraction}" Tint="{TemplateBinding Tint}" IsHitTestVisible="False" />
               </Canvas>
               <ItemsPresenter />

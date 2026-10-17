@@ -166,7 +166,8 @@ internal sealed class GlassInteraction : IGlassAnimation
         _tx.Animate(0, follow);
         _ty.Animate(0, follow);
         _press.Animate(1, GlassResolve.Spring(GlassSprings.Press, motion));
-        Light(1, GlassResolve.Spring(GlassSprings.Press, motion));
+        // The light settles on the glow spring (0.42 s, no bounce), not the press spring, so it never passes full.
+        Light(1, GlassSprings.Glow);
         if (Mouse.Captured is null) _capturedByUs = _input.CaptureMouse();
         _surface.SetIsPressed(true);
         GlassFrameLoop.Start(this);
@@ -217,7 +218,8 @@ internal sealed class GlassInteraction : IGlassAnimation
         _glowPoint = new Point(_surface.ActualWidth / 2, _surface.ActualHeight / 2);
         var motion = GlassResolve.Motion(_surface);
         _press.Animate(1, GlassResolve.Spring(GlassSprings.Press, motion));
-        Light(1, GlassResolve.Spring(GlassSprings.Press, motion));
+        // The light settles on the glow spring (0.42 s, no bounce), not the press spring, so it never passes full.
+        Light(1, GlassSprings.Glow);
         _surface.SetIsPressed(true);
         GlassFrameLoop.Start(this);
     }
