@@ -67,20 +67,23 @@ public enum GlassAppearance: String, CaseIterable, Hashable, Sendable {
 }
 ```
 
-An explicit `.light` or `.dark` also sets the `colorScheme` of the content of a `GlassSurface`, `.liquidGlass` or
-standalone `GlassButton`, so `.primary` and `.secondary` match the glass. Toolbar items, `GlassTab` labels and
-`GlassMenuItem`s are drawn outside the glass and keep the SwiftUI color scheme, and `GlassScene` never changes the
-color scheme. To force a screen dark or light, set the color scheme on the scene; `.automatic` glass follows it:
+An explicit `.light` or `.dark` (on the scene, a surface, a bar or a menu) also sets the `colorScheme` of what is
+drawn on that glass: the content of a `GlassSurface`, `.liquidGlass` or `GlassButton`, toolbar items, `GlassTab`
+labels, the menu trigger and `GlassMenuItem`s, so `.primary` and `.secondary` match the glass.
+`GlassScene(appearance: .dark)` alone therefore gives dark glass with light labels everywhere on glass. Plain views in
+the foreground (not on glass) and the status bar keep the SwiftUI color scheme; to switch those too, set the color
+scheme on the scene, which `.automatic` glass follows:
 
 ```swift
-GlassScene { … }                         // dark glass, bars and menus over a night photo, even in light mode
+GlassScene { … }                         // dark glass, bars, menus and plain text over a night photo
     .environment(\.colorScheme, .dark)   // or .preferredColorScheme(.dark), which also switches the status bar
 ```
 
 ### GlassMotion
 
 How much glass moves in response to input. The system Reduce Motion setting always applies on top (`.full` behaves
-like `.reduced`).
+like `.reduced`). Under `.reduced` the tab lens, the switch thumb and the thumbs' lift into glass still move, as
+critically damped transitions; under `.none` they jump.
 
 ```swift
 public enum GlassMotion: String, CaseIterable, Hashable, Sendable {
@@ -171,9 +174,9 @@ It fills the space it is offered, like `GeometryReader` (inside a `ScrollView`, 
 the backdrop at its exact on-screen position while it moves, scales or animates. Open `GlassMenu` panels draw in an
 overlay above the foreground layer that holds the menu: each top-level foreground view gets its own overlay, so keep
 the foreground in one container (`ZStack` or `VStack`) when it holds a menu. The scene sets only the glass defaults,
-never `colorScheme`. Presentations (`.sheet`, `.popover`, `.fullScreenCover`) attached inside the foreground inherit
-the scene's glass environment and do not fall back reliably: attach them to the scene itself and give the presented
-view its own `GlassScene`.
+not `colorScheme` (a forced `appearance` sets the color scheme of what is drawn on glass only). Presentations
+(`.sheet`, `.popover`, `.fullScreenCover`) attached inside the foreground inherit the scene's glass environment and
+do not fall back reliably: attach them to the scene itself and give the presented view its own `GlassScene`.
 
 ```swift
 public struct GlassScene<Backdrop: View, Foreground: View>: View {
@@ -229,7 +232,7 @@ GlassScene(material: .regular, appearance: .dark) {
         GlassSurface(radius: 28) { Text("Hello").padding(24) }   // centered
     }
 }
-.environment(\.colorScheme, .dark)             // toolbar icons follow the dark glass too
+.environment(\.colorScheme, .dark)             // plain foreground views turn dark too
 ```
 
 Rules for the content (it renders once on screen and once more, clipped, inside every surface):
@@ -244,13 +247,15 @@ Rules for the content (it renders once on screen and once more, clipped, inside 
 - Lays out without safe-area insets and identically in every copy (no `GeometryReader` write-back, no randomness).
 - Modifiers such as `.id`, `.transition`, `.background` go inside the closure; `GlassContent` itself only has
   `ignoresSafeArea(_:)`.
-- No glass inside it (copies draw nested glass without glass).
+- No glass inside it (in the copies, nested glass renders as its plain content).
 
 ## GlassSurface and liquidGlass
 
 A glass container: refracts the scene's backdrop through a continuous-corner outline with a 20-point bevel, tones it
 with the material, tints it and paints the rim light. Content draws above the glass, clipped to the outline, in the
-glass foreground color, and is not refracted. The surface sizes to its content and adds no padding.
+glass foreground color, and is not refracted. The surface sizes to its content and adds no padding. Glass renders
+whole, rim included, over transparent, narrow or clipped backdrops; an outline thinner than 3 pt (empty text, a first
+layout pass) draws no glass.
 
 ```swift
 public struct GlassSurface<Content: View>: View {
@@ -258,7 +263,8 @@ public struct GlassSurface<Content: View>: View {
     /// - appearance: Light or dark glass; `nil` inherits.
     /// - radius: The corner radius, `.capsule` or `.circle`. Default 16.
     /// - refraction: Optical travel at the rim in points; `nil` inherits (60).
-    /// - tint: Colors the glass, never the content.
+    /// - tint: Colors the glass, never the content. The content's default foreground turns white or `#111113`,
+    ///   whichever contrasts more with the tinted glass; a `foregroundStyle` you set inside wins.
     /// - interactive: Press grow, drag stretch and glow.
     /// - motion: Overrides the scene's motion level.
     /// - content: The content drawn on the glass.
@@ -294,15 +300,13 @@ extension View {
 | `appearance` | `nil` (scene's, `.automatic`) | explicit values also set the content's `colorScheme` |
 | `radius` | `16` | points, `.capsule`, `.circle` |
 | `refraction` | `nil` (scene's, `60`) | 0 turns refraction off; surfaces shorter than the 20 pt bevel refract across their whole face |
-| `tint` | `nil` | colored glass transmits the backdrop's luminance; clamped to sRGB; content stays the glass foreground color, so set a white `foregroundStyle` on tinted content |
+| `tint` | `nil` | colored glass transmits the backdrop's luminance; clamped to sRGB; the content defaults to white or `#111113`, whichever has the higher WCAG contrast with the tinted glass (white on blue, red, purple; dark on yellow, mint, green, orange); a `foregroundStyle` set inside wins |
 | `interactive` | `false` | grows under a press, stretches toward a drag, settles with overshoot, glows under the finger (and hovering pointer, level 0.35); ignored while `.disabled` |
 | `motion` | `nil` (scene's, `.full`) | use `GlassMotion.none`, not `.none` |
 
 ```swift
 GlassSurface(material: .regular, radius: 28, tint: .blue, interactive: true) {
-    Label("Now Playing", systemImage: "music.note")
-        .foregroundStyle(.white)
-        .padding()
+    Label("Now Playing", systemImage: "music.note").padding()   // white on blue glass, automatically
 }
 
 Label("Now Playing", systemImage: "music.note")
@@ -349,19 +353,28 @@ GlassShape(radius: 34).inset(by: 14).fill(.quaternary)    // the same outline, d
 ## GlassButton
 
 A SwiftUI `Button` on interactive glass. The outline is a capsule; icon-only buttons are circles. Height follows
-`.controlSize` and scales with Dynamic Type. A prominent button tints its glass with the accent color; any tinted
-button draws its label in white. Inside a `GlassToolbar` it drops its own glass and highlights with the foreground
-color at 8% when pressed, hovered or focused; there its `tint`, `prominent` and `material` are ignored (put a primary
-action beside the toolbar). Disabled buttons draw at 45% opacity and stop reacting.
+`.controlSize` and scales with Dynamic Type. A prominent button tints its glass with the accent color. On tinted and
+prominent glass the label is white or `#111113`, whichever has the higher WCAG contrast with the tinted glass (white
+on blue, red or purple; dark on yellow, mint or green). `role: .destructive` draws an untinted label in red. Inside a
+`GlassToolbar` it drops its own glass and highlights with the foreground color at 8% when pressed, hovered or focused;
+there its glass options (`material`, `appearance`, `refraction`, `tint`, `prominent`, `interactive`) are ignored
+(put a primary action beside the toolbar). Disabled buttons draw at 45% opacity and stop reacting.
 
 ```swift
 public struct GlassButton<Label: View>: View {
+    /// - role: The button's role, as for `Button`; `.destructive` draws an untinted label in red.
     /// - radius: The outline; `nil` is a capsule.
     /// - material: Clear or Regular glass; `nil` inherits the scene's.
-    /// - tint: Colors the glass. Tinted buttons draw their label in white.
+    /// - appearance: Light or dark glass; `nil` inherits.
+    /// - refraction: Optical travel at the rim in points; `nil` inherits.
+    /// - tint: Colors the glass. The label turns white or dark, whichever contrasts more with the tinted glass.
     /// - prominent: Tints the glass with the accent color when `tint` is `nil`.
+    /// - interactive: Press grow, drag stretch and glow. Default `true`.
+    /// - motion: Overrides the scene's motion level.
     public init(
-        radius: GlassRadius? = nil, material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        role: ButtonRole? = nil, radius: GlassRadius? = nil, material: GlassMaterial? = nil,
+        appearance: GlassAppearance? = nil, refraction: Double? = nil, tint: Color? = nil, prominent: Bool = false,
+        interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void, @ViewBuilder label: () -> Label
     )
 }
@@ -369,31 +382,43 @@ public struct GlassButton<Label: View>: View {
 extension GlassButton where Label == SwiftUI.Label<Text, Image?> {
     /// Creates a button with a title and an optional SF Symbol.
     public init(
-        _ titleKey: LocalizedStringKey, systemImage: String? = nil,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        _ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     )
 
     /// Creates a button with a title string and an optional SF Symbol.
     @_disfavoredOverload
     public init<S: StringProtocol>(
-        _ title: S, systemImage: String? = nil,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        _ title: S, systemImage: String? = nil, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     )
 
     /// Creates an icon-only circular button. `label` names it for VoiceOver and tooltips.
     public init(
-        icon systemImage: String, label titleKey: LocalizedStringKey,
-        material: GlassMaterial? = nil, tint: Color? = nil, prominent: Bool = false,
+        icon systemImage: String, label titleKey: LocalizedStringKey, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
+        action: @escaping () -> Void
+    )
+
+    /// Creates an icon-only circular button named by a string, for example a title computed at runtime.
+    @_disfavoredOverload
+    public init<S: StringProtocol>(
+        icon systemImage: String, label title: S, role: ButtonRole? = nil,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, refraction: Double? = nil,
+        tint: Color? = nil, prominent: Bool = false, interactive: Bool = true, motion: GlassMotion? = nil,
         action: @escaping () -> Void
     )
 }
 ```
 
-- There is no `appearance` or `refraction` parameter: buttons inherit them. A custom radius needs the
-  `label:` initializer.
-- `icon:label:` takes a `LocalizedStringKey`; for a `String` variable pass `LocalizedStringKey(name)`.
+- `role` comes first in the `label:` initializer and right after `systemImage` / `label` in the others. A custom
+  radius needs the `label:` initializer.
+- `icon:label:` takes a `LocalizedStringKey` literal or a `String` variable (`GlassButton(icon: "xmark", label: name)`).
 - Labels are 17 pt semibold on iOS (`.subheadline` semibold when small) and 13 pt medium on macOS (11 / 15 pt small /
   large). Icon-only titles become the VoiceOver label and the macOS tooltip.
 - `.disabled`, `.keyboardShortcut`, `.controlSize`, focus and Space/Return activation work as on any `Button`;
@@ -406,9 +431,13 @@ extension GlassButton where Label == SwiftUI.Label<Text, Image?> {
 GlassButton("Play", systemImage: "play.fill") { play() }
 GlassButton(icon: "plus", label: "Add") { add() }                  // circle
 GlassButton("Buy", prominent: true) { buy() }.controlSize(.large)  // accent glass, white label
-GlassButton("Delete", tint: .red) { delete() }
+GlassButton("Delete", systemImage: "trash", role: .destructive) { delete() }   // red label
+GlassButton("Warning", tint: .yellow) {}                           // dark label on light tints
 GlassButton("Frosted", material: .regular) {}
+GlassButton("Static", interactive: false) {}                       // no grow, stretch or glow
+GlassButton(icon: "xmark", label: name) { close() }                // a String label works too
 GlassButton(radius: 12, action: {}) { Text("Custom label") }       // any label, any outline
+GlassButton(role: .destructive, radius: 12, action: {}) { Text("Remove") }
 GlassButton("Small") {}.controlSize(.small)                        // 34 pt iOS, 22 pt macOS
 ```
 
@@ -416,16 +445,18 @@ GlassButton("Small") {}.controlSize(.small)                        // 34 pt iOS,
 
 A floating row of items on capsule glass, 52 pt tall with a 4 pt inset on iOS (34 and 3 on macOS), 4 pt between
 items. `GlassToolbarSpacer` splits it into clusters, each on its own capsule. Pressing anywhere on a cluster grows it
-and lights it under the finger. `GlassButton` and `GlassMenu` inside drop their own glass (and their `tint`,
-`prominent` and `material`). Items stop growing at `.xxxLarge`, but the bar's height keeps scaling with Dynamic Type:
-add `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` to the toolbar to cap it with its items. The toolbar hugs its
-items unless a flexible spacer stretches it.
+and lights it under the finger. `GlassButton` and `GlassMenu` inside drop their own glass (and their glass options).
+Items take the toolbar's foreground: white or `#111113` for contrast on a `tint`, and under a forced `appearance` its
+color scheme. The toolbar caps its own Dynamic Type size at `.xxxLarge`, so it stops growing with its items, and a
+long press on an item (button or menu trigger) shows it in the Large Content Viewer. The toolbar hugs its items
+unless a flexible spacer stretches it; a fixed spacer never makes it taller. Right to left, the clusters mirror with
+their items.
 
 ```swift
 public struct GlassToolbar<Content: View>: View {
     /// - material: Clear or Regular glass; `nil` inherits the scene's.
-    /// - appearance: Light or dark glass; `nil` inherits.
-    /// - tint: Colors the glass.
+    /// - appearance: Light or dark glass; `nil` inherits. The items take its foreground and color scheme.
+    /// - tint: Colors the glass; the items turn white or dark for contrast.
     /// - interactive: Whether clusters respond to presses. Default `true`.
     /// - motion: Overrides the scene's motion level.
     public init(
@@ -460,26 +491,28 @@ GlassToolbar {
 .padding(.horizontal, 16)
 
 GlassToolbar(material: .regular) { … }           // over scrolling text
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 ```
 
 ## GlassTabBar and GlassTab
 
-Tabs on a glass capsule with a clear glass lens that springs to the selection on the track spring and stretches with
-its speed; drag across the bar to carry the lens and release to choose the tab under it. iOS: 62 pt tall with icon
-over label, selected item in the accent color, others at 62% foreground, items fill the width equally;
-`.controlSize(.small)` makes a 40 pt bar with icon beside label (a segmented control). macOS: 28 pt (24 small),
-icon (if any) beside the label at 13 pt medium, unselected at 85%, arrow keys move the selection, items hug their
-labels. Selection plays a haptic on iOS. Labels stop growing at `.xxxLarge` and show in the Large Content Viewer; the
-bar's height keeps scaling, so add `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` to the bar. Unselected iOS labels
-use the environment foreground, so set the color scheme (not only `appearance:`) when forcing dark or light.
+Tabs on a glass capsule with a glass lens of the bar's own material (a Regular bar stays frosted under the
+selection) that springs to the selection on the track spring and stretches with its speed; drag across the bar to
+carry the lens and release to choose the tab under it. On touch screens the lens follows a finger only once it moves
+sideways, so a vertical swipe that starts on the bar scrolls an enclosing scroll view. iOS: 62 pt tall with icon over
+label, selected item in the accent color, others at 62% foreground, items fill the width equally; the bar carries
+the tab bar trait (`.isTabBar`); `.controlSize(.small)` makes a 40 pt bar with icon beside label (a segmented control).
+macOS: 28 pt (24 small), icon (if any) beside the label at 13 pt medium, unselected at 85%, items hug their labels;
+when focused it draws a focus ring and the arrow keys move the selection in visual order (right to left too).
+Selection plays a haptic on iOS. The bar caps its own Dynamic Type size at `.xxxLarge`, so it stops growing with its
+labels, and a long press on a tab shows it in the Large Content Viewer. Tabs take the bar's foreground (white or dark
+on a `tint`) and, under a forced `appearance`, its color scheme.
 
 ```swift
 public struct GlassTabBar<Selection: Hashable, Content: View>: View {
     /// - selection: The selected tab's value.
-    /// - material: Clear or Regular glass; `nil` inherits the scene's.
-    /// - appearance: Light or dark glass; `nil` inherits.
-    /// - tint: Colors the bar's glass.
+    /// - material: Clear or Regular glass; `nil` inherits the scene's. The selection lens uses the same material.
+    /// - appearance: Light or dark glass; `nil` inherits. The tabs take its foreground and color scheme.
+    /// - tint: Colors the bar's glass; the tabs turn white or dark for contrast.
     /// - interactive: Whether the bar responds to presses and lens drags.
     /// - motion: Overrides the scene's motion level.
     /// - content: GlassTab items.
@@ -500,7 +533,7 @@ public struct GlassTab<Value: Hashable>: View {
 ```
 
 - `value` must have exactly the `Selection` type; a tab whose value has another type is never selected.
-- The lens is always Clear; `material` and `tint` apply to the bar.
+- The lens takes the bar's `material` and `appearance`; `tint` colors only the bar.
 - On iOS cap the floating bar's width (`.frame(maxWidth: 440).padding(.horizontal, 24)`); on macOS use
   `.fixedSize()`.
 
@@ -525,8 +558,10 @@ GlassTabBar(selection: $settings.material) {          // segmented control insid
 
 A 6 pt capsule track filled with `tint` (the accent color by default) up to the value. The thumb is an opaque white
 capsule at rest and lifts into clear glass while held, refracting the track beneath it and stretching with its speed.
-Press anywhere on the track to jump there and keep dragging. 44 pt tall on iOS (28 on macOS), at least 80 pt wide,
-fills the width it is offered, mirrors in right-to-left layouts. With a `step` the value snaps and iOS plays a
+Press anywhere on the track to jump there and keep dragging. On touch screens a drag starts only once the finger moves
+sideways: a vertical swipe that starts on the slider scrolls an enclosing scroll view and leaves the value alone (a tap
+still jumps). 44 pt tall on iOS (28 on macOS), at least 80 pt wide, fills the width it is offered, fills from the
+right in right-to-left layouts. With a `step` the value snaps and iOS plays a
 selection haptic per step. VoiceOver sees a standard `Slider`; on macOS the arrow keys adjust it when focused (by the
 step, or 1% of the range).
 
@@ -580,8 +615,10 @@ A `Toggle` whose white thumb lifts into clear glass while held. Tap to toggle or
 the switch spring (response 0.47 s, damping 0.7). The track takes `tint` (the accent color by default) when on and
 gray otherwise. Track 63 × 28 pt with a 37 × 24 pt thumb on iOS, 54 × 24 with 32 × 20 on macOS. The style lays out
 `label`, a flexible spacer (at least 8 pt) and the track, so a switch fills its row; `.fixedSize()` makes it compact.
-iOS plays a light impact on change; macOS toggles with Space when focused. A disabled switch looks enabled: pair
-`.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
+On iOS 18 and macOS 15, `.labelsHidden()` hides the label (it stays the VoiceOver label) and the switch hugs its
+track; iOS 17 and macOS 14 don't report hidden labels to toggle styles, so there the label still shows (leave the
+title empty and set `accessibilityLabel` instead). iOS plays a light impact on change; macOS toggles with Space when
+focused. A disabled switch looks enabled: pair `.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
 
 ```swift
 public struct GlassSwitch<Label: View>: View {
@@ -625,25 +662,28 @@ GlassSwitch("Wi-Fi", isOn: $wifi)
 GlassSwitch("AirDrop", isOn: $airdrop, tint: Color(red: 0.204, green: 0.78, blue: 0.349))
 GlassSwitch(isOn: $bluetooth) { Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right") }
 GlassSwitch("Capsule", isOn: $capsule).fixedSize()
+GlassSwitch("Sync", isOn: $sync).labelsHidden()             // only the track (iOS 18, macOS 15)
 Toggle("Bluetooth", isOn: $bluetooth).toggleStyle(GlassSwitchStyle())
 ```
 
 ## GlassMenu, GlassMenuItem and GlassMenuDivider
 
-A menu whose trigger is a `GlassButton` (a plain item inside a `GlassToolbar`). Opening morphs the trigger's glass
-into a Regular panel on the morph spring while the items condense out of a blur; closing reverses it. The panel opens
-below the trigger with trailing edges aligned and 8 pt from it, flips above when it does not fit below but fits above,
-and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that fits on neither side runs past
-the scene's bottom edge. Items highlight with the foreground at 8%. Tap outside, press Escape (or the VoiceOver
-escape gesture), or choose an item to dismiss; up/down arrows and Return navigate. The panel draws in the enclosing
-scene's overlay; outside a `GlassScene` the menu falls back to the system `Menu` with the same items.
+A menu whose trigger is a `GlassButton` (a plain item inside a `GlassToolbar`); `appearance` and `tint` apply to the
+trigger and the panel. Opening morphs the trigger's glass into a Regular panel on the morph spring while the items
+condense out of a blur; closing reverses it. The panel opens below the trigger with trailing edges aligned (the left
+edges, right to left) and 8 pt from it, flips above when it does not fit below but fits above, and keeps 8 pt from
+the scene's left and right edges. It never scrolls: a menu that fits on neither side runs past the scene's bottom
+edge. Items highlight with the foreground at 8%. Tap outside, press Escape (or the VoiceOver escape gesture), or
+choose an item to dismiss; up/down arrows and Return navigate, skipping disabled items. The panel draws in the
+enclosing scene's overlay; outside a `GlassScene` the menu falls back to the system `Menu` with the same items
+(checked items become toggles there).
 
 ```swift
 public struct GlassMenu<Label: View, Content: View>: View {
-    /// - material: The panel's material; `nil` is Regular.
-    /// - appearance: Light or dark panel glass (not the trigger's); `nil` inherits.
+    /// - material: The panel's material; `nil` is Regular. The trigger inherits the scene's.
+    /// - appearance: Light or dark glass for the trigger and the panel, and their labels; `nil` inherits.
     /// - radius: The panel's corner radius. Default 28.
-    /// - tint: Colors the panel's glass (and the trigger's outside a toolbar).
+    /// - tint: Colors the trigger's and the panel's glass; labels on it turn white or dark for contrast.
     /// - motion: Overrides the scene's motion level.
     /// - content: GlassMenuItems and GlassMenuDividers.
     /// - label: The trigger's label.
@@ -662,24 +702,41 @@ extension GlassMenu where Label == SwiftUI.Label<Text, Image?> {
         tint: Color? = nil, motion: GlassMotion? = nil, @ViewBuilder content: () -> Content
     )
 
-    /// Creates a menu with an icon-only trigger: a short capsule (the icon plus the button's horizontal padding),
-    /// a little wider than a `GlassButton(icon:)` circle. `label` names it for VoiceOver and tooltips.
+    /// Creates a menu with an icon-only, circular trigger (the icon button circle: 44 pt iOS, 28 pt macOS).
+    /// `label` names it for VoiceOver and tooltips.
     public init(
         icon systemImage: String, label titleKey: LocalizedStringKey,
         material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, radius: GlassRadius = 28,
         tint: Color? = nil, motion: GlassMotion? = nil, @ViewBuilder content: () -> Content
     )
+
+    /// Creates a menu with an icon-only, circular trigger named by a string, for example a title computed at runtime.
+    @_disfavoredOverload
+    public init<S: StringProtocol>(
+        icon systemImage: String, label title: S,
+        material: GlassMaterial? = nil, appearance: GlassAppearance? = nil, radius: GlassRadius = 28,
+        tint: Color? = nil, motion: GlassMotion? = nil, @ViewBuilder content: () -> Content
+    )
 }
 
-/// An item of a GlassMenu. Outside a glass panel (the system menu fallback) it is a plain button.
+/// An item of a GlassMenu. Outside a glass panel (the system menu fallback) it is a plain button, or a Toggle
+/// when `checked` is set. A disabled item (`.disabled(true)`) dims and is skipped by the arrow keys and Return.
 public struct GlassMenuItem: View {
     /// - role: `.destructive` draws the item in red.
+    /// - checked: `true` or `false` for an item that shows a choice, with a checkmark when it is `true`;
+    ///   `nil` (the default) for a command.
     /// - action: Runs when the item is chosen; the menu then closes.
-    public init(_ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil, action: @escaping () -> Void)
+    public init(
+        _ titleKey: LocalizedStringKey, systemImage: String? = nil, role: ButtonRole? = nil,
+        checked: Bool? = nil, action: @escaping () -> Void
+    )
 
     /// Creates an item from a title string.
     @_disfavoredOverload
-    public init<S: StringProtocol>(_ title: S, systemImage: String? = nil, role: ButtonRole? = nil, action: @escaping () -> Void)
+    public init<S: StringProtocol>(
+        _ title: S, systemImage: String? = nil, role: ButtonRole? = nil,
+        checked: Bool? = nil, action: @escaping () -> Void
+    )
 }
 
 /// A separator between groups of menu items.
@@ -692,17 +749,21 @@ public struct GlassMenuDivider: View {
   Regular.
 - `radius` is read as points; `.capsule`/`.circle` fall back to 28. Items' highlights are concentric
   (radius − inset: 8 pt iOS, 4 pt macOS).
-- Panel metrics: items 44 pt tall, 16 pt padding, 24 pt icon column, min width 220 on iOS; 28 pt, 8 pt, 16 pt, 160 on
-  macOS.
-- Title and `icon:label:` triggers take `LocalizedStringKey` (literals and interpolation work).
-- No checkmark state on items: put the current choice in the trigger title or the item symbol. `ForEach` works inside.
+- Panel metrics: items 44 pt tall, 16 pt padding, 24 pt icon column, 16 pt check column, min width 220 on iOS;
+  28 pt, 8 pt, 16 pt, 12 pt, 160 on macOS.
+- Title triggers take `LocalizedStringKey` (literals and interpolation work; pass a `String` variable as
+  `LocalizedStringKey(name)`); `icon:label:` also takes a `String`.
+- Items with `checked:` (`true` or `false`) reserve a leading column and draw a checkmark when `true`; VoiceOver reads
+  them as selected (`.isSelected`). `ForEach` works inside.
+- `.disabled(true)` on an item dims it; the arrow keys and Return skip it.
 - Content: only `GlassMenuItem`, `GlassMenuDivider` and `ForEach` of them; about 8 items or fewer (no scrolling), and
   no submenus (a `GlassMenu` inside a panel never opens).
 - The panel is built in the scene's overlay with the scene's environment: `.environment(model)`, `.glassAppearance`,
   `.disabled` or `.font` applied between the scene and the menu do not reach the items (a custom row reading an
-  environment object injected there crashes). Pass `appearance:` to the menu and capture data in item actions.
-- Item labels use the environment foreground and color scheme, not the panel's `appearance` or `tint`: leave panels
-  untinted, and set the color scheme on the scene when forcing dark or light.
+  environment object injected there crashes). Pass `appearance:` to the menu, put `.disabled` on the items, and
+  capture data in item actions.
+- Items take the panel's foreground: white or `#111113` for contrast on a `tint`, and the color scheme of a forced
+  `appearance`.
 
 ```swift
 GlassMenu("Sort", systemImage: "arrow.up.arrow.down") {
@@ -714,6 +775,14 @@ GlassMenu("Sort", systemImage: "arrow.up.arrow.down") {
 
 GlassMenu(icon: "ellipsis", label: "More") {
     GlassMenuItem("Duplicate", systemImage: "plus.square.on.square") {}
+}
+
+GlassMenu("View", systemImage: "eye") {
+    GlassMenuItem("Grid", checked: layout == .grid) { layout = .grid }
+    GlassMenuItem("List", checked: layout == .list) { layout = .list }
+    GlassMenuDivider()
+    GlassMenuItem("Export…", systemImage: "square.and.arrow.up") { export() }
+        .disabled(!canExport)
 }
 
 GlassMenu {
@@ -729,8 +798,9 @@ A blur that grows toward an edge of the scene's backdrop: six levels over the sh
 σ = `blur`·(*i*/6)², blended by the smoothstep of the depth so the weights sum to 1. It fills the width (or height)
 it is offered and is `size` points deep, never takes touches and is hidden from accessibility. Each of the six levels
 is a full copy of the backdrop, so one blur costs about as much as six surfaces: use at most one per edge, 80 to
-130 pt deep. It blurs only the backdrop: glass above it still refracts the sharp backdrop. Outside a scene it falls
-back to `.ultraThinMaterial` under the same fade.
+130 pt deep. It blurs only the backdrop: glass above it still refracts the sharp backdrop. `.leading` and `.trailing`
+follow the layout direction (right to left, `.leading` blurs toward the right edge). Outside a scene it falls back to
+`.ultraThinMaterial` under the same fade.
 
 ```swift
 public struct GlassProgressiveBlur: View {
@@ -752,10 +822,13 @@ VStack(spacing: 0) {
 ## GlassScrollView and GlassScrollPosition
 
 A scroll view drawn entirely by SwiftUI, so it can be the backdrop. It moves its content with an offset: drag to
-scroll on iOS with `UIScrollView`'s deceleration (× 0.998 per ms) and rubber band past the ends; trackpad (with the
-system's momentum) and mouse wheel on macOS. A capsule indicator shows while scrolling. VoiceOver's three-finger
-scroll pages by 90% of the viewport. Content is laid out at its ideal length along the scrolling axes, so
-`LazyVStack` renders every row. Copies inside glass only display the shared position and take no input.
+scroll on iOS with `UIScrollView`'s deceleration (× 0.998 per ms) and rubber band past the ends; a cancelled drag
+settles back in range. On macOS it follows the trackpad (with the system's momentum) and the mouse wheel, taking only
+its own window's wheel events (an AppKit scroll view or text view in front of it scrolls itself), and once focused
+scrolls with the arrow keys, Page Up and Down, Space (Shift-Space up), Home and End. A capsule indicator shows while
+scrolling. VoiceOver's three-finger scroll pages by 90% of the viewport. Content is laid out at its ideal length
+along the scrolling axes, so `LazyVStack` renders every row. Copies inside glass only display the shared position and
+take no input.
 
 ```swift
 public struct GlassScrollView<Content: View>: View {
@@ -957,13 +1030,13 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | --- | --- | --- |
 | `GlassButton` height small / regular / large (`.mini` = small, `.extraLarge` = large) | 34 / 44 / 52, Dynamic Type | 22 / 28 / 34, Dynamic Type |
 | `GlassButton` horizontal padding small / regular / large | 12 / 16 / 22 | 8 / 10 / 12 |
-| `GlassToolbar` height, inset, item spacing | 52, 4, 4 (height scales with Dynamic Type; items stop at `.xxxLarge`) | 34, 3, 4 |
-| `GlassTabBar` height regular / small | 62 / 40 (height scales with Dynamic Type; labels stop at `.xxxLarge`) | 28 / 24 |
+| `GlassToolbar` height, inset, item spacing | 52, 4, 4 (height scales with Dynamic Type up to `.xxxLarge`) | 34, 3, 4 |
+| `GlassTabBar` height regular / small | 62 / 40 (height scales with Dynamic Type up to `.xxxLarge`) | 28 / 24 |
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
-| `GlassMenu` item height, padding, panel inset, min width | 44, 16, 8, 220 | 28, 8, 4, 160 |
+| `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
 | Highlight of pressed / hovered / focused items | foreground at 8% | foreground at 8% |
-| Glass foreground color (`GlassSurface`, `.liquidGlass`, standalone `GlassButton` content) | `#111113` light, white dark | same |
+| Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more | same |
 
 ## System settings, fallbacks and accessibility
 
@@ -971,16 +1044,18 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | --- | --- |
 | Reduce Transparency | The material becomes an opaque fill (`#F2F2F7` light, `#1C1C1E` dark, at 94%); the rim light stays |
 | Increase Contrast | Regular material plus a 1 pt inner border (black 18% light, white 28% dark) |
-| Reduce Motion | `.full` resolves to `.reduced`: no grow, stretch or overshoot; springs critically damped |
-| `GlassMotion.none` | No transitions at all |
-| Dynamic Type | Button, toolbar and tab bar heights and labels scale; bar items and tab labels stop at `.xxxLarge` while bar heights keep scaling (cap them with `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` on the bar); only tabs show in the Large Content Viewer |
-| VoiceOver | Buttons, tabs (`.isSelected`), switches (`Toggle`), sliders (`Slider` representation), menu items keep roles, labels, values and actions; open menus are modal and close with the escape gesture; glass layers are hidden |
-| Keyboard (macOS) | Buttons and switches focus with Full Keyboard Access; tab bars and sliders use arrows; switches Space; menus arrows, Return, Escape |
+| Reduce Motion | `.full` resolves to `.reduced`: no grow, stretch or overshoot; the tab lens, switch thumb and thumb lift move as critically damped transitions |
+| `GlassMotion.none` | No transitions at all: the lens and thumbs jump |
+| Dynamic Type | Button, toolbar and tab bar heights and labels scale; toolbars and tab bars stop growing, with their labels, at `.xxxLarge`, and a long press on a toolbar item or tab shows it in the Large Content Viewer |
+| VoiceOver | Buttons, tabs (`.isSelected`), switches (`Toggle`), sliders (`Slider` representation), menu items (checked ones `.isSelected`) keep roles, labels, values and actions; iOS tab bars have the `.isTabBar` trait; open menus are modal and close with the escape gesture; glass layers are hidden |
+| Keyboard (macOS) | Buttons and switches focus with Full Keyboard Access; tab bars (arrows in visual order, with a focus ring) and sliders use arrows; switches Space; menus arrows, Return, Escape (disabled items skipped); a focused `GlassScrollView` arrows, Page Up/Down, Space, Home, End |
 | Pointer (macOS, iPad) | Hover lights interactive glass at level 0.35 |
 | Haptics (iOS) | Tab selection and stepped sliders: selection feedback; switches: light impact |
+| Right to left | Every component mirrors: glass refracts its mirrored position, toolbar clusters and menus mirror, the tab lens and arrow keys follow visual order, sliders fill from the right |
+| Frame rate | Springs run on a display link only while something moves. ProMotion iPhones need `CADisableMinimumFrameDurationOnPhone` = `YES` in the app's Info.plist for 120 Hz glass; on macOS the link follows the key window's screen |
 | Outside a `GlassScene` | `GlassSurface` and bars: `Material.regular` / `Material.thin` plus rim; `GlassProgressiveBlur`: `.ultraThinMaterial`; `GlassMenu`: system `Menu` |
 | Presentation attached inside a scene, without its own scene | Not a reliable fallback: glass draws a misaligned copy of the parent backdrop and a `GlassMenu` opens no panel; give the presented view its own `GlassScene` |
-| Disabled `GlassSlider` / `GlassSwitch` | No dimming (only `GlassButton` dims to 45%): add `.opacity` yourself |
+| Disabled `GlassSlider` / `GlassSwitch` | No dimming (`GlassButton` dims to 45%, menu items to 40%): add `.opacity` yourself |
 | Inside `GlassContent` | Glass renders only its content in the copies (glass never refracts glass) |
 | `drawingGroup(colorMode: .linear)` | Unsupported: shaders expect SwiftUI's default gamma-encoded pipeline |
 | `rotationEffect` / 3D transforms | Refraction misaligned (copies track translation and scale only) |

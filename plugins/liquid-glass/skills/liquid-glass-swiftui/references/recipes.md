@@ -17,7 +17,8 @@ its own for iOS and macOS; add it to an app target that depends on the `LiquidGl
 Add the package (Xcode: **File › Add Package Dependencies…**, paste
 `https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android`, from `1.0.0`, product `LiquidGlass`)
 and host a recipe in the app's window. Build and run with Xcode 16 or later (the Metal shaders are compiled by
-Xcode, not by `swift build`, and the iOS target needs the iOS 18 SDK).
+Xcode, not by `swift build`, and the iOS target needs the iOS 18 SDK). For 120 Hz glass on ProMotion iPhones, set
+`CADisableMinimumFrameDurationOnPhone` to `YES` in the app's Info.plist.
 
 ```swift
 import SwiftUI
@@ -42,8 +43,8 @@ a flat fill it reads as a gray pill. Recipe 6 needs no assets.
 Design defaults used throughout: Clear glass over imagery, Regular for compact panels holding text and for bars over
 text, buttons grouped into toolbar clusters at the edges, capsules for controls, circles for icon-only buttons,
 concentric radii (inner radius = outer radius − padding, as `GlassShape(radius: R).inset(by: i)` computes), at most
-one tinted or prominent control per screen. Bars carry `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` so their
-height stops growing with their labels.
+one tinted or prominent control per screen. Toolbars and tab bars stop growing with their labels at the largest text
+sizes on their own, and labels on tinted glass pick white or dark for contrast, so the recipes set neither.
 
 ## 1. App shell: floating tab bar over content
 
@@ -98,7 +99,6 @@ struct AppShell: View {
                         GlassTab(item.title, systemImage: item.symbol, value: item)
                     }
                 }
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 #if os(macOS)
                 .fixedSize()
                 .padding(.bottom, 20)
@@ -145,9 +145,9 @@ struct PhotoViewer: View {
     @State private var favorite = false
 
     var body: some View {
-        // Over a photo known to be dark, add `.environment(\.colorScheme, .dark)` to the scene: the glass, the
-        // toolbar icons and the menu items all turn dark. `GlassScene(appearance: .dark)` alone would darken the
-        // glass but leave the toolbar icons black in light mode.
+        // Over a photo known to be dark, pass `appearance: .dark`: the glass turns dark and the toolbar icons, the
+        // caption and the menu items light. Add `.environment(\.colorScheme, .dark)` (or `.preferredColorScheme(.dark)`
+        // for the status bar too) when plain views over the photo should follow as well.
         GlassScene {
             GlassContent {
                 Image("photo")
@@ -174,7 +174,6 @@ struct PhotoViewer: View {
                         GlassMenuItem("Delete", systemImage: "trash", role: .destructive) {}
                     }
                 }
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
@@ -191,7 +190,6 @@ struct PhotoViewer: View {
                     GlassButton(icon: "info.circle", label: "Info") {}
                     GlassButton(icon: "crop.rotate", label: "Crop") {}
                 }
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .padding(.bottom, 8)
             }
         }
@@ -286,7 +284,8 @@ struct NowPlaying: View {
 
 A Regular card of `GlassSwitch` rows (label left, track right) and a brightness `GlassSlider`. A small `GlassTabBar`
 acts as a segmented control for the appearance, and two settings drive the scene's own options, so every glass
-element follows them. Switch `tint` colors the on-track, not glass.
+element follows them (a forced Light or Dark also sets the labels' color scheme). Switch `tint` colors the on-track,
+not glass.
 
 ```swift
 import LiquidGlass
@@ -322,7 +321,6 @@ struct SettingsCard: View {
                         GlassTab("Dark", value: GlassAppearance.dark)
                     }
                     .controlSize(.small)
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     GlassSwitch(isOn: $wifi) { Label("Wi-Fi", systemImage: "wifi") }
                     GlassSwitch(isOn: $bluetooth) { Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right") }
                     GlassSwitch(isOn: $airplane, tint: .orange) { Label("Airplane mode", systemImage: "airplane") }
@@ -348,12 +346,13 @@ struct SettingsCard: View {
 
 ## 5. Glass menu from a button
 
-Two standalone menus at the top trailing corner: a titled trigger that names the current choice (menu items have no
-checkmark state) and an icon-only one (a short capsule, slightly wider than a `GlassButton(icon:)` circle). Both sit
-in one foreground container, so either panel draws above everything else. Opening morphs the trigger's glass into a
-Regular panel (radius 28); it opens below the trigger with trailing edges aligned, flips above when it does not fit
-below, and keeps 8 pt from the scene's left and right edges. The panel never scrolls, so keep menus short. Tap
-outside, press Escape or choose an item to close it.
+Two standalone menus at the top trailing corner: a titled trigger that names the current choice, whose items check
+it with `checked:` (a checkmark column, read as selected by VoiceOver), and an icon-only one (the same circle as a
+`GlassButton(icon:)`) with an item disabled until there is a selection. Both sit in one foreground container, so
+either panel draws above everything else. Opening morphs the trigger's glass into a Regular panel (radius 28); it
+opens below the trigger with trailing edges aligned, flips above when it does not fit below, and keeps 8 pt from the
+scene's left and right edges. The panel never scrolls, so keep menus short. Tap outside, press Escape or choose an
+item to close it.
 
 ```swift
 import LiquidGlass
@@ -377,6 +376,7 @@ enum PhotoSort: String, CaseIterable, Identifiable {
 struct SortMenu: View {
     @State private var sort = PhotoSort.newest
     @State private var grid = true
+    @State private var selecting = false
 
     var body: some View {
         GlassScene {
@@ -395,14 +395,20 @@ struct SortMenu: View {
                     Spacer()
                     GlassMenu("Sort: \(sort.title)", systemImage: "arrow.up.arrow.down") {
                         ForEach(PhotoSort.allCases) { option in
-                            GlassMenuItem(option.title, systemImage: option.symbol) { sort = option }
+                            GlassMenuItem(option.title, systemImage: option.symbol, checked: sort == option) {
+                                sort = option
+                            }
                         }
                     }
                     GlassMenu(icon: "ellipsis", label: "More") {
                         GlassMenuItem(grid ? "Show as list" : "Show as grid", systemImage: grid ? "list.bullet" : "square.grid.2x2") {
                             grid.toggle()
                         }
-                        GlassMenuItem("Select", systemImage: "checkmark.circle") {}
+                        GlassMenuItem(selecting ? "Done" : "Select", systemImage: "checkmark.circle") {
+                            selecting.toggle()
+                        }
+                        GlassMenuItem("Share selection", systemImage: "square.and.arrow.up") {}
+                            .disabled(!selecting)           // dimmed, skipped by the arrow keys
                         GlassMenuDivider()
                         GlassMenuItem("Delete all", systemImage: "trash", role: .destructive) {}
                     }
@@ -485,7 +491,6 @@ struct ReadingList: View {
                         GlassToolbarSpacer()
                         GlassButton(icon: "arrow.up", label: "Scroll to top") { scroll.scrollTo(edge: .top) }
                     }
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                 }

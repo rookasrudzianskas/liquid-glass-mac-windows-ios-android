@@ -72,9 +72,9 @@ GlassScene(material:appearance:refraction:motion:)   fills the space offered (li
    with the rim light and menus fall back to the system `Menu`.
 2. **Content** = `GlassContent`, the backdrop. Each surface draws its own copy of it, aligned at render time to the
    surface's exact on-screen frame (also while it is dragged, offset, scaled or animated), then runs the shader on it.
-3. **Surfaces** = every glass view in the foreground. The content of a `GlassSurface`, `.liquidGlass` or standalone
-   `GlassButton` draws above the glass in the glass foreground color (`#111113` on light glass, white on dark).
-   Toolbar items, tab labels and menu items are drawn outside the glass and follow the SwiftUI color scheme.
+3. **Surfaces** = every glass view in the foreground. The content of a `GlassSurface`, `.liquidGlass` or
+   `GlassButton`, and toolbar items, tab labels and menu items, draw above the glass in the glass foreground color
+   (`#111113` on light glass, white on dark; on tinted glass whichever of the two contrasts more).
 4. **Options inherit.** `GlassScene(material:appearance:refraction:motion:)` and the `.glassMaterial(_:)`,
    `.glassAppearance(_:)`, `.glassRefraction(_:)`, `.glassMotion(_:)` modifiers set defaults for all glass below;
    a component's own non-`nil` parameter wins.
@@ -128,7 +128,6 @@ struct ContentView: View {
                     GlassButton(icon: "heart", label: "Like") {}
                     GlassButton(icon: "square.and.arrow.up", label: "Share") {}
                 }
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
             .padding(20)
         }
@@ -146,13 +145,13 @@ or environment" (defaults: material `.clear`, appearance `.automatic`, refractio
 | `GlassScene` | The region glass may refract; backdrop plus foreground | `material` (nil), `appearance` (nil), `refraction` (nil), `motion` (nil), `@GlassSceneBuilder content` |
 | `GlassContent` | The backdrop; first element of a scene only (not a `View`) | `@ViewBuilder content`; `.ignoresSafeArea(_ edges: Edge.Set = .all)` |
 | `GlassSurface` / `.liquidGlass(…)` | Glass container: cards, panels, chips, draggable lenses | `material` (nil), `appearance` (nil), `radius` (`16`), `refraction` (nil), `tint` (nil), `interactive` (`false`), `motion` (nil) |
-| `GlassButton` | Button on interactive glass: capsule, circle when icon-only; a plain item inside a toolbar | `(_ title, systemImage:, material:, tint:, prominent:, action:)`, `(icon:label:…)`, `(radius:…, action:, label:)`; height from `.controlSize`: 34 / 44 / 52 pt iOS, 22 / 28 / 34 pt macOS |
+| `GlassButton` | Button on interactive glass: capsule, circle when icon-only; a plain item inside a toolbar | `(_ title, systemImage:, role:, material:, appearance:, refraction:, tint:, prominent:, interactive: true, motion:, action:)`, `(icon:label:role:…)`, `(role:radius:…, action:, label:)`; height from `.controlSize`: 34 / 44 / 52 pt iOS, 22 / 28 / 34 pt macOS |
 | `GlassToolbar` | Row of items on capsule glass clusters, 52 pt (macOS 34) | `material` (nil), `appearance` (nil), `tint` (nil), `interactive` (`true`), `motion` (nil) |
 | `GlassToolbarSpacer` | Splits a toolbar into clusters | `_ sizing` (`.flexible`; or `.fixed`), `minLength` (`8`) |
-| `GlassTabBar` + `GlassTab` | Capsule tabs with a sliding, draggable clear lens; 62 pt iOS (40 small), 28 pt macOS (24 small) | `selection:` binding, `material`, `appearance`, `tint` (nil), `interactive` (`true`), `motion` (nil); `GlassTab(_ title, systemImage: nil, value:)` |
+| `GlassTabBar` + `GlassTab` | Capsule tabs with a sliding, draggable lens of the bar's material; 62 pt iOS (40 small), 28 pt macOS (24 small) | `selection:` binding, `material`, `appearance`, `tint` (nil), `interactive` (`true`), `motion` (nil); `GlassTab(_ title, systemImage: nil, value:)` |
 | `GlassSlider` | 6 pt track with tinted fill; white thumb lifts into glass while held; 44 pt tall (macOS 28) | `value:`, `in:` (`0...1`), `step:` (nil), `tint` (nil = accent), `appearance`, `interactive` (`true`), `motion`, `label` (VoiceOver only), `onEditingChanged` |
 | `GlassSwitch` / `GlassSwitchStyle` | A `Toggle` with a glass thumb; track 63 × 28 pt (macOS 54 × 24) | `(_ title, isOn:, tint: nil, appearance: nil, interactive: true, motion: nil)`, `(isOn:…, label:)`; `GlassSwitchStyle(tint:appearance:interactive:motion:)` |
-| `GlassMenu` + `GlassMenuItem` + `GlassMenuDivider` | A glass button whose Regular panel grows out of it | `(_ title, systemImage: nil, …)`, `(icon:label:…)`, `(…, content:, label:)`; `material` (nil = Regular panel), `appearance` (nil, panel only), `radius` (`28`), `tint` (nil), `motion` (nil); `GlassMenuItem(_ title, systemImage: nil, role: nil, action:)` |
+| `GlassMenu` + `GlassMenuItem` + `GlassMenuDivider` | A glass button whose Regular panel grows out of it | `(_ title, systemImage: nil, …)`, `(icon:label:…)`, `(…, content:, label:)`; `material` (nil = Regular panel), `appearance` (nil; trigger and panel), `radius` (`28`), `tint` (nil; trigger and panel), `motion` (nil); `GlassMenuItem(_ title, systemImage: nil, role: nil, checked: nil, action:)` |
 | `GlassProgressiveBlur` | Blur that deepens toward an edge of the backdrop | `edge` (`.top`), `size` (`80`), `blur` (σ `20`) |
 | `GlassScrollView` + `GlassScrollPosition` | Scrolls a backdrop (native `ScrollView` cannot be refracted) | `_ axes` (`.vertical`), `position:`, `showsIndicators` (`true`); `offset`, `contentSize`, `viewportSize`, `isScrolling`, `maximumOffset`, `scrollTo(_:animated:)`, `scrollTo(edge:animated:)` |
 | `GlassShape` | The exact glass outline as an `InsettableShape` | `radius` (`16`); `.inset(by:)` keeps corners concentric |
@@ -181,7 +180,6 @@ GlassScene {
             GlassTab("Explore", systemImage: "safari", value: AppTab.explore)
             GlassTab("Library", systemImage: "books.vertical", value: AppTab.library)
         }
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .frame(maxWidth: 440).padding(.horizontal, 24).padding(.bottom, 4)   // macOS: .fixedSize()
     }
 }
@@ -212,7 +210,6 @@ GlassScene {
             GlassToolbar(material: .regular) {
                 GlassButton(icon: "arrow.up", label: "Scroll to top") { scroll.scrollTo(edge: .top) }
             }
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .padding(.horizontal, 20).padding(.top, 8)
         }
         Spacer(minLength: 0)
@@ -276,13 +273,15 @@ GlassScene {
   foreground view gets its own menu overlay, so a later layer would draw over an earlier layer's open panel.
 - Glass works at any depth in the foreground, including native `ScrollView` and `List` rows (possible, but do not
   make list rows glass): only the backdrop has to be pure SwiftUI. Text fields, maps and video can sit in the
-  foreground, but glass over them will not show them.
+  foreground, but glass over them will not show them. Inside a scroll view, sliders and tab bars take a touch drag
+  only once it moves sideways, so a vertical swipe that starts on them scrolls (a tap on a slider still jumps).
 - Keep full-screen foreground containers non-hit-testable (no `.background`, `.contentShape` or tap gesture on
   them), so a `GlassScrollView` backdrop under them still receives drags.
 - `GlassSurface` sizes to its content and adds no padding: pad inside it (`.padding(20)`) and cap the width
   (`.frame(maxWidth: 380)`) when the content is greedy (sliders, switches, `maxWidth: .infinity`).
 - Greedy controls: `GlassSlider` fills the width it is offered (min 80 pt); `GlassSwitch` is label, spacer, track,
-  so it fills the row (`.fixedSize()` makes it compact); on iOS `GlassTabBar` fills the width (cap it with
+  so it fills the row (`.fixedSize()` makes it compact; `.labelsHidden()` leaves only the track on iOS 18 and
+  macOS 15, while iOS 17 and macOS 14 still show the label); on iOS `GlassTabBar` fills the width (cap it with
   `.frame(maxWidth: 440)` and horizontal padding; on macOS use `.fixedSize()`); `GlassToolbar` hugs its items
   unless a flexible `GlassToolbarSpacer` stretches it.
 - `GlassButton` sets its own font, a one-line limit and padding, and its glass hugs the label. For a full-width or
@@ -308,23 +307,23 @@ GlassScene {
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
 - A surface's `material` applies to that surface only; it does not cascade to controls inside it. Set defaults for a
   subtree with `GlassScene(material:)` or `.glassMaterial(.regular)`.
-- The content of `GlassSurface`, `.liquidGlass` and standalone `GlassButton` gets `#111113` (light) or white (dark)
-  automatically, and an explicit `.light` or `.dark` appearance also sets that content's `colorScheme`, so
-  `.primary` and `.secondary` adapt. Do not color labels to match the backdrop. Toolbar items, tab labels and menu
-  items are drawn outside the glass: they follow the SwiftUI color scheme, not `appearance`.
-- `.automatic` follows the color scheme. To force dark (or light) glass on a screen, such as a dark photo viewer in
-  light mode, set the color scheme on the scene: `.environment(\.colorScheme, .dark)` on the `GlassScene`, or
-  `.preferredColorScheme(.dark)`, which also switches the status bar. Glass, bars and menus then all follow it.
-  `GlassScene(appearance: .dark)` alone darkens the glass but leaves toolbar, tab and menu labels black in light
-  mode: use it only together with the color scheme, as the demo app does. `GlassMenu(appearance:)` sets only the
-  panel's glass, not the trigger's.
+- Everything drawn on glass (the content of `GlassSurface`, `.liquidGlass` and `GlassButton`, toolbar items, tab
+  labels, menu triggers and items) gets `#111113` (light) or white (dark) automatically, and an explicit `.light` or
+  `.dark` appearance (on the scene, a surface, a bar or a menu) also sets its `colorScheme`, so `.primary` and
+  `.secondary` adapt. Do not color labels to match the backdrop.
+- `.automatic` follows the color scheme. `GlassScene(appearance: .dark)` gives dark glass with light labels on every
+  glass element, but plain foreground views and the status bar keep the system scheme. To force a whole screen dark
+  (or light), such as a dark photo viewer in light mode, set the color scheme on the scene:
+  `.environment(\.colorScheme, .dark)` on the `GlassScene`, or `.preferredColorScheme(.dark)`, which also switches
+  the status bar; `.automatic` glass follows it. `GlassMenu(appearance:)` applies to the trigger and the panel.
 - Tint sparingly: one `prominent: true` (accent tint) or `tint:` control per view; never tint whole toolbars or tab
-  bars. Tinted `GlassButton`, `GlassToolbar` and `GlassTabBar` draw their content white; inside
-  `GlassSurface(tint:)` or `.liquidGlass(tint:)` set `.foregroundStyle(.white)` on the content yourself, and leave
-  menu panels untinted (their items keep the dark foreground). On `GlassSlider` and `GlassSwitch`, `tint` colors
-  the fill and the on-track. Tints are clamped to sRGB.
-- Shapes: capsules for controls (the default for buttons, toolbars, tab bars), circles for icon-only buttons
-  (`GlassButton(icon:label:)`; a `GlassMenu(icon:label:)` trigger is a short capsule, a little wider), continuous
+  bars. Labels on tinted glass (buttons, bars, menus, surfaces) default to white or `#111113`, whichever has the
+  higher WCAG contrast with the tinted glass (white on blue, red or purple; dark on yellow, mint, green or orange), so
+  do not set `.foregroundStyle(.white)` yourself; a `foregroundStyle` set inside still wins. A `GlassMenu(tint:)`
+  colors the trigger and the panel. `role: .destructive` draws an untinted button label red. On `GlassSlider` and
+  `GlassSwitch`, `tint` colors the fill and the on-track. Tints are clamped to sRGB.
+- Shapes: capsules for controls (the default for buttons, toolbars, tab bars), circles for icon-only buttons and
+  menus (`GlassButton(icon:label:)`, `GlassMenu(icon:label:)`: 44 pt on iOS, 28 pt on macOS), continuous
   radii 16 to 28 for cards and panels (up to 34 for large media cards). Nested corners are concentric: inner radius
   = outer radius − padding, as the library's own insets compute it. Clip artwork inside a 34 pt card padded 14 with
   `GlassShape(radius: 20)`; `GlassShape(radius: 34).inset(by: 14)` draws the same outline in the card's own frame.
@@ -355,11 +354,12 @@ GlassScene {
   crashes). Set appearance on the menu or the scene, and pass data into item actions through closures.
 - `GlassTab(value:)` must have exactly the selection's type (`value: Page.home` for `Binding<Page>`); a mismatched
   value is never selected. `ForEach` inside a tab bar, toolbar or menu is fine.
-- `GlassButton(icon:label:)`, `GlassMenu(icon:label:)` and `GlassMenu(_:systemImage:…)` take a
-  `LocalizedStringKey`: literals and interpolation (`"Sort: \(name)"`) work; pass a `String` variable as
-  `LocalizedStringKey(name)`. `GlassButton(_:)` titles, `GlassTab`, `GlassSwitch` and `GlassMenuItem` also accept a
-  `String`.
-- `GlassMenuItem` has no checkmark state: show the current choice in the trigger title or the item's symbol.
+- `GlassMenu(_:systemImage:…)` takes only a `LocalizedStringKey`: literals and interpolation (`"Sort: \(name)"`)
+  work; pass a `String` variable as `LocalizedStringKey(name)`. `GlassButton` titles and `icon:label:`,
+  `GlassMenu(icon:label:)`, `GlassTab`, `GlassSwitch` and `GlassMenuItem` also accept a `String`.
+- For a choice, give items `checked:` (`GlassMenuItem("Grid", checked: layout == .grid) { layout = .grid }`): they
+  draw a checkmark column and VoiceOver reads the checked one as selected; outside a scene they become toggles in the
+  system `Menu`. `.disabled(true)` on an item dims it and the arrow keys and Return skip it.
 - `GlassMenu(radius:)` takes points; `.capsule` or `.circle` falls back to 28.
 
 **Rendering, limits and performance**
@@ -372,7 +372,11 @@ GlassScene {
   surfaces; use at most one per edge, 80 to 130 pt deep.
 - Keep the backdrop lean: hundreds of views are instantiated once per surface. `GlassScrollView` lays content out
   at its ideal length, so `LazyVStack` renders every row.
-- Springs run on a display link only while something moves; idle glass costs nothing per frame.
+- Springs run on a display link only while something moves; idle glass costs nothing per frame. On ProMotion iPhones
+  set `CADisableMinimumFrameDurationOnPhone` to `YES` in the app's Info.plist, or the glass springs run at 60 Hz
+  (iPad needs nothing); on macOS the link follows the key window's screen.
+- Glass renders whole, rim included, over transparent, narrow or clipped backdrops, and an outline thinner than 3 pt
+  (an empty label, a first layout pass) draws no glass, so collapsed views leave no stray rim.
 - Color: shaders expect SwiftUI's default (non-linear) pipeline. Never put a scene inside
   `.drawingGroup(colorMode: .linear)`.
 - Fallbacks: outside a scene, `GlassSurface` uses `Material.regular` / `Material.thin` with the rim light,
@@ -383,38 +387,45 @@ GlassScene {
 
 - Reduce Transparency swaps the material for an opaque fill (`#F2F2F7` / `#1C1C1E` at 94%) and keeps the rim;
   Increase Contrast switches to Regular and adds a 1 pt inner border; Reduce Motion turns `.full` into `.reduced`
-  (no grow, stretch or overshoot). All automatic.
+  (no grow, stretch or overshoot; the tab lens, switch thumb and thumb lift move as critically damped transitions).
+  All automatic.
 - `.glassMotion(.none)` (or `GlassScene(motion: GlassMotion.none)`) removes every transition, for UI tests and
   screenshots.
-- Dynamic Type scales button, toolbar and tab bar heights. Bar labels stop growing at `.xxxLarge`, but the bars
-  themselves keep scaling (about three times as tall at the largest accessibility size): add
-  `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` to every `GlassToolbar` and `GlassTabBar` so the bar stops with
-  its labels. Only tabs show in the Large Content Viewer. Never fix bar heights.
+- Dynamic Type scales button, toolbar and tab bar heights. Toolbars and tab bars stop growing, with their labels, at
+  `.xxxLarge` on their own, and a long press on a toolbar item (button or menu trigger) or a tab shows it in the
+  Large Content Viewer. Never fix bar heights.
 - VoiceOver: controls keep their roles (`GlassButton` is a `Button`, `GlassSwitch` a `Toggle`, `GlassSlider` exposes
-  a standard `Slider`); `.keyboardShortcut` and focus work as usual. Icon-only buttons and menus use their `label:`
-  as the VoiceOver label and macOS tooltip. Give a `GlassSlider` a `label` (or an `accessibilityLabel` when using the
-  label-less init); the label is not drawn, so show a visible `Text` or icons beside the slider. Glass layers are
-  hidden from accessibility; a `GlassSurface` contains its children, so give a grouping card an
-  `.accessibilityLabel`. Hide decorative backdrops with `.accessibilityHidden(true)` inside `GlassContent`.
-- `.disabled` dims a `GlassButton` to 45%, but a disabled `GlassSlider` or `GlassSwitch` looks enabled: pair
-  `.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
-- Keyboard (macOS): tab bars and sliders use the arrow keys, switches Space, menus arrows, Return and Escape.
-  Haptics (iOS): tab selection and stepped sliders play selection feedback, switches a light impact.
+  a standard `Slider`, an iOS `GlassTabBar` is a tab bar, checked menu items are selected); `.keyboardShortcut` and
+  focus work as usual. Icon-only buttons and menus use their `label:` as the VoiceOver label and macOS tooltip. Give
+  a `GlassSlider` a `label` (or an `accessibilityLabel` when using the label-less init); the label is not drawn, so
+  show a visible `Text` or icons beside the slider. Glass layers are hidden from accessibility; a `GlassSurface`
+  contains its children, so give a grouping card an `.accessibilityLabel`. Hide decorative backdrops with `.accessibilityHidden(true)` inside `GlassContent`.
+- `.disabled` dims a `GlassButton` (45%) and a `GlassMenuItem`, but a disabled `GlassSlider` or `GlassSwitch` looks
+  enabled: pair `.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
+- Keyboard (macOS): tab bars (with a focus ring, arrows in visual order) and sliders use the arrow keys, switches
+  Space, menus arrows, Return and Escape, a focused `GlassScrollView` the arrows, Page Up and Down, Space
+  (Shift-Space up), Home and End. Haptics (iOS): tab selection and stepped sliders play selection feedback, switches
+  a light impact.
+- Right to left (`layoutDirection`, Arabic, Hebrew) mirrors every component with nothing to set: glass refracts its
+  mirrored position, toolbar clusters and menus mirror, the tab lens and arrow keys follow visual order, sliders fill
+  from the right, and `GlassProgressiveBlur(edge: .leading)` blurs toward the right edge.
 
 ## Checklist
 
 - [ ] Package added (`from: "1.0.0"`), product `LiquidGlass`, deployment target iOS 17 / macOS 14, built with
-      Xcode 16 or later, `import LiquidGlass`.
+      Xcode 16 or later, `import LiquidGlass`; `CADisableMinimumFrameDurationOnPhone` = `YES` in an iPhone app's
+      Info.plist.
 - [ ] One `GlassScene` per screen with a definite size (never inside a `ScrollView`); `GlassContent` first,
       `.ignoresSafeArea()`, pure SwiftUI, no `@State`, `AsyncImage` or side effects inside, no glass inside,
       explicit padding for bars.
 - [ ] Scrolling backdrop uses `GlassScrollView` with a `GlassScrollPosition` held in `@State` outside the content;
       no glass floats over a foreground `Map`, video or `List`.
 - [ ] Foreground in one container when it holds a menu; bars pinned with `VStack` + `Spacer` or alignment; tab bar
-      width capped on iOS, `.fixedSize()` on macOS; `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)` on bars.
+      width capped on iOS, `.fixedSize()` on macOS.
 - [ ] Clear over imagery, Regular for compact panels with text and bars over text; no glass list rows; capsules,
       circles, concentric radii; at most one tinted or prominent control per view, outside toolbars.
-- [ ] A screen forced dark or light sets the color scheme on the scene, not only `appearance:`.
+- [ ] A screen forced dark or light sets the color scheme on the scene (`appearance:` alone changes only the glass
+      and what is drawn on it); no hand-set white labels on tinted glass.
 - [ ] Toolbar items are `GlassButton` / `GlassMenu` placed directly in `GlassToolbar`; `GlassTab` values match the
       selection type; menus short; presented views have their own `GlassScene`.
 - [ ] Icon-only controls have meaningful `label:`s; sliders have labels and visible captions; disabled sliders and
