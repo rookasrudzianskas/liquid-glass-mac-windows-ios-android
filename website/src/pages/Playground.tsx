@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import { defaultRefraction } from "@lg/reference";
 import { Glass, GlassStage, hexToRgb } from "../glass/react";
 import { wallpaperInfo, wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
 import type { BackdropSpec, WallpaperName } from "../glass/backdrop";
@@ -20,7 +21,8 @@ interface Settings {
   backdrop: BackdropId;
   material: Material;
   appearance: AppearanceSetting;
-  refraction: number;
+  /** null is Auto: the glass sets none and follows its size (OPTICS.md section 2). */
+  refraction: number | null;
   radius: number;
   capsule: boolean;
   width: number;
@@ -33,7 +35,7 @@ const DEFAULTS: Settings = {
   backdrop: (wallpaperNames.includes("aurora" as WallpaperName) ? "aurora" : wallpaperNames[0]) as BackdropId,
   material: "regular",
   appearance: "automatic",
-  refraction: 60,
+  refraction: null,
   radius: 32,
   capsule: false,
   width: 340,
@@ -67,11 +69,12 @@ function parse(search: string): Settings {
   const backdrops: string[] = [...wallpaperNames, "grid", "type"];
   const b = q.get("backdrop");
   const tint = q.get("tint");
+  const refraction = q.get("refraction");
   return {
     backdrop: (b && backdrops.includes(b) ? b : DEFAULTS.backdrop) as BackdropId,
     material: q.get("material") === "clear" ? "clear" : q.get("material") === "regular" ? "regular" : DEFAULTS.material,
     appearance: (["automatic", "light", "dark"].includes(q.get("appearance") ?? "") ? q.get("appearance") : DEFAULTS.appearance) as AppearanceSetting,
-    refraction: clampInt(q.get("refraction") ?? DEFAULTS.refraction, 0, 120, DEFAULTS.refraction),
+    refraction: refraction === null || refraction === "auto" ? null : clampInt(refraction, 0, 120, 60),
     radius: clampInt(q.get("radius") ?? DEFAULTS.radius, 0, 120, DEFAULTS.radius),
     capsule: q.get("capsule") === "1",
     width: clampInt(q.get("width") ?? DEFAULTS.width, 60, 560, DEFAULTS.width),
@@ -95,7 +98,8 @@ function serialize(s: Settings) {
 }
 
 // ---------------------------------------------------------------------------
-// Code for each platform, reflecting the current settings
+// Code for each platform, reflecting the current settings. Auto refraction is
+// left out: every port then follows the surface's size, as the glass here does.
 
 const cap = (s: string) => s[0]?.toUpperCase() + s.slice(1);
 
@@ -108,7 +112,7 @@ function swiftCode(s: Settings) {
   const args = [`material: .${s.material}`];
   if (s.appearance !== "automatic") args.push(`appearance: .${s.appearance}`);
   args.push(`radius: ${s.capsule ? ".capsule" : s.radius}`);
-  if (s.refraction !== 60) args.push(`refraction: ${s.refraction}`);
+  if (s.refraction !== null) args.push(`refraction: ${s.refraction}`);
   if (s.tint) args.push(`tint: ${swiftColor(s.tint)}`);
   if (s.interactive) args.push("interactive: true");
   // GlassSurface takes the size of its content, so the frame goes on the content.
@@ -125,7 +129,7 @@ function composeCode(s: Settings) {
   const args = [`modifier = Modifier.size(${s.width}.dp, ${s.height}.dp)`, `shape = ${s.capsule ? "GlassShape.Capsule" : `GlassShape(${s.radius}.dp)`}`, `material = GlassMaterial.${cap(s.material)}`];
   if (s.appearance !== "automatic") args.push(`appearance = GlassAppearance.${cap(s.appearance)}`);
   if (s.tint) args.push(`tint = Color(0xFF${s.tint.slice(1).toUpperCase()})`);
-  if (s.refraction !== 60) args.push(`refraction = ${s.refraction}.dp`);
+  if (s.refraction !== null) args.push(`refraction = ${s.refraction}.dp`);
   if (s.interactive) args.push("interactive = true");
   args.push("contentAlignment = Alignment.Center");
   // GlassText takes the glass content color (Material's Text would not follow the appearance).
@@ -140,7 +144,7 @@ function wpfCode(s: Settings) {
   const attrs = [`Width="${s.width}"`, `Height="${s.height}"`, `Material="${cap(s.material)}"`];
   if (s.appearance !== "automatic") attrs.push(`Appearance="${cap(s.appearance)}"`);
   attrs.push(`Radius="${s.capsule ? "capsule" : s.radius}"`);
-  if (s.refraction !== 60) attrs.push(`Refraction="${s.refraction}"`);
+  if (s.refraction !== null) attrs.push(`Refraction="${s.refraction}"`);
   if (s.tint) attrs.push(`Tint="${s.tint.toUpperCase()}"`);
   if (s.interactive) attrs.push(`IsInteractive="True"`);
   return `<lg:GlassSurface ${attrs.join("\n                 ")}>
@@ -214,7 +218,32 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
   );
 }
 
-function Slider({ label, value, min, max, step = 1, unit = "", disabled, onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; disabled?: boolean; onChange: (v: number) => void }) {
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  unit = "",
+  disabled,
+  accessory,
+  valueText,
+  hint,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  disabled?: boolean;
+  /** Shown between the label and the value (the refraction's Auto toggle). */
+  accessory?: ReactNode;
+  valueText?: string;
+  hint?: ReactNode;
+  onChange: (v: number) => void;
+}) {
   const id = useId();
   const pct = ((value - min) / (max - min)) * 100;
   return (
@@ -223,6 +252,7 @@ function Slider({ label, value, min, max, step = 1, unit = "", disabled, onChang
         <label htmlFor={id} className="control__label">
           {label}
         </label>
+        {accessory}
         <output htmlFor={id} className="control__value">
           {value}
           {unit}
@@ -237,10 +267,43 @@ function Slider({ label, value, min, max, step = 1, unit = "", disabled, onChang
         step={step}
         value={value}
         disabled={disabled}
+        aria-valuetext={valueText}
+        aria-describedby={hint ? `${id}-hint` : undefined}
         style={{ "--pct": `${pct}%` } as CSSProperties}
         onChange={(e) => onChange(Number(e.target.value))}
       />
+      {hint ? (
+        <p id={`${id}-hint`} className="control__hint">
+          {hint}
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Refraction is Auto until the slider moves: the glass then sets none and follows its
+ * size, min(60, 0.75 × shorter side), and the slider shows that value. Moving the
+ * slider sets an explicit value, used as given; Auto returns to the size rule.
+ */
+function RefractionControl({ value, auto, onChange }: { value: number | null; auto: number; onChange: (v: number | null) => void }) {
+  const isAuto = value === null;
+  const shown = value ?? auto;
+  return (
+    <Slider
+      label="Refraction"
+      value={shown}
+      min={0}
+      max={120}
+      valueText={isAuto ? `${shown}, automatic` : undefined}
+      accessory={
+        <button type="button" className="pg-auto" aria-pressed={isAuto} aria-label="Auto refraction" onClick={() => onChange(isAuto ? Math.round(auto) : null)}>
+          Auto
+        </button>
+      }
+      hint={isAuto ? "Follows the size: min(60, 0.75 × shorter side)." : "Used as given. Auto follows the size."}
+      onChange={onChange}
+    />
   );
 }
 
@@ -355,6 +418,8 @@ export default function Playground() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [resets]);
+  // Auto refraction is measured on the glass as drawn, which is the size the renderer uses.
+  const autoRefraction = defaultRefraction(shown?.w ?? s.width, shown?.h ?? s.height);
   const size = shown && (shown.w < s.width - 1 || shown.h < s.height - 1) ? `${shown.w} by ${shown.h} (fitted to the screen; the code keeps ${s.width} by ${s.height})` : `${s.width} by ${s.height}`;
   // The glass centres in the space the code panel leaves free.
   useEffect(() => {
@@ -392,7 +457,7 @@ export default function Playground() {
             className="pg__glass"
             material={s.material}
             radius={s.capsule ? "capsule" : s.radius}
-            refraction={s.refraction}
+            refraction={s.refraction ?? undefined}
             tint={s.tint}
             appearance={appearance}
             draggable
@@ -458,10 +523,8 @@ export default function Playground() {
             ]}
             onChange={(v) => set("appearance", v)}
           />
-          <div className="control-pair">
-            <Slider label="Refraction" value={s.refraction} min={0} max={120} onChange={(v) => set("refraction", v)} />
-            <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
-          </div>
+          <RefractionControl value={s.refraction} auto={autoRefraction} onChange={(v) => set("refraction", v)} />
+          <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
           <div className="control-pair">
             <Slider label="Width" value={s.width} min={60} max={560} onChange={(v) => set("width", v)} />
             <Slider label="Height" value={s.height} min={44} max={420} onChange={(v) => set("height", v)} />
