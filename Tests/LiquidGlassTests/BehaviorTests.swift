@@ -393,6 +393,41 @@ final class BehaviorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(heights(.large).1, GlassControlMetrics.tabBarHeight(.regular))
     }
 
+    /// The bar's size when it is offered `proposal`, for example a tall
+    /// row in a two-column layout.
+    private func measure<V: View>(_ view: V, offered proposal: CGSize) -> CGSize {
+        let box = SizeBox()
+        let renderer = ImageRenderer(content: GlassScene {
+            GlassContent { Color.gray }
+            view
+                .background(GeometryReader { proxy in
+                    let _ = { box.size = proxy.size }()
+                    Color.clear
+                })
+                .frame(width: proposal.width, height: proposal.height)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 600, height: 400))
+        _ = renderer.cgImage
+        return box.size
+    }
+
+    /// Offered more height than they need, bars keep their own height
+    /// instead of stretching into tall capsules.
+    func testBarsKeepTheirHeightWhenOfferedMore() {
+        let tall = CGSize(width: 320, height: 240)
+        let toolbar = measure(GlassToolbar {
+            GlassButton(icon: "chevron.left", label: "Back") {}
+            GlassToolbarSpacer()
+            GlassButton(icon: "bold", label: "Bold") {}
+            GlassToolbarSpacer(.fixed)
+            GlassButton(icon: "plus", label: "Add") {}
+        }, offered: tall)
+        XCTAssertEqual(toolbar.height, GlassControlMetrics.toolbarHeight, "toolbar")
+        let tabs = measure(GlassTabBar(selection: .constant(0)) { GlassTab("Home", systemImage: "house", value: 0) }, offered: tall)
+        XCTAssertEqual(tabs.height, GlassControlMetrics.tabBarHeight(.regular), "tab bar")
+    }
+
     // MARK: API shape
 
     /// Labels computed at runtime, roles and the shared options compile.

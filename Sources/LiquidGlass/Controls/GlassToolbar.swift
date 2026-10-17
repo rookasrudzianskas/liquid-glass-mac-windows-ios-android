@@ -163,7 +163,8 @@ public struct GlassToolbarSpacer: View {
         Group {
             switch sizing {
             case .flexible: Spacer(minLength: length)
-            case .fixed: Color.clear.frame(width: length)
+            // No height of its own: the bar keeps its items' height.
+            case .fixed: Color.clear.frame(width: length, height: 0)
             }
         }
         .anchorPreference(key: GlassToolbarSpacerKey.self, value: .bounds) { [$0] }
