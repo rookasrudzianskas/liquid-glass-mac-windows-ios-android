@@ -2,7 +2,9 @@
 # Build the downloads and deploy the website to production on Vercel.
 #
 #   website/scripts/deploy.sh            # tolerant: missing artifacts show as unavailable
-#   website/scripts/deploy.sh --strict   # release: fail if any required artifact is missing
+#   website/scripts/deploy.sh --strict   # release: fail if a required artifact is missing or a
+#                                        # release check fails (committed and pushed tree, release
+#                                        # tag on origin, committed skills, NuGet frameworks)
 #
 # Needs Node 22 on PATH and an authenticated Vercel CLI. Always deploys to the
 # boringai team (project liquid-glass-engineering).

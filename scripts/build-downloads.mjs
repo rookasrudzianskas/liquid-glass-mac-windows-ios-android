@@ -20,7 +20,10 @@
 //     writer, files are rewritten only when their bytes change, and the manifest keeps an
 //     item's updatedAt (and the top-level generatedAt) while nothing changed.
 //   * Tolerant. A missing input becomes a manifest item with `available: false` and no link.
-//     --strict makes missing *required* items a non-zero exit (used by the production deploy).
+//     --strict (the production deploy) exits non-zero when a *required* item is missing or a
+//     release check fails: the tree is committed and pushed, the release tag is on origin (the
+//     Swift package and JitPack resolve versions from tags), every skill is committed, and each
+//     NuGet package targets the frameworks its .csproj declares.
 //   * Owns exactly three folders below the output folder (downloads/, maven/, nuget/) and
 //     removes files there that this run does not produce. Nothing else is ever deleted.
 //   * Never follows a symlink out of the input folder it was found in.
@@ -95,7 +98,9 @@ Collects artifacts/<platform>/ into <out>/downloads, <out>/maven and <out>/nuget
 <out>/downloads/manifest.json and SHA256SUMS.
 
 Options:
-  --strict           exit 1 (after writing) when a required item is missing
+  --strict           exit 1 (after writing) when a required item is missing or a release
+                     check fails (clean, pushed tree; release tag on origin; committed
+                     skills; NuGet target frameworks matching the .csproj)
   --base-url <url>   absolute site URL used by the NuGet feed
                      (default: $LG_SITE_URL or ${DEFAULT_SITE_URL})
   --root <dir>       repository root (default: the folder above scripts/)
@@ -222,14 +227,15 @@ function lstatOrNull(p) {
 const isExecutable = (stat) => (stat.mode & 0o111) !== 0;
 const iso = (ms) => new Date(ms).toISOString();
 
+// Decimal units, like the website (and Finder): 1 MB = 1,000,000 bytes.
 function formatBytes(n) {
   if (n == null) return "-";
-  if (n < 1024) return `${n} B`;
+  if (n < 1000) return `${n} B`;
   const units = ["KB", "MB", "GB", "TB"];
-  let v = n / 1024;
+  let v = n / 1000;
   let u = 0;
-  while (v >= 1024 && u < units.length - 1) {
-    v /= 1024;
+  while (v >= 999.95 && u < units.length - 1) {
+    v /= 1000;
     u++;
   }
   return `${v.toFixed(1)} ${units[u]}`;
@@ -1183,6 +1189,9 @@ function collectWindows(ctx) {
     const candidates = zips.filter((e) => v.match(e.name.toLowerCase()));
     const studio = pickBest(candidates, v.id, (e) => (e.name.toLowerCase().includes("studio") ? 0 : 1));
     const fileName = studio ? safeName(studio.name) : v.fallbackName;
+    // Whether the app carries an Authenticode signature: the website tells users about
+    // SmartScreen when it does not.
+    const signed = studio?.stat.isFile() ? zippedExeSigned(studio.abs) : null;
     addItem(ctx, {
       id: v.id,
       name: v.name,
@@ -1194,9 +1203,41 @@ function collectWindows(ctx) {
       required: v.required,
       hint: `artifacts/windows/${v.fallbackName}`,
       ...(studio ? planDownload(ctx, studio, `downloads/${fileName}`) : null),
+      extra: signed === null ? {} : { signed },
     });
   }
   collectNuGet(ctx, nugetDir);
+}
+
+// True when the PE image has a certificate table (an Authenticode signature), false when it
+// has none, null when the bytes are not a PE image.
+function peSigned(data) {
+  if (data.length < 0x40 || data.readUInt16LE(0) !== 0x5a4d) return null; // "MZ"
+  const pe = data.readUInt32LE(0x3c);
+  if (pe + 26 > data.length || data.readUInt32LE(pe) !== 0x00004550) return null; // "PE\0\0"
+  const optional = pe + 24;
+  const magic = data.readUInt16LE(optional);
+  const dirs = magic === 0x20b ? optional + 112 : magic === 0x10b ? optional + 96 : -1; // PE32+ / PE32
+  if (dirs < 0 || dirs > data.length) return null;
+  const count = data.readUInt32LE(dirs - 4); // NumberOfRvaAndSizes
+  const security = dirs + 4 * 8; // IMAGE_DIRECTORY_ENTRY_SECURITY
+  if (count <= 4 || security + 8 > data.length) return false;
+  return data.readUInt32LE(security + 4) > 0;
+}
+
+// The signature state of the main executable in a Windows app zip (the .exe nearest the top,
+// preferring one named like the app), or null when it cannot be read.
+function zippedExeSigned(zipFile) {
+  try {
+    const zip = openZip(zipFile);
+    const exes = zip.entries
+      .filter((e) => /\.exe$/i.test(e.name) && !e.name.endsWith("/"))
+      .sort((a, b) => a.name.split("/").length - b.name.split("/").length || (/studio/i.test(b.name) ? 1 : 0) - (/studio/i.test(a.name) ? 1 : 0));
+    return exes[0] ? peSigned(zip.read(exes[0])) : null;
+  } catch (err) {
+    warn(`could not read the executable in ${zipFile}: ${err.message}`);
+    return null;
+  }
 }
 
 function readPackage(ctx, entry) {
@@ -1227,10 +1268,37 @@ function readPackage(ctx, entry) {
   };
 }
 
+// A NuGet target framework as people name it: "net48" -> ".NET Framework 4.8",
+// "net8.0-windows7.0" -> ".NET 8" (the -windowsN platform suffix is NuGet's normalization, not a
+// Windows version), "netstandard2.0" -> ".NET Standard 2.0". Unknown forms are kept as written.
+function friendlyFramework(tfm) {
+  const t = tfm.toLowerCase();
+  let m;
+  const version = (v) => v.replace(/(?:\.0)+$/, "") || "0";
+  if ((m = /^net(\d)(\d)(\d?)$/.exec(t))) return { rank: 0, v: [+m[1], +m[2], +(m[3] || 0)], name: `.NET Framework ${m[1]}.${m[2]}${m[3] ? `.${m[3]}` : ""}` };
+  if ((m = /^\.?netframework,?(?:version=)?v?(\d+(?:\.\d+)*)$/.exec(t))) return { rank: 0, v: m[1].split(".").map(Number), name: `.NET Framework ${m[1]}` };
+  if ((m = /^\.?netstandard,?(?:version=)?v?(\d+(?:\.\d+)*)$/.exec(t))) return { rank: 1, v: m[1].split(".").map(Number), name: `.NET Standard ${m[1]}` };
+  if ((m = /^\.?netcoreapp,?(?:version=)?v?(\d+(?:\.\d+)*)$/.exec(t))) return { rank: 2, v: m[1].split(".").map(Number), name: `.NET Core ${m[1]}` };
+  if ((m = /^net(\d+(?:\.\d+)*)(?:-[a-z]+[\d.]*)?$/.exec(t))) return { rank: 3, v: m[1].split(".").map(Number), name: `.NET ${version(m[1])}` };
+  return { rank: 4, v: [], name: tfm };
+}
+
 function nugetRequirements(tfms) {
-  if (tfms.length === 0) return "WPF on .NET 8 or later; Windows 10 1809 or later";
-  const windows = tfms.some((t) => /windows/i.test(t));
-  return `${windows ? "WPF on Windows 10 1809 or later; " : ""}targets ${tfms.join(", ")}`;
+  if (tfms.length === 0) return "WPF on Windows 10 1809 or later; .NET Framework 4.8, .NET 8 or .NET 10";
+  const names = [];
+  for (const f of tfms.map(friendlyFramework).sort((a, b) => a.rank - b.rank || compareVersionArrays(a.v, b.v))) {
+    if (!names.includes(f.name)) names.push(f.name);
+  }
+  const windows = tfms.some((t) => /windows/i.test(t) || /^net[1-4]\d*$/i.test(t));
+  return windows ? `WPF on Windows 10 1809 or later; ${names.join(", ")}` : `Targets ${names.join(", ")}`;
+}
+
+function compareVersionArrays(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
 }
 
 function collectNuGet(ctx, dirEntry) {
@@ -1297,6 +1365,7 @@ function collectNuGet(ctx, dirEntry) {
       input: latest.entry.display,
       extra: { packageId: latest.meta.id },
     });
+    ctx.nugetPackages.push({ id: latest.meta.id, version: latest.version.full, tfms: latest.tfms, display: latest.entry.display });
   }
   const missing = expected.filter((id) => !groups.has(id.toLowerCase()));
   if (groups.size === 0 && missing.length === 0) missing.push(DEFAULT_NUGET_ID);
@@ -1622,15 +1691,37 @@ function yamlScalar(raw, block) {
   return foldLines([stripComment(raw), ...rest.map(stripComment)]);
 }
 
+// Skill folders whose SKILL.md is committed at HEAD, or null when --root is not a git checkout.
+// The website links every skill to GitHub, so only committed skills are published.
+function committedSkills(ctx) {
+  try {
+    if (fs.realpathSync(git(ctx, ["rev-parse", "--show-toplevel"])) !== ctx.rootReal) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const files = git(ctx, ["ls-tree", "-r", "--name-only", "HEAD", "--", "plugins/liquid-glass/skills"]).split("\n");
+    return new Set(files.map((f) => /^plugins\/liquid-glass\/skills\/([^/]+)\/SKILL\.md$/.exec(f)?.[1]).filter(Boolean));
+  } catch {
+    return new Set(); // no commits yet
+  }
+}
+
 function collectSkills(ctx) {
   const skillsDir = path.join(ctx.root, "plugins", "liquid-glass", "skills");
   const found = new Map();
+  const committed = committedSkills(ctx);
   for (const entry of listInputDir(ctx, skillsDir)) {
     if (!entry.stat.isDirectory()) continue;
     const skillMd = path.join(entry.abs, "SKILL.md");
     const st = lstatOrNull(skillMd);
     if (!st || !st.isFile()) {
       warn(`ignoring ${entry.display}: no SKILL.md`);
+      continue;
+    }
+    if (committed && !committed.has(entry.name)) {
+      warn(`ignoring ${entry.display}: its SKILL.md is not committed, so the website's GitHub links to it would 404`);
+      ctx.uncommittedSkills.push(entry.name);
       continue;
     }
     const front = parseFrontmatter(fs.readFileSync(skillMd, "utf8"));
@@ -1915,6 +2006,8 @@ function main() {
     failed: new Set(),
     items: [],
     stats: { written: 0, unchanged: 0 },
+    nugetPackages: [], // { id, version, tfms, display } per published package id, for the release checks
+    uncommittedSkills: [],
   };
 
   // The owned output folders must not overlap the inputs.
@@ -1949,16 +2042,109 @@ function main() {
 
   printSummary(ctx, manifest, removed);
 
+  let status = 0;
   const missing = manifest.items.filter((i) => i.required && !i.available);
   if (missing.length) {
     const list = missing.map((i) => `  - ${i.id} (${i.name}): expected ${ctx.items.find((s) => s.id === i.id).hint}`).join("\n");
     if (opts.strict) {
       process.stderr.write(`build-downloads: ${missing.length} required item(s) missing:\n${list}\n`);
-      return 1;
-    }
-    info(`${missing.length} required item(s) missing (shown as unavailable; --strict fails on this):\n${list}`);
+      status = 1;
+    } else info(`${missing.length} required item(s) missing (shown as unavailable; --strict fails on this):\n${list}`);
   }
-  return 0;
+  // Network checks (the release tag on origin) run only for a release build.
+  const problems = releaseProblems(ctx, manifest, { network: opts.strict });
+  if (problems.length) {
+    const list = problems.map((p) => `  - ${p}`).join("\n");
+    if (opts.strict) {
+      process.stderr.write(`build-downloads: ${problems.length} release check(s) failed:\n${list}\n`);
+      status = 1;
+    } else info(`${problems.length} release check(s) would fail with --strict:\n${list}`);
+  }
+  return status;
+}
+
+// -------------------------------------------------------------------------------------------
+// Release checks (--strict): what the website promises must hold for the published files
+// -------------------------------------------------------------------------------------------
+
+// A .csproj target framework in NuGet's normalized folder form: "net8.0-windows" ->
+// "net8.0-windows7.0" (the default Windows platform version for .NET 5+), others unchanged.
+function nugetFolderName(tfm) {
+  const t = tfm.trim().toLowerCase();
+  return /^net\d+\.\d+-windows$/.test(t) ? `${t}7.0` : t;
+}
+
+// PackageId (or project name) -> declared target frameworks, for every .csproj below platforms/.
+function declaredFrameworks(ctx) {
+  const out = new Map();
+  const visit = (dir, depth) => {
+    let names;
+    try {
+      names = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const d of names) {
+      if (d.isDirectory() && depth < 4 && !/^(bin|obj|node_modules|\..*)$/.test(d.name)) visit(path.join(dir, d.name), depth + 1);
+      else if (d.isFile() && d.name.endsWith(".csproj")) {
+        const xml = fs.readFileSync(path.join(dir, d.name), "utf8");
+        const id = /<PackageId>\s*([^<\s]+)\s*<\/PackageId>/.exec(xml)?.[1] ?? d.name.replace(/\.csproj$/, "");
+        const list = /<TargetFrameworks?>\s*([^<]+?)\s*<\/TargetFrameworks?>/.exec(xml)?.[1];
+        if (list) out.set(id.toLowerCase(), { file: display(ctx, path.join(dir, d.name)), tfms: list.split(";").map((t) => t.trim()).filter(Boolean) });
+      }
+    }
+  };
+  visit(path.join(ctx.root, "platforms"), 0);
+  return out;
+}
+
+function releaseProblems(ctx, manifest, { network }) {
+  const problems = [];
+
+  // Every NuGet package ships the frameworks its project declares (a net48 build left out of a
+  // package makes the site's ".NET Framework 4.8" claim false).
+  const declared = declaredFrameworks(ctx);
+  for (const pkg of ctx.nugetPackages) {
+    const project = declared.get(pkg.id.toLowerCase());
+    if (!project) continue;
+    const want = [...new Set(project.tfms.map(nugetFolderName))].sort(compareBytes);
+    const have = [...new Set(pkg.tfms.map((t) => t.toLowerCase()))].sort(compareBytes);
+    if (want.join(";") !== have.join(";")) {
+      problems.push(`${pkg.display} targets ${have.join(", ") || "nothing"}, but ${project.file} declares ${want.join(", ")}: rebuild the package`);
+    }
+  }
+
+  // Every skill the website lists is committed, and the expected ones exist.
+  for (const name of ctx.uncommittedSkills) problems.push(`skill ${name} is not committed (plugins/liquid-glass/skills/${name}/SKILL.md)`);
+  for (const name of EXPECTED_SKILLS) {
+    if (!manifest.items.some((i) => i.id === `skill-${name}` && i.available)) problems.push(`skill ${name} is missing from plugins/liquid-glass/skills`);
+  }
+
+  // The downloads (source zip, skill zips) are built from a commit that is on GitHub.
+  if (manifest.commit === null) problems.push("--root is not the top of a git checkout: the source and skills cannot be tied to a commit");
+  else {
+    if (manifest.modified) problems.push("the working tree has uncommitted or untracked changes: commit them so the zips match the repository");
+    try {
+      execFileSync("git", ["-C", ctx.rootReal, "merge-base", "--is-ancestor", manifest.commit, "refs/remotes/origin/main"], { stdio: "ignore" });
+    } catch {
+      problems.push(`HEAD ${manifest.commit.slice(0, 12)} is not on origin/main: push it so the website's GitHub links resolve`);
+    }
+    // Swift Package Manager and JitPack find versions only from tags.
+    if (network) {
+      try {
+        const remote = execFileSync("git", ["-C", ctx.rootReal, "ls-remote", "--tags", "origin", `refs/tags/${ctx.version}`], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+          timeout: 30000,
+        }).trim();
+        if (!remote) problems.push(`the release tag ${ctx.version} is not on origin: create and push it (git tag -a ${ctx.version} -m "..." && git push origin ${ctx.version})`);
+      } catch (err) {
+        problems.push(`could not check the release tag ${ctx.version} on origin: ${String(err.stderr || err.message).trim().split("\n")[0]}`);
+      }
+    }
+  }
+  return problems;
 }
 
 process.exitCode = main();
