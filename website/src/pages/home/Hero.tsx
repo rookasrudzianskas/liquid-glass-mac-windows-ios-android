@@ -139,7 +139,12 @@ export function Hero() {
           />
 
           <Glass className="hero-toolbar" material={material} radius="capsule" tint={tintHex} interactive stretch enterDelay={220} role="toolbar" aria-label="Glass options">
-            <button type="button" className="toolbar-button" aria-pressed={material === "regular"} onClick={() => setMaterial((m) => (m === "regular" ? "clear" : "regular"))}>
+            <button
+              type="button"
+              className="toolbar-button"
+              aria-label={`Material: ${material === "regular" ? "Regular" : "Clear"}. Switch to ${material === "regular" ? "Clear" : "Regular"}`}
+              onClick={() => setMaterial((m) => (m === "regular" ? "clear" : "regular"))}
+            >
               <DropIcon size={18} />
               <span>{material === "regular" ? "Regular" : "Clear"}</span>
             </button>

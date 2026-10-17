@@ -63,10 +63,11 @@ export function Controls() {
               </p>
             </div>
             <div className="controls__group">
-              <p className="controls__label" id="controls-slider-label">
-                Slider · {value}
+              <p className="controls__label">
+                <span id="controls-slider-label">Brightness</span>
+                <span aria-hidden="true"> · {value}</span>
               </p>
-              <GlassSlider value={value} onChange={setValue} label="Brightness" />
+              <GlassSlider value={value} onChange={setValue} labelledBy="controls-slider-label" />
             </div>
             <div className="controls__group controls__group--switches">
               <div className="controls__switch">

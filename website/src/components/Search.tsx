@@ -56,9 +56,10 @@ function Mark({ text, query }: { text: string; query: string }): ReactNode {
   return text.split(re).map((part, i) => (i % 2 ? <mark key={i}>{part}</mark> : part));
 }
 
-export default function Search({ onClose }: { onClose: () => void }) {
+export default function Search({ onClose, initialQuery }: { onClose: () => void; initialQuery?: () => string }) {
   const [index, setIndex] = useState<Entry[] | null>(null);
-  const [query, setQuery] = useState("");
+  // Keys typed into the loading shell carry over.
+  const [query, setQuery] = useState(() => initialQuery?.() ?? "");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -67,18 +68,23 @@ export default function Search({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     void import("../generated/search.json").then((m) => setIndex(m.default as Entry[]));
-    const previous = document.activeElement as HTMLElement | null;
-    inputRef.current?.focus();
+    // Focus returns to where it was when the dialog closes (handled by Layout).
+    const input = inputRef.current;
+    input?.focus();
+    input?.setSelectionRange(input.value.length, input.value.length);
     const overflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.documentElement.style.overflow = overflow;
-      previous?.focus?.();
     };
   }, []);
 
   const results = useMemo(() => (index ? search(index, query) : []), [index, query]);
   useEffect(() => setActive(0), [query]);
+  // Keep the active result in view while moving with the arrow keys.
+  useEffect(() => {
+    document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
+  }, [active, listId, results]);
 
   // Escape closes; Tab stays inside the dialog.
   useEffect(() => {

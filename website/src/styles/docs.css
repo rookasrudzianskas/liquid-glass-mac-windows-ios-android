@@ -371,11 +371,11 @@ a.doc-card:hover {
   margin-top: 1.1em;
 }
 
+/* Anchor jumps clear the nav through html's scroll-padding-top (base.css) alone. */
 .prose h2,
 .prose h3,
 .prose h4 {
   position: relative;
-  scroll-margin-top: calc(var(--nav-h) + 28px);
 }
 
 .prose h2 {
@@ -561,11 +561,34 @@ a.doc-card:hover {
   min-width: 0;
 }
 
-/* Tall phone screenshots should not fill a whole screen. */
+/* Screenshots: never wider than the column or their own pixels, and tall phone
+   screenshots no taller than min(680px, 78vh). The width comes from the size
+   variables content.mjs writes (--w, --h), so the box is reserved before the
+   image loads and nothing below it moves. */
 .prose p:not([align]) > img {
   display: block;
-  width: auto;
   max-width: 100%;
   max-height: min(680px, 78vh);
   margin: 0 auto;
+}
+
+.prose p:not([align]) > img[style*="--w"] {
+  width: min(100%, calc(var(--w) * 1px), calc(min(680px, 78vh) * var(--w) / var(--h)));
+  height: auto;
+  aspect-ratio: var(--w) / var(--h);
+}
+
+/* Images inside tables follow the same caps, smaller. */
+.prose td img,
+.prose th img {
+  max-width: 100%;
+  max-height: min(480px, 60vh);
+  width: auto;
+}
+
+.prose td img[style*="--w"],
+.prose th img[style*="--w"] {
+  width: min(calc(var(--w) * 1px), calc(min(480px, 60vh) * var(--w) / var(--h)));
+  height: auto;
+  aspect-ratio: var(--w) / var(--h);
 }

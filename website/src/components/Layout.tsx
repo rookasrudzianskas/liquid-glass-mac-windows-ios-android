@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, REPO_URL, useRouter } from "../router";
 import { useTheme } from "../theme";
@@ -9,6 +9,40 @@ import { CloseIcon, GitHubIcon, LogoMark, MenuIcon, MoonIcon, SearchIcon, SunIco
 
 const Search = lazy(() => import("./Search"));
 const loadSearch = () => void import("./Search");
+
+/**
+ * The search field while the dialog's code loads (the first ⌘K): the same
+ * dialog shell with a live input, so keys typed right away are kept and handed
+ * to the real dialog when it mounts.
+ */
+function SearchShell({ initial, onType, onClose }: { initial: string; onType: (query: string) => void; onClose: () => void }) {
+  const [value, setValue] = useState(initial);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => inputRef.current?.focus(), []);
+  return (
+    <div className="search-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="search popover" role="dialog" aria-modal="true" aria-label="Search documentation">
+        <div className="search__field">
+          <SearchIcon size={18} />
+          <input
+            ref={inputRef}
+            type="search"
+            placeholder="Search the docs"
+            aria-label="Search the docs"
+            autoComplete="off"
+            spellCheck={false}
+            value={value}
+            onChange={(e) => {
+              onType(e.target.value);
+              setValue(e.target.value);
+            }}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const NAV = [
   { href: "/playground", label: "Playground" },
@@ -119,11 +153,26 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // A tap outside the sheet (and its toggle), or scrolling the page, closes it.
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!sheetRef.current?.contains(target) && !toggleRef.current?.contains(target)) setOpen(false);
+    };
+    const startY = window.scrollY;
+    const onScroll = () => Math.abs(window.scrollY - startY) > 24 && setOpen(false);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [open]);
 
   return (
@@ -156,12 +205,12 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
           <a className="icon-button nav__github" href={REPO_URL} rel="noopener" target="_blank" aria-label="GitHub repository (opens in a new tab)" title="GitHub">
             <GitHubIcon size={18} />
           </a>
-          <button type="button" className="icon-button nav__toggle" aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((v) => !v)}>
+          <button ref={toggleRef} type="button" className="icon-button nav__toggle" aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((v) => !v)}>
             {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
           </button>
         </div>
       </nav>
-      <div id="mobile-menu" className="nav__sheet" hidden={!open}>
+      <div ref={sheetRef} id="mobile-menu" className="nav__sheet" hidden={!open}>
         <ul role="list">
           {NAV.map((item) => (
             <li key={item.href}>
@@ -238,23 +287,58 @@ function Footer() {
 
 export function Layout({ children, routeKey }: { children: ReactNode; routeKey: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const openSearch = useCallback(() => setSearchOpen(true), []);
+  // Typed before the dialog's code arrived; handed to the dialog when it mounts.
+  const pendingQuery = useRef("");
+  // Where focus goes back when the dialog closes.
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const openRef = useRef(false);
+  const setSearch = useCallback((next: boolean) => {
+    if (next === openRef.current) return;
+    openRef.current = next;
+    if (next) {
+      loadSearch();
+      pendingQuery.current = "";
+      const active = document.activeElement;
+      returnFocus.current = active instanceof HTMLElement && active !== document.body ? active : null;
+    }
+    setSearchOpen(next);
+  }, []);
+  const openSearch = useCallback(() => setSearch(true), [setSearch]);
+  const closeSearch = useCallback(() => setSearch(false), [setSearch]);
+  const rememberQuery = useCallback((query: string) => {
+    pendingQuery.current = query;
+  }, []);
+  const typedQuery = useCallback(() => pendingQuery.current, []);
 
   useEffect(() => {
+    if (searchOpen) return;
+    const el = returnFocus.current;
+    returnFocus.current = null;
+    if (el?.isConnected) el.focus({ preventScroll: true });
+  }, [searchOpen]);
+
+  useEffect(() => {
+    // Fetch the dialog's code while the browser is idle, so ⌘K opens it at once.
+    const idle = "requestIdleCallback" in window;
+    const handle = idle ? window.requestIdleCallback(loadSearch, { timeout: 4000 }) : window.setTimeout(loadSearch, 2500);
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const typing = target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setSearchOpen((v) => !v);
+        setSearch(!openRef.current);
       } else if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        setSearchOpen(true);
+        setSearch(true);
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+    return () => {
+      if (idle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [setSearch]);
 
   const overlay = routeKey === "home" || routeKey === "playground";
   return (
@@ -269,8 +353,8 @@ export function Layout({ children, routeKey }: { children: ReactNode; routeKey: 
       {routeKey !== "playground" && <Footer />}
       <div id="route-announcer" className="sr-only" aria-live="polite" aria-atomic="true" />
       {searchOpen && (
-        <Suspense fallback={null}>
-          <Search onClose={() => setSearchOpen(false)} />
+        <Suspense fallback={<SearchShell initial="" onType={rememberQuery} onClose={closeSearch} />}>
+          <Search onClose={closeSearch} initialQuery={typedQuery} />
         </Suspense>
       )}
     </div>

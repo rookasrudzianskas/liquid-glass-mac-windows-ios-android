@@ -29,14 +29,15 @@ interface Item {
 const manifest = downloads as { version: string; generatedAt: string | null; items: Item[]; notes?: Record<string, string> };
 const samples = code as unknown as Record<string, Highlighted>;
 
+/** Decimal (SI) units, as Finder, Windows Explorer and most download pages show sizes: 1 MB = 1,000,000 bytes. */
 export function formatBytes(bytes: number | null) {
   if (bytes === null || !Number.isFinite(bytes)) return "";
-  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1000) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];
-  let v = bytes / 1024;
+  let v = bytes / 1000;
   let u = 0;
-  while (v >= 1024 && u < units.length - 1) {
-    v /= 1024;
+  while (v >= 999.5 && u < units.length - 1) {
+    v /= 1000;
     u++;
   }
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;

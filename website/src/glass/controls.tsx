@@ -175,7 +175,24 @@ export function GlassSwitch({ checked, onChange, label, tint = "#34c759" }: { ch
   );
 }
 
-export function GlassSlider({ value, onChange, label, tint = "#0a84ff", min = 0, max = 100 }: { value: number; onChange: (v: number) => void; label: string; tint?: string; min?: number; max?: number }) {
+/** `label` names the slider; `labelledBy` points at a visible label instead (its text then is the name). */
+export function GlassSlider({
+  value,
+  onChange,
+  label,
+  labelledBy,
+  tint = "#0a84ff",
+  min = 0,
+  max = 100,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label?: string;
+  labelledBy?: string;
+  tint?: string;
+  min?: number;
+  max?: number;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -275,7 +292,8 @@ export function GlassSlider({ value, onChange, label, tint = "#0a84ff", min = 0,
       className="glass-slider"
       role="slider"
       tabIndex={0}
-      aria-label={label}
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}

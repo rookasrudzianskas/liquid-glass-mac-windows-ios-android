@@ -259,8 +259,23 @@
   .dl__action .button {
     width: 100%;
   }
+  /* Icon and title share a row; the docs link sits below the subtitle. */
   .dl-platform__head {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 6px;
+    align-items: start;
+  }
+  .dl-platform__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12.5px;
+  }
+  .dl-platform__docs {
+    grid-column: 2;
+    justify-self: start;
+    margin-left: 0;
   }
 }
 
@@ -324,11 +339,6 @@
   border-radius: 26px;
   background: var(--bg-elevated);
   box-shadow: inset 0 0 0 1px var(--line);
-}
-
-.skill--pending {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .skill__head {
