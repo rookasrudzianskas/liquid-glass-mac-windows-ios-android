@@ -189,44 +189,67 @@ struct ShareButton: View {
     }
 }
 
-/// The top edge of a page whose content scrolls under the status bar (iOS)
-/// or the window's buttons (macOS): scrolled content fades out as it
-/// passes under the bar, and the wallpaper beneath the bar blurs
-/// progressively under a haze of the color scheme's background, so the
-/// clock and the window buttons stay legible over any wallpaper in either
-/// appearance.
+/// The edges of a page whose content scrolls under the bars: the content
+/// fades out as it passes under the status bar (iOS) or the window's
+/// buttons (macOS), and fades out above the floating tab bar, so no control
+/// ever sits half hidden behind a bar.
 struct ScrollEdge: ViewModifier {
-    /// How far above the page's top edge the content fades out.
-    var fade: CGFloat = 20
-
-    @Environment(\.colorScheme) private var colorScheme
+    /// How far the content fades at either end.
+    var fade: CGFloat = 24
 
     func body(content: Content) -> some View {
         content
-            .mask(alignment: .top) {
+            .mask {
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
                         .frame(height: fade)
                     Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: fade)
+                    Color.clear
+                        .frame(height: StudioLayout.tabBarClearance - 16)
                 }
+                // The top fade lies just above the page, under the bar.
                 .padding(.top, -fade)
             }
-            .overlay {
-                // Under the bar only: the reader ignores the top safe area
-                // and still reports how tall it is.
+    }
+}
+
+/// A haze under the iOS status bar: the backdrop blurs progressively there
+/// under a veil of the color scheme's background, so the clock stays legible
+/// over dark wallpapers in light mode and light ones in dark mode.
+struct StatusBarHaze: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        #if os(iOS)
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: 0)
+            .background(alignment: .bottom) {
+                // Fills the top safe area above the zero-height anchor.
                 GeometryReader { proxy in
-                    let height = proxy.safeAreaInsets.top
                     ZStack(alignment: .top) {
-                        GlassProgressiveBlur(edge: .top, size: height)
-                        LinearGradient(colors: [haze.opacity(0.5), haze.opacity(0)], startPoint: .top, endPoint: .bottom)
-                            .frame(height: height)
+                        GlassProgressiveBlur(edge: .top, size: proxy.size.height)
+                        LinearGradient(
+                            stops: [
+                                .init(color: veil.opacity(0.72), location: 0),
+                                .init(color: veil.opacity(0.5), location: 0.65),
+                                .init(color: veil.opacity(0), location: 1),
+                            ],
+                            startPoint: .top, endPoint: .bottom
+                        )
                     }
                 }
                 .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        #else
+        EmptyView()
+        #endif
     }
 
-    private var haze: Color { colorScheme == .dark ? .black : .white }
+    private var veil: Color { colorScheme == .dark ? .black : .white }
 }

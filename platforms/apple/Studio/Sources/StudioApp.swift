@@ -35,6 +35,7 @@ struct StudioRoot: View {
             .ignoresSafeArea()
 
             ZStack(alignment: .bottom) {
+                StatusBarHaze()
                 foreground
                     .id(page)
                     .transition(.opacity)

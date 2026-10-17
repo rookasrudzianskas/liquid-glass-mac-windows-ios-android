@@ -1,7 +1,10 @@
 import XCTest
 
 /// Drives Liquid Glass Studio like a person would: navigation, menus,
-/// switches, sliders, presses and scrolling. Set `LG_SHOTS` (for example
+/// switches, sliders, presses and scrolling. UI automation also lists the
+/// copies of the backdrop inside every glass surface (hidden from
+/// VoiceOver), so queries for backdrop text take the first match, the
+/// visible backdrop. Set `LG_SHOTS` (for example
 /// `TEST_RUNNER_LG_SHOTS=/tmp/shots xcodebuild test …`) to also save a
 /// screenshot after each step.
 final class StudioUITests: XCTestCase {
@@ -121,6 +124,61 @@ final class StudioUITests: XCTestCase {
         XCTAssertTrue(waitUntil { button.frame.minY < top - 100 }, "the scroll view did not scroll from a glass button")
     }
 
+    /// A vertical swipe that starts on a slider scrolls the page and leaves
+    /// the value alone, like the system's sliders.
+    func testVerticalSwipeOnSliderScrolls() {
+        let app = launch("controls")
+        let slider = app.sliders["Brightness"]
+        XCTAssertTrue(slider.waitForExistence(timeout: 5))
+        let before = slider.value as? String
+        let top = slider.frame.minY
+        let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -250)), withVelocity: .default, thenHoldForDuration: 0.05)
+        XCTAssertTrue(waitUntil { slider.frame.minY < top - 100 }, "the page did not scroll from a slider")
+        settle(1)
+        XCTAssertEqual(slider.value as? String, before, "a vertical swipe changed the slider")
+    }
+
+    /// A vertical swipe that starts on a tab bar scrolls the page and keeps
+    /// the selection.
+    func testVerticalSwipeOnTabBarScrolls() {
+        let app = launch("controls")
+        let week = app.buttons["Week"].firstMatch
+        XCTAssertTrue(week.waitForExistence(timeout: 5))
+        // Above the floating tab bar (the section is near the page's end).
+        let clear = app.frame.height * 0.8
+        for _ in 0..<6 where week.frame.maxY > clear {
+            dragUp(app, x: 0.03)
+            settle(1)
+        }
+        XCTAssertLessThan(week.frame.maxY, clear)
+        XCTAssertTrue(week.isSelected)
+        let top = week.frame.minY
+        let start = week.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 250)), withVelocity: .default, thenHoldForDuration: 0.05)
+        XCTAssertTrue(waitUntil { week.frame.minY > top + 100 }, "the page did not scroll from a tab bar")
+        settle(1)
+        XCTAssertTrue(week.isSelected, "a vertical swipe changed the tab")
+    }
+
+    /// The stories' Filter menu shows one category, then all of them again.
+    func testStoriesFilter() {
+        let app = launch("blur")
+        XCTAssertTrue(app.staticTexts["Stories"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Filter"].tap()
+        let optics = app.buttons["Optics"]
+        XCTAssertTrue(optics.waitForExistence(timeout: 5))
+        settle(1)
+        optics.tap()
+        XCTAssertTrue(app.staticTexts["Optics"].firstMatch.waitForExistence(timeout: 5), "the filtered heading")
+        app.buttons["Filter"].tap()
+        let all = app.buttons["All stories"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        settle(1)
+        all.tap()
+        XCTAssertTrue(app.staticTexts["Stories"].firstMatch.waitForExistence(timeout: 5))
+    }
+
     func testSliderFollowsDrag() {
         let app = launch("controls")
         let slider = app.sliders["Brightness"]
@@ -133,7 +191,7 @@ final class StudioUITests: XCTestCase {
 
     func testStoriesScroll() {
         let app = launch("blur")
-        let title = app.staticTexts["Stories"]
+        let title = app.staticTexts["Stories"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let top = title.frame.minY
         dragUp(app)
