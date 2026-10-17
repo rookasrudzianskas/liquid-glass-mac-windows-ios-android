@@ -6,16 +6,21 @@ The smallest complete Liquid Glass app for iOS 17+ and macOS 14+: one screen ove
   prominent tinted **Get started** button and a plain glass **Learn more** button,
 - a **Frosted** switch that turns the card from Regular into Clear glass and back,
 - a top `GlassToolbar` with two icon buttons (switch between light and dark, profile),
-- a floating `GlassTabBar` with Home, Explore and Settings.
+- a floating `GlassTabBar` with Home, Explore and Settings. Get started selects Explore, and Profile selects Settings.
+
+The card follows the system appearance until you pick one in the toolbar. The bars sit over the wallpaper's dark top
+and bottom, so they are dark glass in both appearances and their labels stay white.
 
 The wallpaper is the `GlassContent`, so every piece of glass refracts it live. All glass leaves `refraction` unset, so
 each piece travels by its own size on iOS: 60 for the card, 39 for the 52 pt toolbar clusters, 46.5 for the 62 pt
-tab bar. Everything has an accessibility label, and the screen follows the system appearance until you pick one in
-the toolbar.
+tab bar. Every control has an accessibility label, and the title and subtitle read as one element.
 
-The same screen exists for [Jetpack Compose](../../compose) and [WPF](../../wpf), so the screenshots line up.
+The same screen exists for [Jetpack Compose](../../compose/HelloGlass) and [WPF](../../wpf/HelloGlass), so the screenshots line up.
 
-![Hello, Glass on iPhone 16 Pro: a Regular glass card over the aurora wallpaper, a toolbar with two round glass buttons and a three-tab glass bar](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" width="45%" alt="Hello, Glass on iPhone 16 Pro in light appearance: a frosted glass card titled Hello, Glass with a blue Get started button, a glass Learn more button and a Frosted switch, under two round dark glass toolbar buttons and above a dark glass tab bar, over the aurora wallpaper">
+  <img src="screenshot-dark.png" width="45%" alt="The same screen in dark appearance: the card is dark glass with white text">
+</p>
 
 ## Run it
 

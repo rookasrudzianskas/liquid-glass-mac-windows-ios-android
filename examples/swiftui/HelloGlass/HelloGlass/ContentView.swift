@@ -45,8 +45,10 @@ struct ContentView: View {
         .preferredColorScheme(scheme)
     }
 
+    // The bars sit over the wallpaper's dark top and bottom, so they are
+    // dark glass in both appearances and their labels stay white.
     private var toolbar: some View {
-        GlassToolbar {
+        GlassToolbar(appearance: .dark) {
             GlassButton(
                 icon: colorScheme == .dark ? "sun.max" : "moon",
                 label: colorScheme == .dark ? "Light appearance" : "Dark appearance"
@@ -83,7 +85,7 @@ struct ContentView: View {
     }
 
     private var tabBar: some View {
-        GlassTabBar(selection: $tab) {
+        GlassTabBar(selection: $tab, appearance: .dark) {
             GlassTab("Home", systemImage: "house", value: Tab.home)
             GlassTab("Explore", systemImage: "safari", value: Tab.explore)
             GlassTab("Settings", systemImage: "gearshape", value: Tab.settings)
