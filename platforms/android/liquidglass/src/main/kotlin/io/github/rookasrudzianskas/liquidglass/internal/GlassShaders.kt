@@ -162,6 +162,11 @@ float lgEdgeProfile(float distance) {
   return 1.0 - lgSat(sqrt((2.0 - depth) * depth));
 }
 
+// Where a glass pixel samples its backdrop, relative to itself (dp).
+float2 lgRefractionOffset(float3 field, float refraction) {
+  return -field.yz * lgEdgeProfile(field.x) * refraction;
+}
+
 // How many backdrop pixels one bevel pixel spans along the normal:
 // |1 - refraction * d(edgeProfile)/d(distance)|.
 float lgCompression(float distance, float refraction) {
@@ -202,6 +207,22 @@ float3 lgRegularTone(float3 v, float dark) {
   return lgSaturate(toned, mix(1.1031, 1.0648, dark));
 }
 
+// material: 0 = clear, 1 = regular.
+float3 lgMaterialColor(float3 c, float material, float dark, float nested) {
+  return material > 0.5 ? lgRegularTone(c, dark) : lgClearTone(c, dark, nested);
+}
+
+// Share of the pigment in tinted glass: Regular (and solid) 0.78, Clear 0.68.
+float lgTintBody(float material) {
+  return material > 0.5 ? 0.78 : 0.68;
+}
+
+// Colored glass transmits luminance through the pigment.
+float3 lgTintColor(float3 c, float3 tint, float material) {
+  float body = lgTintBody(material);
+  return clamp(tint * (body + (1.0 - body) * dot(c, LG_LUMA)), 0.0, 1.0);
+}
+
 // --- Rim light (premultiplied) -------------------------------------------------
 
 float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float tintOn) {
@@ -239,21 +260,19 @@ float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 l
   float dark = look.x;
   float opacity = look.z;
   bool solid = material > 1.5;
-  bool regular = material > 0.5;
+  // Solid glass (Reduce Transparency) takes the Regular tint body.
+  float regular = material > 0.5 ? 1.0 : 0.0;
   float3 rgb;
   float a = src.a;
   if (solid) {
     rgb = mix(float3(0.94902, 0.94902, 0.96863), float3(0.10980, 0.10980, 0.11765), dark);
     a = 0.94;
-  } else if (regular) {
-    rgb = lgRegularTone(src.rgb, dark);
   } else {
-    rgb = lgClearTone(src.rgb, dark, look.y);
+    rgb = lgMaterialColor(src.rgb, regular, dark, look.y);
   }
   if (tint.a > 0.5) {
-    // Solid glass (Reduce Transparency) takes the Regular body.
-    float body = regular ? 0.78 : 0.68;
-    rgb = clamp(tint.rgb * (body + (1.0 - body) * dot(rgb, LG_LUMA)), 0.0, 1.0);
+    rgb = lgTintColor(rgb, tint.rgb, regular);
+    float body = lgTintBody(regular);
     a = body + (1.0 - body) * a;
   }
   float ga = a * lgCoverage(field.x, pixel) * opacity;
@@ -301,7 +320,7 @@ half4 main(float2 fragCoord) {
       touched = true;
     }
     bool refracts = material < 1.5;
-    float2 offset = refracts ? -field.yz * lgEdgeProfile(field.x) * shape.z : float2(0.0);
+    float2 offset = refracts ? lgRefractionOffset(field, shape.z) : float2(0.0);
     float compression = refracts ? lgCompression(field.x, shape.z) : 1.0;
     float4 src = lgToSrgb(lgRefracted(fragCoord + offset * uDensity, field.yz, compression));
     acc = lgCompose(src, acc, field, material, look, uTint[i], pixel);

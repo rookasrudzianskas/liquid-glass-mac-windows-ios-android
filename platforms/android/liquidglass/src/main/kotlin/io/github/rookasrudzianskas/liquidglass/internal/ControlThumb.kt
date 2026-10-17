@@ -95,7 +95,8 @@ internal class ThumbState(private val springPosition: Boolean) {
         xState.floatValue = x
         liftState.floatValue = liftSpring.value
         stretchState.floatValue = min(0.28f, abs(speed) * 0.0007f) * liftSpring.value.coerceIn(0f, 1f)
-        return position.isSettled && liftSpring.isSettled && speed == 0f && !pressed
+        // A finger resting on the thumb needs no frames once the springs settle; press() and moveTo() wake the loop.
+        return position.isSettled && liftSpring.isSettled && speed == 0f
     }
 }
 

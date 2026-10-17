@@ -28,21 +28,27 @@ import io.github.rookasrudzianskas.liquidglass.optics.shapeParams
  * ```
  *
  * The frost is exact: Skia blurs and blends in the working color space, which
- * is sRGB on ordinary windows, matching SVG's sRGB filter math. A RenderEffect
- * captures its shader's uniforms when created, so a new effect is built per frame.
+ * is sRGB on ordinary windows, matching SVG's sRGB filter math.
+ *
+ * A RenderEffect captures its shader's uniforms when it is created, so one
+ * shared [RuntimeShader] serves every pass of every scene: it is configured for
+ * a pass, the pass's effect is created, and it is reconfigured for the next.
+ * Only those shader effects (and the final blends) are rebuilt per frame; the
+ * frost blurs, which depend on nothing but the density, are kept.
  */
 @RequiresApi(33)
 internal class GlassEffectBuilder {
-    private val sharp = RuntimeShader(GLASS_SHADER)
-    private var frostLight: RuntimeShader? = null
-    private var frostDark: RuntimeShader? = null
-
     private val rect = FloatArray(MAX_SURFACES * 4)
     private val clip = FloatArray(MAX_SURFACES * 4)
     private val shape = FloatArray(MAX_SURFACES * 4)
     private val look = FloatArray(MAX_SURFACES * 4)
     private val tint = FloatArray(MAX_SURFACES * 4)
     private val glow = FloatArray(MAX_SURFACES * 4)
+
+    /** The frosted backdrop of each appearance, built for [frostDensity]. */
+    private var frostedLight: RenderEffect? = null
+    private var frostedDark: RenderEffect? = null
+    private var frostDensity = Float.NaN
 
     /** The effect for up to [MAX_SURFACES] [surfaces] on a layer of [size] pixels, or null when there is nothing to draw. */
     fun build(surfaces: List<SurfaceFrame>, size: Size, density: Float): RenderEffect? {
@@ -55,13 +61,12 @@ internal class GlassEffectBuilder {
             write(i, s, density)
             if (s.regular) if (s.dark) hasDark = true else hasLight = true
         }
-        var effect = RenderEffect.createRuntimeShaderEffect(configure(sharp, ShaderPass.SHARP, count, size, density), "content")
+        val shader = SharedGlassShader.shader
+        var effect = RenderEffect.createRuntimeShaderEffect(configure(shader, ShaderPass.SHARP, count, size, density), "content")
         if (hasLight) {
-            val shader = frostLight ?: RuntimeShader(GLASS_SHADER).also { frostLight = it }
             effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_LIGHT, dark = false, count, size, density), BlendMode.SRC_OVER)
         }
         if (hasDark) {
-            val shader = frostDark ?: RuntimeShader(GLASS_SHADER).also { frostDark = it }
             effect = RenderEffect.createBlendModeEffect(effect, frostEffect(shader, ShaderPass.FROST_DARK, dark = true, count, size, density), BlendMode.SRC_OVER)
         }
         return effect
@@ -112,21 +117,42 @@ internal class GlassEffectBuilder {
         return shader
     }
 
-    private fun frostEffect(shader: RuntimeShader, pass: Float, dark: Boolean, count: Int, size: Size, density: Float): RenderEffect {
+    private fun frostEffect(shader: RuntimeShader, pass: Float, dark: Boolean, count: Int, size: Size, density: Float): RenderEffect =
+        RenderEffect.createChainEffect(
+            RenderEffect.createRuntimeShaderEffect(configure(shader, pass, count, size, density), "content"),
+            frosted(dark, density),
+        )
+
+    /** mix(blur σ7.33, max|min(blur σ7.33, blur σfill), fillOpacity) of the content, cached per density. */
+    private fun frosted(dark: Boolean, density: Float): RenderEffect {
+        if (density != frostDensity) {
+            frostDensity = density
+            frostedLight = null
+            frostedDark = null
+        }
+        val cached = if (dark) frostedDark else frostedLight
+        if (cached != null) return cached
         val frost = gaussian(FROST_SIGMA * density)
         val fill = gaussian(frostFillSigma(dark) * density)
         val blended = RenderEffect.createBlendModeEffect(frost, fill, if (dark) BlendMode.DARKEN else BlendMode.LIGHTEN)
         val opacity = frostFillOpacity(dark)
         val frosted = RenderEffect.createBlendModeEffect(fade(frost, 1f - opacity), fade(blended, opacity), BlendMode.PLUS)
-        return RenderEffect.createChainEffect(
-            RenderEffect.createRuntimeShaderEffect(configure(shader, pass, count, size, density), "content"),
-            frosted,
-        )
+        if (dark) frostedDark = frosted else frostedLight = frosted
+        return frosted
     }
 
     /** Scales a premultiplied image by [amount] (the matrix runs on unpremultiplied color, so only alpha is scaled). */
     private fun fade(input: RenderEffect, amount: Float): RenderEffect =
         RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(ColorMatrix().apply { setScale(1f, 1f, 1f, amount) }), input)
+}
+
+/**
+ * The glass program, compiled once for the process on first use and shared by
+ * every scene. Effects are built on the main thread only, so no locking.
+ */
+@RequiresApi(33)
+internal object SharedGlassShader {
+    val shader: RuntimeShader by lazy(LazyThreadSafetyMode.NONE) { RuntimeShader(GLASS_SHADER) }
 }
 
 /**

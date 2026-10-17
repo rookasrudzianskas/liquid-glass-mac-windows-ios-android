@@ -59,6 +59,33 @@ android {
     }
 }
 
+/** Copies spec/vectors.json into the instrumented tests' assets, where the GPU shader tests read it. */
+abstract class SpecVectorsAssets : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val vectors: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDirectory.get().asFile
+        target.mkdirs()
+        vectors.get().asFile.copyTo(target.resolve("vectors.json"), overwrite = true)
+    }
+}
+
+val specVectorsAssets = tasks.register<SpecVectorsAssets>("specVectorsAssets") {
+    vectors.set(repositoryRoot.resolve("spec/vectors.json"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(specVectorsAssets, SpecVectorsAssets::outputDirectory)
+    }
+}
+
 kotlin {
     explicitApi()
     compilerOptions {

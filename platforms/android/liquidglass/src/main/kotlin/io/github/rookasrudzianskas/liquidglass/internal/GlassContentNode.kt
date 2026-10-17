@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -82,8 +83,19 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
 
     private val bandLayers = HashMap<SceneBlur, Array<GraphicsLayer>>()
 
+    /** Each band's level effects, kept while its geometry and strength stay the same. */
+    private val bandEffects = HashMap<SceneBlur, BandEffects>()
+
+    /** The platform blur under fallback glass, built for [fallbackBlurDensity]. */
+    private var fallbackBlur: RenderEffect? = null
+    private var fallbackBlurDensity = Float.NaN
+
     /** The Android 13 effect builder, typed loosely so older runtimes never resolve RuntimeShader. */
     private var effects: Any? = null
+
+    // Reused every frame.
+    private val surfaceFrames = ArrayList<SurfaceFrame>()
+    private val blurFrames = ArrayList<Pair<SceneBlur, BlurFrame>>()
 
     fun update(scene: GlassSceneState) {
         if (scene === this.scene) return
@@ -123,14 +135,24 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         glassLayer = null
         fallbackLayer = null
         bandLayers.clear()
+        bandEffects.clear()
+        fallbackBlur = null
         effects = null
         lastRootBounds = Rect.Zero
+        surfaceFrames.clear()
+        blurFrames.clear()
     }
 
     override fun ContentDrawScope.draw() {
         val coordinates = requireLayoutCoordinates()
-        val surfaces = scene.surfaces().mapNotNull { it.frame(coordinates, density) }
-        val blurs = scene.blurs().mapNotNull { owner -> owner.frame(coordinates, density)?.let { owner to it } }
+        val surfaces = surfaceFrames.apply {
+            clear()
+            for (surface in scene.surfaces()) surface.frame(coordinates, density)?.let(::add)
+        }
+        val blurs = blurFrames.apply {
+            clear()
+            for (owner in scene.blurs()) owner.frame(coordinates, density)?.let { add(owner to it) }
+        }
         releaseStaleBands(blurs)
         if (Build.VERSION.SDK_INT < 31) {
             drawContent()
@@ -142,6 +164,7 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
     }
 
     private fun releaseStaleBands(active: List<Pair<SceneBlur, BlurFrame>>) {
+        bandEffects.keys.retainAll { key -> active.any { it.first === key } }
         if (bandLayers.isEmpty()) return
         val stale = bandLayers.keys.filter { key -> active.none { it.first === key } }
         if (stale.isEmpty()) return
@@ -167,19 +190,28 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         }
         val glass = glassLayer ?: graphics.createGraphicsLayer().also { glassLayer = it }
         glass.record { drawLayer(source) }
-        val fallback: List<SurfaceFrame> = if (Build.VERSION.SDK_INT >= 33) {
-            val builder = (effects as? GlassEffectBuilder) ?: GlassEffectBuilder().also { effects = it }
-            glass.renderEffect = builder.build(surfaces, size, density)?.asComposeRenderEffect()
-            if (surfaces.size > MAX_SURFACES) surfaces.subList(MAX_SURFACES, surfaces.size) else emptyList()
-        } else {
-            surfaces
+        val fallback: List<SurfaceFrame> = when {
+            surfaces.isEmpty() -> {
+                glass.renderEffect = null
+                surfaces
+            }
+            Build.VERSION.SDK_INT >= 33 -> {
+                val builder = (effects as? GlassEffectBuilder) ?: GlassEffectBuilder().also { effects = it }
+                glass.renderEffect = builder.build(surfaces, size, density)?.asComposeRenderEffect()
+                if (surfaces.size > MAX_SURFACES) surfaces.subList(MAX_SURFACES, surfaces.size) else emptyList()
+            }
+            else -> surfaces
         }
         drawLayer(glass)
         if (fallback.isEmpty()) return
         // The fallback material over the platform blur of the backdrop.
         val frosted = fallbackLayer ?: graphics.createGraphicsLayer().also { fallbackLayer = it }
         frosted.record { drawLayer(source) }
-        frosted.renderEffect = gaussian(FALLBACK_BLUR_SIGMA * density).asComposeRenderEffect()
+        if (fallbackBlur == null || fallbackBlurDensity != density) {
+            fallbackBlurDensity = density
+            fallbackBlur = gaussian(FALLBACK_BLUR_SIGMA * density).asComposeRenderEffect()
+        }
+        frosted.renderEffect = fallbackBlur
         fallback.forEach { drawFallback(it, frosted) }
     }
 
@@ -194,6 +226,10 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         val halfX = blur.band.width / 2f * blur.towardX
         val halfY = blur.band.height / 2f * blur.towardY
         val center = blur.band.center
+        // The level effects depend only on where the band sits in the layer and how strong it is.
+        val key = BandKey(blur.band, bounds, blur.towardX, blur.towardY, blur.blurPx)
+        val cached = bandEffects[owner]?.takeIf { it.key == key }
+        val effects = cached ?: BandEffects(key).also { bandEffects[owner] = it }
         clipRect(band.left, band.top, band.right, band.bottom) {
             for (level in 1..PROGRESSIVE_LEVELS) {
                 val sigma = progressiveLevelBlur(level, blur.blurPx)
@@ -206,14 +242,15 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
                 layer.record(IntSize(ceil(area.right - left).toInt(), ceil(area.bottom - top).toInt())) {
                     translate(-left, -top) { drawLayer(sharp) }
                 }
-                layer.renderEffect = progressiveLevelEffect(
+                val effect = effects.levels[level - 1] ?: progressiveLevelEffect(
                     level = level,
                     sigmaPx = sigma,
                     startX = center.x - halfX - left,
                     startY = center.y - halfY - top,
                     endX = center.x + halfX - left,
                     endY = center.y + halfY - top,
-                ).asComposeRenderEffect()
+                ).asComposeRenderEffect().also { effects.levels[level - 1] = it }
+                layer.renderEffect = effect
                 drawLayer(layer)
             }
         }
@@ -262,4 +299,12 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
         /** Blur of the fallback Regular material, dp: the frost plus a share of the fill. */
         const val FALLBACK_BLUR_SIGMA = FROST_SIGMA * 1.6f
     }
+}
+
+/** What a band's level effects are built from: its rectangle in a layer of the given bounds, direction and strength. */
+private data class BandKey(val band: Rect, val layer: Rect, val towardX: Float, val towardY: Float, val blurPx: Float)
+
+/** A band's level effects (levels 1…6), built lazily for [key]. */
+private class BandEffects(val key: BandKey) {
+    val levels = arrayOfNulls<RenderEffect>(PROGRESSIVE_LEVELS)
 }

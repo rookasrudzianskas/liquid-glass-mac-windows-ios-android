@@ -37,11 +37,13 @@ import androidx.compose.ui.node.LayoutModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.ObserverModifierNode
 import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.TraversableNode.Companion.TraverseDescendantsAction
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.observeReads
 import androidx.compose.ui.node.requireDensity
 import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.node.traverseDescendants
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -239,14 +241,18 @@ internal class GlassSurfaceNode(
         scene?.register(this)
         dynamics?.pointer?.node = this
         collectInteractions()
+        // Glass added above existing glass (a parent gaining liquidGlass later) changes their nesting.
+        notifyDescendants()
     }
 
     override fun onDetach() {
         dynamics?.pointer?.let { if (it.node === this) it.node = null }
         animator = null
         scene?.unregister(this)
+        notifyDescendants()
         coordinates = null
         lastRootBounds = Rect.Zero
+        offLayer = false
         trackedPointer = null
         pressed = false
         hovered = false
@@ -269,6 +275,18 @@ internal class GlassSurfaceNode(
         }
         invalidateDraw()
         scene?.invalidate()
+    }
+
+    /** Surfaces below this one, possibly in other (nested or local) scenes, re-resolve their nesting before their next frame. */
+    private fun notifyDescendants() {
+        traverseDescendants(GlassSurfaceKey) { node ->
+            (node as? GlassSurfaceNode)?.scene?.markNestingDirty()
+            TraverseDescendantsAction.ContinueTraversal
+        }
+    }
+
+    override fun refreshNesting() {
+        if (isAttached) resolveNesting()
     }
 
     /**
@@ -306,6 +324,19 @@ internal class GlassSurfaceNode(
     /** Whether the last layout put this surface in the scene content's window. */
     private var sameWindow = true
 
+    /**
+     * Whether the last frame found the glass wholly outside the scene's content
+     * layer (content smaller than the scene, a sheet sliding past its edge). The
+     * layer cannot draw it there, so the node draws its own fallback instead.
+     */
+    private var offLayer = false
+
+    private fun setOffLayer(value: Boolean) {
+        if (offLayer == value) return
+        offLayer = value
+        invalidateDraw()
+    }
+
     // --- Layout and geometry --------------------------------------------------------
 
     override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
@@ -329,12 +360,19 @@ internal class GlassSurfaceNode(
 
     override fun frame(content: LayoutCoordinates, density: Float): SurfaceFrame? {
         if (!renderedByScene) return null
-        val coordinates = coordinates?.takeIf { it.isAttached } ?: return null
-        val size = coordinates.size.toSize()
-        if (size.width <= 0f || size.height <= 0f || !content.isAttached) return null
+        val coordinates = coordinates?.takeIf { it.isAttached }
+        val size = coordinates?.size?.toSize() ?: Size.Zero
+        if (coordinates == null || size.width <= 0f || size.height <= 0f || !content.isAttached) {
+            setOffLayer(false)
+            return null
+        }
         val box = content.localBoundingBoxOf(coordinates, clipBounds = false)
         val clipped = content.localBoundingBoxOf(coordinates, clipBounds = true)
-        if (clipped.isEmpty) return null
+        if (clipped.isEmpty) {
+            // Clipped away by an ancestor: invisible, nothing to draw.
+            setOffLayer(false)
+            return null
+        }
         val kx = box.width / size.width
         val ky = box.height / size.height
         val local = dynamics?.bounds?.invoke(size) ?: Rect(Offset.Zero, size)
@@ -347,9 +385,19 @@ internal class GlassSurfaceNode(
         val halfW = local.width * kx * sx / 2f
         val halfH = local.height * ky * sy / 2f
         val bounds = Rect(center.x - halfW, center.y - halfH, center.x + halfW, center.y + halfH)
-        // Off the content layer entirely: nothing to draw, and no GPU slot used.
-        if (!bounds.overlaps(Rect(Offset.Zero, content.size.toSize()))) return null
-        val clip = if (clipped == box) INFINITE else clipped
+        // Wholly off the content layer: the node draws its own fallback, and no GPU slot is used.
+        val outside = !bounds.overlaps(Rect(Offset.Zero, content.size.toSize()))
+        setOffLayer(outside)
+        if (outside) return null
+        // Only the sides an ancestor actually cut are clipped: press growth, stretch and drag
+        // reach past the resting box on the others. (A side that rests exactly on an ancestor's
+        // clip edge cannot be told apart from an unclipped one, so growth there is not clipped.)
+        val clip = Rect(
+            left = if (clipped.left > box.left + CLIP_EPSILON) clipped.left else -UNBOUNDED,
+            top = if (clipped.top > box.top + CLIP_EPSILON) clipped.top else -UNBOUNDED,
+            right = if (clipped.right < box.right - CLIP_EPSILON) clipped.right else UNBOUNDED,
+            bottom = if (clipped.bottom < box.bottom - CLIP_EPSILON) clipped.bottom else UNBOUNDED,
+        )
         val dark = style.isDark(params.appearance)
         val widthDp = local.width / density
         val heightDp = local.height / density
@@ -390,11 +438,11 @@ internal class GlassSurfaceNode(
     // --- Drawing ----------------------------------------------------------------------
 
     override fun ContentDrawScope.draw() {
-        if (!renderedByScene) drawOwnFallback()
+        if (!renderedByScene || offLayer) drawOwnFallback()
         drawContent()
     }
 
-    /** Fallback material for glass no scene renders (outside a scene, or inside its content). */
+    /** Fallback material for glass no scene renders (outside a scene, inside its content, or off its content layer). */
     private fun ContentDrawScope.drawOwnFallback() {
         val local = dynamics?.bounds?.invoke(size) ?: Rect(Offset.Zero, size)
         val opacity = opacity()
@@ -562,7 +610,11 @@ internal class GlassSurfaceNode(
     }
 
     private companion object {
-        val INFINITE = Rect(-1e7f, -1e7f, 1e7f, 1e7f)
+        /** A clip edge far outside any layer: the side is not clipped. */
+        const val UNBOUNDED = 1e7f
+
+        /** Pixels by which a clipped edge must move in before it counts as clipped. */
+        const val CLIP_EPSILON = 0.5f
     }
 }
 

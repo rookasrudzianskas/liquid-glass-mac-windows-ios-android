@@ -64,7 +64,10 @@ internal interface SceneSurface : SceneParticipant {
     /** Nesting depth among glass surfaces; deeper surfaces draw on top. */
     val depth: Int
 
-    /** Geometry and optics this frame, or null when not visible. */
+    /** Recomputes [depth] and nesting from the surface's current ancestors. */
+    fun refreshNesting()
+
+    /** Geometry and optics this frame, or null when the scene does not draw it. */
     fun frame(content: LayoutCoordinates, density: Float): SurfaceFrame?
 }
 
@@ -93,6 +96,17 @@ internal class GlassSceneState(
     private val blurList = mutableListOf<SceneBlur>()
     private var order = 0L
     private val orderOf = HashMap<SceneSurface, Long>()
+
+    /** [surfaceList] in drawing order, reused every frame. */
+    private val sorted = ArrayList<SceneSurface>()
+    private val drawingOrder: Comparator<SceneSurface> = compareBy({ it.depth }, { orderOf[it] ?: 0L })
+
+    /**
+     * Set when glass is added or removed anywhere above a surface of this scene:
+     * nesting depth depends on ancestors, which can change without the surface
+     * itself being reattached (glass added to a parent later, for example).
+     */
+    private var nestingDirty = false
 
     /** The attached content node, if any. */
     var content: GlassContentNode? = null
@@ -132,12 +146,18 @@ internal class GlassSceneState(
     fun register(surface: SceneSurface) {
         orderOf[surface] = order++
         surfaceList += surface
-        invalidate()
+        markNestingDirty()
     }
 
     fun unregister(surface: SceneSurface) {
         orderOf.remove(surface)
         surfaceList -= surface
+        markNestingDirty()
+    }
+
+    /** Glass was added or removed above some surface of this scene: re-resolve nesting before the next frame. */
+    fun markNestingDirty() {
+        nestingDirty = true
         invalidate()
     }
 
@@ -151,8 +171,21 @@ internal class GlassSceneState(
         invalidate()
     }
 
-    /** Surfaces bottom to top: shallower first, then in registration order. */
-    fun surfaces(): List<SceneSurface> = surfaceList.sortedWith(compareBy({ it.depth }, { orderOf[it] ?: 0L }))
+    /**
+     * Surfaces bottom to top: shallower first, then in registration order. The
+     * list is reused; it stays valid until the next call.
+     */
+    fun surfaces(): List<SceneSurface> {
+        if (nestingDirty) {
+            // Resolved lazily, when the frame is drawn: during a detach the departing glass is still an ancestor.
+            nestingDirty = false
+            surfaceList.forEach { it.refreshNesting() }
+        }
+        sorted.clear()
+        sorted.addAll(surfaceList)
+        sorted.sortWith(drawingOrder)
+        return sorted
+    }
 
     fun blurs(): List<SceneBlur> = blurList
 

@@ -107,7 +107,12 @@ public fun GlassScene(
  * placed inside the content itself cannot refract the layer it belongs to and
  * draws the fallback material instead. Outside a scene this is a plain [Box].
  *
- * @param modifier modifier for the content box; usually `Modifier.fillMaxSize()`.
+ * ```
+ * GlassContent(Modifier.fillMaxSize().background(gradient)) {}   // a modifier can draw the backdrop
+ * ```
+ *
+ * @param modifier modifier for the content box; usually `Modifier.fillMaxSize()`. Everything it
+ *   draws (`background`, `paint`, `drawBehind`, `border`) is part of the backdrop, like the content.
  * @param content the backdrop.
  */
 @Composable
@@ -117,7 +122,8 @@ public fun GlassContent(modifier: Modifier = Modifier, content: @Composable BoxS
         Box(modifier, content = content)
         return
     }
-    Box(modifier.graphicsLayer().then(GlassContentElement(scene)), content = content)
+    // The content node comes first so it records whatever the caller's modifier draws as well.
+    Box(Modifier.graphicsLayer().then(GlassContentElement(scene)).then(modifier), content = content)
 }
 
 /** Draws scene overlays (open menus) above everything else in the scene. */
