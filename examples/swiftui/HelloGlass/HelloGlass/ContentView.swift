@@ -69,9 +69,10 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Hello, Glass")
                         .font(.largeTitle.bold())
+                    // In the glass foreground, like the title, so it stays
+                    // legible on Clear glass over the bright wallpaper.
                     Text("Native glass over a live backdrop.")
                         .font(.callout)
-                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)

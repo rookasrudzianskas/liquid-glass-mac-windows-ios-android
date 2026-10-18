@@ -44,7 +44,7 @@ struct ControlsPage: View {
                     }
                 }
                 .padding(.horizontal, StudioLayout.pagePadding)
-                .padding(.bottom, StudioLayout.tabBarClearance + 16)
+                .padding(.bottom, ScrollEdge.contentInset)
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)

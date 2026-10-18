@@ -194,8 +194,16 @@ struct ShareButton: View {
 /// buttons (macOS), and fades out above the floating tab bar, so no control
 /// ever sits half hidden behind a bar.
 struct ScrollEdge: ViewModifier {
-    /// How far the content fades at either end.
+    /// How far the content fades under the top bar.
     var fade: CGFloat = 24
+    /// How far the content fades above the tab bar: a control row's height,
+    /// so a row that reaches the bar has already faded out.
+    static let bottomFade: CGFloat = 44
+    /// Below the fade, nothing shows: the tab bar, the space under it and a
+    /// small gap above it, so content has faded out before it meets the bar.
+    static let bottomClear: CGFloat = StudioLayout.tabBarClearance - 8
+    /// Bottom padding that lets the last row scroll clear of the fade.
+    static let contentInset: CGFloat = bottomClear + bottomFade + 4
 
     func body(content: Content) -> some View {
         content
@@ -205,9 +213,9 @@ struct ScrollEdge: ViewModifier {
                         .frame(height: fade)
                     Color.black
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                        .frame(height: fade)
+                        .frame(height: Self.bottomFade)
                     Color.clear
-                        .frame(height: StudioLayout.tabBarClearance - 16)
+                        .frame(height: Self.bottomClear)
                 }
                 // The top fade lies just above the page, under the bar.
                 .padding(.top, -fade)

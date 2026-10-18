@@ -48,10 +48,26 @@ struct StoriesPage: View {
     let position: GlassScrollPosition
     @Binding var filter: String?
 
+    /// How far below the top safe area the top blur reaches: past the
+    /// toolbar row, so stories passing between and under its clusters blur.
+    #if os(macOS)
+    static let topBlurDepth: CGFloat = 128
+    #else
+    static let topBlurDepth: CGFloat = 116
+    #endif
+
     var body: some View {
+        GeometryReader { proxy in
+            content(safeTop: proxy.safeAreaInsets.top)
+        }
+    }
+
+    private func content(safeTop: CGFloat) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                GlassProgressiveBlur(edge: .top, size: 128)
+                // Measured from the top of the screen, through the status bar
+                // and the toolbar row.
+                GlassProgressiveBlur(edge: .top, size: safeTop + Self.topBlurDepth)
                     .ignoresSafeArea(edges: .top)
                 GlassToolbar(material: .regular) {
                     GlassMenu(icon: "line.3.horizontal.decrease", label: "Filter") {

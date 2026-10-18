@@ -8,11 +8,13 @@ app="$root/DerivedData/Build/Products/$configuration/Liquid Glass Studio.app"
 mkdir -p "$out"
 here="$(cd "$(dirname "$0")" && pwd)"
 for page in ${PAGES:-hero controls lab blur}; do
-  "$app/Contents/MacOS/Liquid Glass Studio" -page "$page" -appearance "$appearance" &
-  pid=$!
+  # Launched through Launch Services, the app comes to the front and its window is key, so the shot shows the
+  # active window (colored traffic lights) rather than an inactive one.
+  open -n -F "$app" --args -page "$page" -appearance "$appearance"
   sleep "${WAIT:-4}"
+  pid=$(pgrep -n -f "$app/Contents/MacOS/")
   window=$(swift "$here/window-id.swift" "$pid")
   screencapture -x -o -l "$window" "$out/mac-$page-$appearance.png"
-  kill "$pid"; wait "$pid" 2>/dev/null || true
+  kill "$pid"; while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
   echo "$out/mac-$page-$appearance.png"
 done

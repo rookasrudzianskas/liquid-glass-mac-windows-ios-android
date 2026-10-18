@@ -20,6 +20,11 @@ struct LabPage: View {
                     // Room for the lens above a tall panel (the largest text
                     // sizes); the panel scrolls within what is left.
                     .frame(maxHeight: wide ? nil : max(240, proxy.size.height - Self.lensRoom))
+                    // The panel is measured first, so it shows every control
+                    // whenever they fit and the lens takes the rest (the
+                    // stack would otherwise split the height evenly and make
+                    // the panel scroll, hiding its last rows).
+                    .layoutPriority(1)
             }
             .padding(.horizontal, StudioLayout.pagePadding)
             .padding(.top, 12)
