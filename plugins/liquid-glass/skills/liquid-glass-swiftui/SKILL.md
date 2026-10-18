@@ -303,11 +303,13 @@ GlassScene {
 **Materials, appearance, tint and shape**
 
 - Defaults: material `.clear`, appearance `.automatic`, refraction by size, motion `.full`. Menu panels are Regular
-  unless you pass a material, and their glass mixes halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark),
-  so the text of an untinted Regular menu keeps at least 5:1 contrast over any backdrop, even plain white or black;
-  no other surface has it. An untinted `.clear` menu keeps about 4.9:1 at worst. A tinted menu has no such floor:
-  its labels follow the tint and the backing the appearance (a light menu tinted blue over white leaves white labels
-  about 2.1:1), so leave menus untinted where their text must read over any backdrop.
+  unless you pass a material, and as they open their glass mixes toward a solid backing (`#F5F5F7` light, `#1C1C1E`
+  dark) by up to 0.6; no other surface has it. Menu items take `GlassOptics.menuForeground`: the appearance
+  foreground untinted, or on a tinted menu white or `#111113` by contrast with the tint mixed toward the backing. So
+  untinted menus, Regular or Clear, light or dark, keep at least 5.2:1 over any backdrop, even plain white or black,
+  highlighted items included, and so do menus tinted with a system color (`.yellow` in dark mode keeps 5.07:1). Very
+  light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper
+  color or not at all.
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
 - A surface's `material` applies to that surface only; it does not cascade to controls inside it. Set defaults for a
@@ -325,8 +327,9 @@ GlassScene {
   bars. Labels on tinted glass (buttons, bars, menus, surfaces) default to white or `#111113`, whichever has the
   higher WCAG contrast with the tinted glass (white on blue, red or purple; dark on yellow, mint, green or orange), so
   do not set `.foregroundStyle(.white)` yourself; a `foregroundStyle` set inside still wins. A `GlassMenu(tint:)`
-  colors the trigger and the panel. `role: .destructive` draws an untinted button label red. On `GlassSlider` and
-  `GlassSwitch`, `tint` colors the fill and the on-track. Tints are clamped to sRGB.
+  colors the trigger and the panel; the panel's items compare the tint mixed toward the backing, so a light menu
+  tinted blue has `#111113` items under a white-labelled trigger. `role: .destructive` draws an untinted button label
+  red. On `GlassSlider` and `GlassSwitch`, `tint` colors the fill and the on-track. Tints are clamped to sRGB.
 - Shapes: capsules for controls (the default for buttons, toolbars, tab bars), circles for icon-only buttons and
   menus (`GlassButton(icon:label:)`, `GlassMenu(icon:label:)`: 44 pt on iOS, 28 pt on macOS), continuous
   radii 16 to 28 for cards and panels (up to 34 for large media cards). Nested corners are concentric: inner radius
@@ -354,8 +357,9 @@ GlassScene {
   `GlassButton` beside the toolbar. Do not wrap a toolbar in a `GlassSurface` or give its items `.liquidGlass`.
 - Keep toolbars, tab bars and menus in the scene's foreground: outside a scene they draw the fallback material and a
   `GlassMenu` falls back to the system `Menu`. Let the scene cover the window so menus have room.
-- Items of an untinted Regular menu need no backing of your own: the panel's legibility backing keeps their text
-  at 5:1 or more over any backdrop. A menu panel opens below its trigger with trailing edges aligned, flips above
+- Menu items need no backing of your own: the panel's legibility backing and label color keep their text at 5.2:1
+  or more over any backdrop (untinted, or tinted with a system color), and a highlighted item mixes its label color
+  into the glass at 8%. A menu panel opens below its trigger with trailing edges aligned, flips above
   when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls:
   a menu that fits on neither side runs past the scene's bottom edge. Keep menus short (about 8 items or fewer);
   there are no submenus (a `GlassMenu` inside a panel never opens).

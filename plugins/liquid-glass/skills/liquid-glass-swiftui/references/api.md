@@ -676,26 +676,33 @@ Toggle("Bluetooth", isOn: $bluetooth).toggleStyle(GlassSwitchStyle())
 
 A menu whose trigger is a `GlassButton` (a plain item inside a `GlassToolbar`); `appearance` and `tint` apply to the
 trigger and the panel. Opening morphs the trigger's glass into a Regular panel on the morph spring while the items
-condense out of a blur; closing reverses it. The panel's glass mixes halfway (`GlassOptics.menuLegibility`) toward a
-solid backing, `#F5F5F7` light and `#1C1C1E` dark, which fades in as it opens, while the panel still refracts and
-frosts at half strength. In an untinted Regular menu (the default) the text keeps at least 5:1 contrast over any
-backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light); an
-untinted `.clear` menu keeps about 4.9:1 at worst. A tinted menu has no such floor: its labels are white or `#111113`
-for the tint while the backing follows the appearance, so over white a light menu tinted blue leaves white labels
-about 2.1:1 (4.1:1 without the backing). No other surface has the backing. The panel opens below the trigger with
+condense out of a blur; closing reverses it. As it opens, the panel's glass mixes toward a solid backing, `#F5F5F7`
+light and `#1C1C1E` dark, by up to 0.6 (`GlassOptics.menuLegibility`) times the open progress (clamped to 1 while the
+spring overshoots), so it leaves the trigger as the trigger's glass and still refracts and frosts at 40% strength when
+open. Items take `GlassOptics.menuForeground`: the appearance foreground untinted (`#111113` light, white dark); on a
+tinted menu, white or `#111113`, whichever contrasts more with `mix(tint · (body + (1 − body) · 0.5), backing, 0.6)`
+(body 0.78 Regular, 0.68 Clear), so a light menu tinted blue has `#111113` items while its trigger keeps a white
+label. Untinted menus, Regular or Clear, in both appearances, keep at least 5.2:1 over any backdrop, highlighted items
+included (5.24:1 at worst, Clear in dark appearance over white; 6.51:1 white over white on dark Regular without the
+highlight, 8.74:1 `#111113` over black in light); menus tinted with the system colors as they resolve in light mode
+keep at least 5.2:1 too, and in dark mode `.yellow`'s lighter variant keeps 5.07:1 on a highlighted item (dark Regular
+over white). Very light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint
+menus with a deeper color or not at all. No other surface has the backing. The panel opens below the trigger with
 trailing edges aligned (the left edges, right to left) and 8 pt from it, flips above when it does not fit below but
 fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that fits on neither side
-runs past the scene's bottom edge. Items highlight with the foreground at 8%. Tap outside, press
-Escape (or the VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping
-disabled items. The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the
-system `Menu` with the same items (checked items become toggles there).
+runs past the scene's bottom edge. A highlighted item (hovered, focused or pressed) mixes the label color into the
+glass at 8% (`GlassOptics.menuHighlight`). Tap outside, press Escape (or the VoiceOver escape gesture), or choose an
+item to dismiss; up/down arrows and Return navigate, skipping disabled items. The panel draws in the enclosing scene's
+overlay; outside a `GlassScene` the menu falls back to the system `Menu` with the same items (checked items become
+toggles there).
 
 ```swift
 public struct GlassMenu<Label: View, Content: View>: View {
     /// - material: The panel's material; `nil` is Regular. The trigger inherits the scene's.
     /// - appearance: Light or dark glass for the trigger and the panel, and their labels; `nil` inherits.
     /// - radius: The panel's corner radius. Default 28.
-    /// - tint: Colors the trigger's and the panel's glass; labels on it turn white or dark for contrast.
+    /// - tint: Colors the trigger's and the panel's glass. The trigger's label turns white or dark for contrast with
+    ///   the tint; the items take white or #111113 for contrast with the tint mixed toward the backing.
     /// - motion: Overrides the scene's motion level.
     /// - content: GlassMenuItems and GlassMenuDividers.
     /// - label: The trigger's label.
@@ -973,7 +980,8 @@ public enum GlassOptics {
     public static let continuousExponent = 3.26     // Superellipse exponent of a continuous corner.
     public static let luma = SIMD3<Double>(0.213, 0.715, 0.072)   // SVG saturate luma weights.
     public static let frostSigma = 7.33             // σ of the Regular material's frost blur.
-    public static let menuLegibility = 0.5          // Mix toward the legibility backing on menu panels (0 elsewhere).
+    public static let menuLegibility = 0.6          // Mix toward the legibility backing on open menu panels (0 elsewhere).
+    public static let menuHighlight = 0.08          // A highlighted menu row mixes its label color in by this.
     public static let progressiveLevels = 6         // Blur levels above the sharp backdrop.
 
     // Result types (public fields, no public initializers).
@@ -1004,6 +1012,8 @@ public enum GlassOptics {
     public static func frostColor(frost: SIMD3<Double>, fill: SIMD3<Double>, dark: Bool) -> SIMD3<Double>
     public static func legibilityBacking(dark: Bool) -> SIMD3<Double>           // #F5F5F7 light, #1C1C1E dark
     public static func legibilityColor(_ c: SIMD3<Double>, dark: Bool, amount: Double) -> SIMD3<Double>  // mix(c, backing, amount)
+    public static func menuForeground(tint: SIMD3<Double>?, material: GlassMaterial, dark: Bool,
+                                      legibility: Double = menuLegibility) -> SIMD3<Double>  // menu label: #111113 or white
 
     // Rim light (premultiplied RGBA)
     public static func rimOverlay(distance d: Double, nx: Double, ny: Double, dark: Bool, pixel: Double, tint: SIMD3<Double>? = nil) -> SIMD4<Double>
@@ -1054,9 +1064,9 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
-| `GlassMenu` panel legibility backing (mix, light, dark) | 0.5, `#F5F5F7`, `#1C1C1E`; untinted Regular menu text at 5:1 or more over any backdrop (Clear about 4.9:1; tinted, no floor) | same |
-| Highlight of pressed / hovered / focused items | foreground at 8% | foreground at 8% |
-| Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more | same |
+| `GlassMenu` panel legibility backing (mix, light, dark) | 0.6 times the open progress, `#F5F5F7`, `#1C1C1E`; untinted menu text (Regular or Clear) and system-tinted menu text at 5.2:1 or more over any backdrop, highlighted items included (`.yellow` in dark mode 5.07:1) | same |
+| Highlight of pressed / hovered / focused items | foreground at 8% (menus: the label color, `menuForeground`) | same |
+| Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more (menu items: with the tint mixed toward the backing) | same |
 
 ## System settings, fallbacks and accessibility
 
