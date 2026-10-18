@@ -353,27 +353,113 @@ public class ControlTests
             };
             var surface = new GlassSurface { Width = 120, Height = 60, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom };
             var window = Sta.Show(Scene(new Grid { Children = { menu, surface } }));
+            void Settle()
+            {
+                var settle = System.Diagnostics.Stopwatch.StartNew();
+                while (GlassFrameLoop.IsRunning(menu) && settle.Elapsed < TimeSpan.FromSeconds(8)) Sta.Wait(0.05);
+                Assert.False(GlassFrameLoop.IsRunning(menu), "the menu is still morphing");
+            }
+
+            // The panel leaves the trigger as the trigger's glass: the backing fades in with the morph.
             menu.IsOpen = true;
-            Sta.Pump();
+            var panel = menu.Panel!;
+            Assert.Equal(0, panel.Lens!.Legibility);
+            Settle();
 
             // The open panel mixes its glass halfway toward the backing (OPTICS §3); the trigger and other glass do not.
-            var panel = menu.Panel!;
             Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
             var triggerLenses = Visuals<GlassLens>(menu.Trigger!).ToList();
             Assert.NotEmpty(triggerLenses);
             Assert.All(triggerLenses, lens => Assert.Equal(0, lens.Legibility));
             Assert.Equal(0, surface.Lens!.Legibility);
 
-            // A Clear panel keeps the backing too, and the panel keeps it across opening and closing.
+            // Closing fades it back out; a Clear panel keeps the backing too, across opening and closing.
             menu.IsOpen = false;
-            Sta.Pump();
+            Settle();
+            Assert.Equal(0, panel.Lens!.Legibility);
             menu.PanelMaterial = GlassMaterial.Clear;
             menu.IsOpen = true;
-            Sta.Pump();
+            Settle();
             Assert.Equal(GlassMaterial.Clear, panel.Material);
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
+
+            // Without motion the panel opens at once, with the full backing.
+            menu.IsOpen = false;
+            Settle();
+            menu.Motion = GlassMotion.None;
+            menu.IsOpen = true;
             Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
             window.Close();
         });
+    }
+
+    public static IEnumerable<object[]> MenuTints => new[] { "#0067C0", "#007AFF", "#FF3B30", "#34C759", "#FFCC00", "#8E8E93" }
+        .SelectMany(tint => new[] { new object[] { tint, false }, new object[] { tint, true } });
+
+    /// <summary>
+    /// On a tinted menu the items take white or <c>#111113</c> from the panel's glass as it draws, the tint mixed toward
+    /// the legibility backing, not from the tint alone (which gave white labels on a light blue panel lightened toward
+    /// <c>#F5F5F7</c>, 2.4:1 over black); the trigger is plain tinted glass and keeps the tint's own color. Over white and
+    /// over black, in both appearances, the items keep at least 4.9:1 with these tints.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(MenuTints))]
+    public void TintedMenuItemsTakeTheForegroundOfTheBackedGlass(string hex, bool dark)
+    {
+        Sta.Run(() =>
+        {
+            var tint = (Color)ColorConverter.ConvertFromString(hex);
+            var written = new GlassMenuItem { Header = "Name" };
+            var menu = new GlassMenu
+            {
+                Header = "Sort",
+                Tint = tint,
+                Motion = GlassMotion.None,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Items = { written, new Separator() },
+            };
+            var generated = new GlassMenu
+            {
+                Header = "View",
+                Tint = tint,
+                Motion = GlassMotion.None,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                ItemsSource = new[] { "Icons" },
+            };
+            var scene = Scene(menu, generated);
+            GlassScene.SetAppearance(scene, dark ? GlassAppearance.Dark : GlassAppearance.Light);
+            var window = Sta.Show(scene);
+            var what = $"{hex} {(dark ? "dark" : "light")}";
+            static Rgb Of(Brush brush) => GlassBrushes.ToRgb(((SolidColorBrush)brush).Color);
+
+            var t = GlassBrushes.ToRgb(tint);
+            double Lowest(Rgb foreground) => new[] { new Rgb(1, 1, 1), new Rgb(0, 0, 0) }.Min(backdrop =>
+                Contrast(GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.TintColor(GlassMaterialOptics.MaterialColor(backdrop, GlassMaterial.Regular, dark), t, GlassMaterial.Regular), dark, GlassOptics.MenuLegibility), foreground));
+
+            menu.IsOpen = true;
+            Sta.Pump();
+            var label = Of(written.Foreground);
+            Assert.Equal(label, Of(menu.Panel!.Foreground));
+            Assert.True(Lowest(label) >= 4.9, $"{what}: items in {label} on the menu glass: {Lowest(label):F2}:1");
+            // The trigger is not backed: it keeps the foreground of its tint.
+            Assert.Equal(GlassPalette.ForegroundOnTint(t, GlassResolve.Material(menu.Trigger!)), Of(menu.Trigger!.Foreground));
+            menu.IsOpen = false;
+
+            generated.IsOpen = true;
+            Sta.Pump();
+            var item = Visuals<GlassMenuItem>(generated.Panel!).Single();
+            Assert.Equal(label, Of(item.Foreground));
+            window.Close();
+        });
+    }
+
+    private static double Contrast(Rgb a, Rgb b)
+    {
+        var x = GlassPalette.RelativeLuminance(a) + 0.05;
+        var y = GlassPalette.RelativeLuminance(b) + 0.05;
+        return x > y ? x / y : y / x;
     }
 
     [Fact]

@@ -2,6 +2,18 @@
 
 All notable changes to Liquid Glass Engineering are recorded here. The project follows [Semantic Versioning](https://semver.org); the libraries, the demo apps, the website and the agent skills share one version.
 
+## [Unreleased]
+
+### Optical model
+
+- Menu panels mix their glass, after the material color and tint, halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark; OPTICS §3, Legibility backing), so text on an untinted Regular menu keeps at least 5:1 contrast over any backdrop (white labels over white in dark appearance had 1.8:1). `reference.mjs`, the shader library and `vectors.json` carry the backing; every other surface passes 0.
+
+### Windows: WPF and HLSL
+
+- Menu panels draw the legibility backing in the shader and in the fallback material, which paints it over its veil at the amount that matches the shader where labels contrast least (5.07:1 for white labels over white in dark appearance, where the plain amount gave 4.8:1). The backing fades in and out with the morph.
+- On a tinted menu the items take white or `#111113` from the tint mixed toward the backing, so a menu in the Windows accent color in light appearance gets `#111113` labels (7.3:1 at worst instead of 2.4:1). The trigger keeps its tint's own foreground, and takes the menu's `Foreground` only when the application sets one.
+- New in `LiquidGlassEngineering.Core`: `GlassOptics.MenuLegibility`, `GlassPalette.LegibilityBackingLight`, `LegibilityBackingDark` and `LegibilityBacking(bool)`, `GlassMaterialOptics.LegibilityColor`, and `GlassSurfaceOptics.Legibility` with a `legibility` constructor parameter (the 1.0.0 constructor stays for compiled callers).
+
 ## [1.0.0] - 2026-10-18
 
 The first release: native Liquid Glass for iOS, macOS, Android and Windows from one optical model.
@@ -43,4 +55,5 @@ The first release: native Liquid Glass for iOS, macOS, Android and Windows from 
 
 - A plugin marketplace with the `liquid-glass` plugin and its skills: `liquid-glass` (design), `liquid-glass-swiftui`, `liquid-glass-compose`, `liquid-glass-wpf` and `liquid-glass-port`.
 
+[Unreleased]: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/compare/1.0.0...HEAD
 [1.0.0]: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/releases/tag/1.0.0

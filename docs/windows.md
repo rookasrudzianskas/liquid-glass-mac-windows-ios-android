@@ -341,11 +341,17 @@ material.
 
 The panel's glass mixes halfway toward a solid backing, `#F5F5F7` in light appearance and `#1C1C1E` in dark
 ([OPTICS §3](../spec/OPTICS.md#legibility-backing-menus)), after its material and tint: it still refracts and frosts
-what lies behind it, at half strength, and its items keep at least 5:1 contrast over any backdrop (5.09:1 for white
-labels over white in dark appearance, where plain Regular glass gave 1.8:1). The trigger and every other glass
-surface draw without the backing. In the fallback material the panel paints the same backing over its veil; the veil
-only approximates the tone curve, so the worst case there is about 4.8:1. The backing is part of the menu, not an
-option: `GlassOptics.MenuLegibility` (0.5) and `GlassPalette.LegibilityBacking` give its values.
+what lies behind it, at half strength. On an untinted Regular panel, the default, items keep at least 5:1 contrast
+over any backdrop: 5.09:1 for white labels over white in dark appearance, where plain Regular glass gave 1.8:1, and
+7.15:1 for `#111113` labels over black in light. The fallback material paints the backing over its veil at the
+amount that draws the same glass over those backdrops (5.07:1 and 7.17:1). A Clear panel reaches about 4.9:1 at worst
+(white labels over white in dark appearance), with the shader and in the fallback. On a tinted menu the items take
+white or `#111113`, whichever contrasts more with the tint mixed toward the backing, so a blue menu in light
+appearance gets `#111113` labels: with the Windows accent (`#0067C0`) and the usual blue, red, green, yellow and gray
+tints that keeps at least 4.9:1 over any backdrop, but very light tints in dark appearance can fall below it. The
+backing fades in as the panel grows out of the trigger and out as it collapses back. The trigger and every other
+glass surface draw without it, and the trigger keeps its tint's own foreground. The backing is part of the menu, not
+an option: `GlassOptics.MenuLegibility` (0.5) and `GlassPalette.LegibilityBacking` give its values.
 
 ```xml
 <lg:GlassMenu Header="Sort" Placement="Bottom">
@@ -377,7 +383,7 @@ menu.Opened += (_, _) => Log("opened");
 | `Size`, `IsIconOnly` | | Of the trigger button. |
 | `Tint` | null | Tints the trigger and the panel. |
 | `Motion` | inherited | `Reduced` keeps the morph, critically damped; `None` opens and closes the panel at once. |
-| `FontSize`, `Foreground` | 14, glass text | Of the trigger and the items alike (without a `FontSize` of its own, the trigger follows `Size`). |
+| `FontSize`, `Foreground` | 14, glass text | Of the trigger and the items alike when the application sets them. Otherwise the trigger follows `Size` and takes its own glass's foreground, and the items the panel's: on a tint the two can differ. |
 | `ItemsSource`, `ItemTemplate`, `ItemContainerStyle` | | As on any `ItemsControl`; data items get `GlassMenuItem` containers. |
 | `Opened`, `Closed` | events | |
 
@@ -448,7 +454,9 @@ the glass inside; reset it for nested controls with `lg:GlassScene.Material="Cle
 **Appearance.** `Automatic` follows Settings › Personalization › Colors › *Choose your app mode* and updates live.
 Foreground defaults to `#111113` on light glass and white on dark glass. On tinted glass, in either appearance, it is
 whichever of the two has the higher WCAG contrast with the tinted glass (white on blue, red or purple; `#111113` on
-yellow, mint, green or orange), as on the other platforms. Set `Foreground` to override it.
+yellow, mint, green or orange), as on the other platforms. On a menu panel that glass is the tint mixed toward the
+legibility backing, which lightens light glass and darkens dark glass (see [GlassMenu](#glassmenu)). Set `Foreground`
+to override it.
 
 **Radius.** `GlassRadius` parses `16`, `capsule` and `circle`. Fixed radii are superellipse corners with continuous
 curvature; large radii blend into a capsule, so animating the radius never jumps.

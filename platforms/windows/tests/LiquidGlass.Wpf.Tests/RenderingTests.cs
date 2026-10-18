@@ -91,12 +91,18 @@ public class RenderingTests
     }
 
     /// <summary>
-    /// Menu glass mixes halfway toward the legibility backing (OPTICS §3), in the shader and in the fallback material:
-    /// dark Regular glass over white, where white labels had 1.8:1 before. The shader draws the reference's value; the
-    /// fallback paints the backing over its veil at the same amount.
+    /// Menu glass mixes halfway toward the legibility backing (OPTICS §3), in the shader and in the fallback material,
+    /// over the backdrop where its labels contrast least: white under dark glass (where dark Regular glass gave white
+    /// labels 1.8:1 before), black under light glass. The shader draws the reference's value; the fallback paints the
+    /// backing over its veil at the amount that draws the same glass there. The bounds sit a byte level under the
+    /// reference's worst cases: 5.09:1 and 7.15:1 for Regular (dark, light), 4.94:1 and 6.07:1 for Clear.
     /// </summary>
-    [Fact]
-    public void MenuGlassMixesTowardTheLegibilityBacking()
+    [Theory]
+    [InlineData(GlassMaterial.Regular, true, 5.0)]
+    [InlineData(GlassMaterial.Regular, false, 7.0)]
+    [InlineData(GlassMaterial.Clear, true, 4.85)]
+    [InlineData(GlassMaterial.Clear, false, 5.9)]
+    public void MenuGlassMixesTowardTheLegibilityBacking(GlassMaterial material, bool dark, double minimum)
     {
         Sta.Run(() =>
         {
@@ -106,45 +112,49 @@ public class RenderingTests
                 Width = 200,
                 Height = 120,
                 Radius = 28,
-                Material = GlassMaterial.Regular,
-                Appearance = GlassAppearance.Dark,
+                Material = material,
+                Appearance = dark ? GlassAppearance.Dark : GlassAppearance.Light,
                 HorizontalAlignment = side,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(20, 0, 20, 0),
             };
             var menu = Surface(HorizontalAlignment.Left);
             var plain = Surface(HorizontalAlignment.Right);
-            var scene = new GlassScene { Content = new Border { Background = Brushes.White } };
+            var scene = new GlassScene { Content = new Border { Background = dark ? Brushes.White : Brushes.Black } };
             scene.Children.Add(menu);
             scene.Children.Add(plain);
             var root = new Border { Child = scene };
             var window = Sta.Show(root, width, height);
             menu.Lens!.Legibility = GlassOptics.MenuLegibility;
             Sta.Pump();
-            var white = new Rgb(1, 1, 1);
-            var dark = GlassPalette.ForegroundDark;
+            var what = $"{material} {(dark ? "dark" : "light")}";
+            var level = dark ? 1.0 : 0.0;
+            var backdrop = new Rgb(level, level, level);
+            var foreground = GlassPalette.Foreground(dark);
+            // The frost of a uniform backdrop is the backdrop, so the glass at the center is its material color, and on the
+            // menu that color mixed toward the backing.
+            var unmixed = GlassMaterialOptics.MaterialColor(backdrop, material, dark);
+            var expected = GlassMaterialOptics.LegibilityColor(unmixed, dark, GlassOptics.MenuLegibility);
 
+            // The shader draws wherever this machine can run it (CI's runners can), so its check never goes missing silently.
+            Assert.Equal(GlassDiagnostics.CanUseShader(window) ? GlassLensMode.Shader : GlassLensMode.Fallback, menu.RenderedMode);
             if (menu.RenderedMode == GlassLensMode.Shader)
             {
-                // On screen: the frost of a white backdrop is white, so the glass at the center is the material color of
-                // white mixed toward #1C1C1E.
                 var scale = GlassResolve.Scale(menu);
                 var center = ((int)(100 * scale), (int)(60 * scale));
-                bool Drawn(ScreenPixels s) => s.Rgb(center.Item1, center.Item2).R < 240 && s.Rgb(center.Item1, center.Item2).R > 40;
+                bool Drawn(ScreenPixels s) => Math.Abs(s.Rgb(center.Item1, center.Item2).R - level * 255) > 30;
                 var withBacking = ScreenPixels.CaptureWhen(window, menu, Drawn, 30);
                 var without = ScreenPixels.CaptureWhen(window, plain, Drawn, 30);
-                Assert.True(withBacking is not null && without is not null, "the glass never reached the screen");
-                var expected = GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.MaterialColor(white, GlassMaterial.Regular, true), true, GlassOptics.MenuLegibility);
-                var unmixed = GlassMaterialOptics.MaterialColor(white, GlassMaterial.Regular, true);
-                AssertColor(expected, withBacking!.Rgb(center.Item1, center.Item2), 3, "menu glass (shader)");
-                AssertColor(unmixed, without!.Rgb(center.Item1, center.Item2), 3, "other glass (shader)");
+                Assert.True(withBacking is not null && without is not null, $"{what}: the glass never reached the screen");
+                AssertColor(expected, withBacking!.Rgb(center.Item1, center.Item2), 3, $"{what} menu glass (shader)");
+                AssertColor(unmixed, without!.Rgb(center.Item1, center.Item2), 3, $"{what} other glass (shader)");
                 var shown = withBacking.Rgb(center.Item1, center.Item2);
-                var contrast = Contrast(new Rgb(shown.R / 255.0, shown.G / 255.0, shown.B / 255.0), dark);
-                Assert.True(contrast >= 4.95, $"white labels on menu glass over white: {contrast:F2}:1 on screen");
+                var contrast = Contrast(new Rgb(shown.R / 255.0, shown.G / 255.0, shown.B / 255.0), foreground);
+                Assert.True(contrast >= minimum, $"{what}: labels on menu glass {contrast:F2}:1 on screen");
             }
 
-            // The fallback material (software rendering, so RenderTargetBitmap shows it): the veil over the frosted white,
-            // then the backing at the menu amount.
+            // The fallback material (software rendering, so RenderTargetBitmap shows it): the veil over the frosted
+            // backdrop, then the backing at the amount that draws the shader's menu glass over this backdrop.
             GlassScene.SetRenderMode(scene, GlassRenderMode.Fallback);
             Sta.Pump();
             Assert.Equal(GlassLensMode.Fallback, menu.RenderedMode);
@@ -158,14 +168,15 @@ public class RenderingTests
                 var i = ((int)p.Y * width + (int)p.X) * 4;
                 return (pixels[i + 2], pixels[i + 1], pixels[i]);
             }
-            var veil = GlassFallback.Veil(GlassMaterial.Regular, true).Apply(1);
+            var veil = GlassFallback.Veil(material, dark).Apply(level);
             var veiled = new Rgb(veil, veil, veil);
-            AssertColor(GlassMaterialOptics.LegibilityColor(veiled, true, GlassOptics.MenuLegibility), At(menu), 3, "menu glass (fallback)");
-            AssertColor(veiled, At(plain), 3, "other glass (fallback)");
+            var amount = LensOverlay.BackingOpacity(material, dark, GlassOptics.MenuLegibility, tinted: false);
+            AssertColor(GlassMaterialOptics.LegibilityColor(veiled, dark, amount), At(menu), 3, $"{what} menu glass (fallback)");
+            AssertColor(expected, At(menu), 3, $"{what} menu glass (fallback, as the shader draws it)");
+            AssertColor(veiled, At(plain), 3, $"{what} other glass (fallback)");
             var fallback = At(menu);
-            var fallbackContrast = Contrast(new Rgb(fallback.R / 255.0, fallback.G / 255.0, fallback.B / 255.0), dark);
-            // The veil only approximates the tone curve, so the fallback's worst case is a little under the shader's 5.09:1.
-            Assert.True(fallbackContrast >= 4.5, $"white labels on fallback menu glass over white: {fallbackContrast:F2}:1");
+            var fallbackContrast = Contrast(new Rgb(fallback.R / 255.0, fallback.G / 255.0, fallback.B / 255.0), foreground);
+            Assert.True(fallbackContrast >= minimum, $"{what}: labels on fallback menu glass {fallbackContrast:F2}:1");
             window.Close();
         });
     }

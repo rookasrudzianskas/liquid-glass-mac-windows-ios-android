@@ -88,8 +88,17 @@ public class GlassSurface : ContentControl
 
     /// <summary>Creates a surface.</summary>
     public GlassSurface()
+        : this(0)
     {
-        _appearance = new GlassAppearanceTracker(this, () => Tint);
+    }
+
+    /// <summary>
+    /// Creates a surface whose glass mixes toward the legibility backing by <paramref name="legibility"/> (a menu panel),
+    /// so its default foreground on a tint is chosen on that glass.
+    /// </summary>
+    internal GlassSurface(double legibility)
+    {
+        _appearance = new GlassAppearanceTracker(this, () => Tint, legibility: legibility);
         Loaded += (_, _) => _fluid?.Attach();
         Unloaded += (_, _) =>
         {

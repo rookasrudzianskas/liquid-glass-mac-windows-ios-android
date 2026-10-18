@@ -81,10 +81,13 @@ internal sealed class LensOverlay : FrameworkElement
             }
             case GlassLensMode.Fallback:
                 dc.DrawGeometry(FallbackFill(dark), null, _outline);
-                // The legibility backing over the veil (or tint) at the lens's amount: backing·L + glass·(1 − L) is
-                // the shader's mix(glass, backing, L).
+                // The legibility backing over the veil (or tint): backing·a + glass·(1 − a) is the shader's
+                // mix(glass, backing, a), with the amount matched to the shader where the labels contrast least.
                 if (_lens.Legibility > 0)
-                    dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), _lens.Legibility)), null, _outline);
+                {
+                    var amount = BackingOpacity(_lens.Material, dark, _lens.Legibility, _lens.EffectiveTint is not null);
+                    dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), amount)), null, _outline);
+                }
                 DrawLight(dc, shape, dark);
                 break;
             case GlassLensMode.Opaque:
@@ -129,6 +132,29 @@ internal sealed class LensOverlay : FrameworkElement
             brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1));
             dc.DrawGeometry(brush, null, _outline);
         }
+    }
+
+    /// <summary>
+    /// The opacity of the legibility backing over the fallback's fill, for glass that mixes toward it by
+    /// <paramref name="legibility"/>. Over the veil, the backing at the amount itself would be the shader's mix, but the
+    /// veil only approximates the tone curve: at the backdrop where the labels contrast least (white in dark appearance,
+    /// black in light) it draws lighter or darker than the material, which left white labels on a dark Regular menu
+    /// 4.8:1 over white where the shader gives 5.09:1. So the amount is scaled until, at
+    /// <see cref="GlassOptics.MenuLegibility"/>, the fallback draws the shader's menu glass over that backdrop: 5.07:1
+    /// (dark) and 7.17:1 (light) at worst for Regular, 4.93:1 and 6.05:1 for Clear. A tint fill already is the tinted
+    /// glass the labels are chosen on, so it takes the amount as it is.
+    /// </summary>
+    internal static double BackingOpacity(GlassMaterial material, bool dark, double legibility, bool tinted)
+    {
+        if (tinted || legibility <= 0) return GlassMath.Sat(legibility);
+        var worst = dark ? 1.0 : 0.0;
+        var backing = GlassPalette.LegibilityBacking(dark).G;
+        var veiled = GlassFallback.Veil(material, dark).Apply(worst);
+        var drawn = GlassMaterialOptics.MaterialColor(new Rgb(worst, worst, worst), material, dark).G;
+        // (1 − a)·(veiled − backing) = (1 − M)·(drawn − backing) at the menu amount M; other amounts scale with it.
+        const double menu = GlassOptics.MenuLegibility;
+        var matched = 1 - (1 - menu) * (drawn - backing) / (veiled - backing);
+        return GlassMath.Sat(legibility * matched / menu);
     }
 
     private Brush FallbackFill(bool dark)

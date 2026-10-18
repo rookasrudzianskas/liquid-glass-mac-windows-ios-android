@@ -520,11 +520,11 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type lg:GlassMenu}">
-          <!-- FontSize reaches the trigger from code, only when the application set one (GlassMenu.UpdateTriggerFontSize). -->
+          <!-- FontSize and Foreground reach the trigger from code, only when the application set them
+               (GlassMenu.UpdateTriggerFontSize, UpdateTriggerForeground): the menu's own foreground is its items'. -->
           <lg:GlassButton x:Name="PART_Trigger" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
                           Size="{TemplateBinding Size}" IsIconOnly="{TemplateBinding IsIconOnly}" Tint="{TemplateBinding Tint}"
                           FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}"
-                          Foreground="{TemplateBinding Foreground}"
                           AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}" />
         </ControlTemplate>
       </Setter.Value>

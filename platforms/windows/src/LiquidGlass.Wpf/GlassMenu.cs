@@ -16,9 +16,10 @@ namespace LiquidGlass.Wpf;
 /// <summary>
 /// A glass button (<see cref="HeaderedItemsControl.Header"/> is its content) that opens a menu: a Regular glass panel
 /// that grows out of the button with the morph spring and collapses back into it. The panel's glass mixes halfway
-/// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), so its items keep at least 5:1 contrast over any
-/// backdrop. Items highlight in the foreground color at 8%; the menu closes when an item is chosen, on Escape and on a
-/// click outside it. The panel floats in the enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a
+/// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), so the items of an untinted Regular panel keep at
+/// least 5:1 contrast over any backdrop; on a tint they take white or <c>#111113</c> as the backed glass calls for.
+/// Items highlight in the foreground color at 8%; the menu closes when an item is chosen, on Escape and on a click
+/// outside it. The panel floats in the enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a
 /// scene it opens in a popup with the opaque material.
 /// </summary>
 /// <remarks>
@@ -113,7 +114,10 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     /// <summary>Creates a menu.</summary>
     public GlassMenu()
     {
-        _appearance = new GlassAppearanceTracker(this, () => Tint);
+        // The menu's foreground is its items': the panel's glass, mixed toward the legibility backing, decides it. The
+        // trigger is plain glass and keeps its own (UpdateTriggerForeground).
+        _appearance = new GlassAppearanceTracker(this, () => Tint,
+            material: () => GlassResolve.Material(this, PanelMaterial), legibility: GlassOptics.MenuLegibility);
         // IsOpen set before the menu could open (in XAML, or by a binding whose source starts true) opens it now.
         Loaded += (_, _) => OpenIfPending();
         Unloaded += (_, _) =>
@@ -215,6 +219,7 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
             _trigger.PreviewKeyDown += OnTriggerKeyDown;
         }
         UpdateTriggerFontSize();
+        UpdateTriggerForeground();
         OpenIfPending();
     }
 
@@ -246,8 +251,9 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
-        if (GlassAppearanceTracker.Affects(e.Property)) _appearance.Update();
+        if (GlassAppearanceTracker.Affects(e.Property) || e.Property == PanelMaterialProperty) _appearance.Update();
         if (e.Property == FontSizeProperty) UpdateTriggerFontSize();
+        if (e.Property == ForegroundProperty) UpdateTriggerForeground();
     }
 
     /// <summary>Called by an item when it was chosen.</summary>
@@ -278,6 +284,20 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         if (source is BaseValueSource.Default or BaseValueSource.DefaultStyle or BaseValueSource.DefaultStyleTrigger or BaseValueSource.Inherited)
             _trigger.ClearValue(FontSizeProperty);
         else _trigger.FontSize = FontSize;
+    }
+
+    /// <summary>
+    /// A text color the application gave the menu reaches the trigger as well as the items. The menu's own default is
+    /// its items' color, chosen on the panel's backed glass, so without one the trigger keeps the color its own glass
+    /// calls for: on a tint the two can differ (white on a blue trigger, <c>#111113</c> on the light panel's blue).
+    /// </summary>
+    private void UpdateTriggerForeground()
+    {
+        if (_trigger is null) return;
+        var source = DependencyPropertyHelper.GetValueSource(this, ForegroundProperty).BaseValueSource;
+        if (source is BaseValueSource.Default or BaseValueSource.DefaultStyle or BaseValueSource.DefaultStyleTrigger or BaseValueSource.Inherited)
+            _trigger.ClearValue(ForegroundProperty);
+        else _trigger.Foreground = Foreground;
     }
 
     private void OpenIfPending()
@@ -485,6 +505,8 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
         }
         if (_list is not null) _list.Opacity = GlassMath.Sat((p - 0.35) / 0.5);
         _panel.Opacity = GlassMath.Sat(p * 4);
+        // The backing fades in with the morph, so the glass leaves the trigger as the trigger's glass (and returns to it).
+        _panel.Legibility = GlassOptics.MenuLegibility * GlassMath.Sat(p);
         GlassScene.FindScene(_panel)?.RequestRealign();
     }
 
@@ -829,19 +851,37 @@ internal sealed class GlassMenuPanel : GlassSurface
         FocusManager.IsFocusScopeProperty.OverrideMetadata(typeof(GlassMenuPanel), new FrameworkPropertyMetadata(true));
     }
 
-    public GlassMenuPanel(GlassMenu menu) => Menu = menu;
+    private double _legibility = GlassOptics.MenuLegibility;
+
+    /// <summary>Creates the panel; its default foreground is chosen on the backed glass of the open panel.</summary>
+    public GlassMenuPanel(GlassMenu menu)
+        : base(GlassOptics.MenuLegibility)
+        => Menu = menu;
 
     /// <summary>The menu the panel belongs to.</summary>
     public GlassMenu Menu { get; }
 
     /// <summary>
-    /// Menu glass mixes halfway toward the solid legibility backing (OPTICS §3), so the items keep at least 5:1 contrast
-    /// over any backdrop; the panel still refracts and frosts what is behind it, at half strength.
+    /// How far the panel's glass mixes toward the solid legibility backing now (OPTICS §3):
+    /// <see cref="GlassOptics.MenuLegibility"/> when open, so the items of an untinted Regular panel keep at least 5:1
+    /// contrast over any backdrop while the panel still refracts and frosts what is behind it, at half strength. It
+    /// follows the morph as the panel grows out of the trigger and collapses back into it.
     /// </summary>
+    public double Legibility
+    {
+        get => _legibility;
+        set
+        {
+            _legibility = value;
+            if (Lens is not null) Lens.Legibility = value;
+        }
+    }
+
+    /// <inheritdoc />
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-        if (Lens is not null) Lens.Legibility = GlassOptics.MenuLegibility;
+        if (Lens is not null) Lens.Legibility = _legibility;
     }
 
     protected override AutomationPeer OnCreateAutomationPeer() => new PanelPeer(this);

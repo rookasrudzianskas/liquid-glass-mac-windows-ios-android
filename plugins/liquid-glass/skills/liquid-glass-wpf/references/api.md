@@ -164,7 +164,7 @@ Read-only attached properties, maintained by each glass control on itself (use t
 | Attached property | Type | Accessor | Meaning |
 | --- | --- | --- | --- |
 | `IsDark` | `bool` | `GetIsDark(DependencyObject)` | The control draws dark glass (appearance resolved against Windows). |
-| `ContentForeground` | `Brush` | `GetContentForeground(DependencyObject)` | Default text/icon color: `#111113` on light glass, white on dark glass; on a tint, in either appearance, whichever of the two has the higher WCAG contrast with the tinted glass (`GlassPalette.ForegroundOnTint`: white on blue, red or purple, `#111113` on yellow, mint, green or orange); `SystemColors.ControlTextBrush` in a contrast theme. |
+| `ContentForeground` | `Brush` | `GetContentForeground(DependencyObject)` | Default text/icon color: `#111113` on light glass, white on dark glass; on a tint, in either appearance, whichever of the two has the higher WCAG contrast with the tinted glass (`GlassPalette.ForegroundOnTint`: white on blue, red or purple, `#111113` on yellow, mint, green or orange; on a menu and its panel, the tint mixed toward the legibility backing); `SystemColors.ControlTextBrush` in a contrast theme. |
 | `IsFocusVisible` | `bool` | `GetIsFocusVisible(DependencyObject)` | Keyboard focus arrived from the keyboard; templates show the focus ring. |
 
 All `Get*`/`Set*` accessors throw `ArgumentNullException` for a null element.
@@ -428,9 +428,13 @@ a `ControlBrush` track with a `ControlText` thumb.
 `public class GlassMenu : HeaderedItemsControl`: a glass button (`Header` is its content) that opens a menu. The panel
 is a Regular `GlassSurface` (inset 4, min width 160, 6 units from the trigger) that grows out of the trigger on the
 morph spring and collapses back into it. Its glass mixes halfway toward a solid backing after the material and tint
-(`GlassOptics.MenuLegibility` 0.5 toward `GlassPalette.LegibilityBacking`: `#F5F5F7` light, `#1C1C1E` dark), so items
-keep at least 5:1 contrast over any backdrop (about 4.8:1 at worst in the fallback material, whose veil approximates
-the tone curve); the trigger and other glass draw without it, and it is not an option. It closes when an item is
+(`GlassOptics.MenuLegibility` 0.5 toward `GlassPalette.LegibilityBacking`: `#F5F5F7` light, `#1C1C1E` dark), so the
+items of an untinted Regular panel (the default) keep at least 5:1 contrast over any backdrop, in the fallback
+material too (it paints the backing over its veil at the amount that draws the shader's glass where labels contrast
+least); a Clear panel reaches about 4.9:1. On a tint the items take white or `#111113` from the tint mixed toward the
+backing (at least 4.9:1 with the Windows accent and the usual blue, red, green, yellow and gray tints; very light
+tints in dark appearance can fall lower). The backing fades in and out with the morph; the trigger and other glass
+draw without it, and it is not an option. It closes when an item is
 chosen, on Escape, Alt+F4, a click outside and when the window deactivates; Down or Enter on the trigger opens it with
 the first item focused; arrow keys and Tab cycle through items. The panel floats in the enclosing scene's top layer,
 clamped inside the scene (it cannot leave the window), and lines up with the trigger's start edge (in right-to-left
@@ -456,10 +460,11 @@ public void Close()                                  // morph back into the trig
 public override void OnApplyTemplate()
 ```
 
-The trigger receives `Header`, `HeaderTemplate`, `Size`, `IsIconOnly`, `Tint`, `FontFamily`, `FontWeight`,
-`Foreground` and `AutomationProperties.Name` from the menu. Its `FontSize` is the menu's when the application sets
-one (then the trigger and the items share it); otherwise it follows `Size` (12 / 14 / 15) while the items use the
-menu's default 14. An icon-glyph `Header` (only private-use characters) draws at FontWeight Normal automatically.
+The trigger receives `Header`, `HeaderTemplate`, `Size`, `IsIconOnly`, `Tint`, `FontFamily`, `FontWeight` and
+`AutomationProperties.Name` from the menu. Its `FontSize` and `Foreground` are the menu's when the application sets
+them (then the trigger and the items share them); otherwise its `FontSize` follows `Size` (12 / 14 / 15) while the
+items use the menu's default 14, and its `Foreground` is its own glass's while the items take the panel's (the menu's
+default `Foreground`, chosen on the backed glass), which can differ on a tint. An icon-glyph `Header` (only private-use characters) draws at FontWeight Normal automatically.
 Items draw in the glass text font (`Segoe UI Variable Text, Segoe UI`) whatever font the trigger uses, so an
 icon-only menu's icon font does not reach them; set `FontFamily` on an item, or in `ItemContainerStyle`, to change
 it. The panel copies the menu's resolved appearance, motion, render mode, accessibility options, text size and flow

@@ -29,7 +29,11 @@ internal static class GlassResolve
 
     /// <summary>The material after increased contrast (which uses Regular) is applied.</summary>
     public static GlassMaterial Material(DependencyObject element)
-        => GlassScene.GetIncreaseContrast(element) ? GlassMaterial.Regular : GlassScene.GetMaterial(element);
+        => Material(element, GlassScene.GetMaterial(element));
+
+    /// <summary><paramref name="material"/>, or Regular when <paramref name="element"/> increases contrast.</summary>
+    public static GlassMaterial Material(DependencyObject element, GlassMaterial material)
+        => GlassScene.GetIncreaseContrast(element) ? GlassMaterial.Regular : material;
 
     /// <summary>A spring for the motion level: reduced motion removes overshoot.</summary>
     public static SpringOptions Spring(SpringOptions spring, GlassMotion motion)
@@ -61,12 +65,21 @@ internal sealed class GlassAppearanceTracker
     private readonly FrameworkElement _owner;
     private readonly Func<Color?> _tint;
     private readonly Action? _changed;
+    private readonly Func<GlassMaterial>? _material;
+    private readonly double _legibility;
 
-    public GlassAppearanceTracker(FrameworkElement owner, Func<Color?> tint, Action? changed = null)
+    /// <param name="owner">The glass control.</param>
+    /// <param name="tint">Its tint.</param>
+    /// <param name="changed">Called after every update.</param>
+    /// <param name="material">The material its content sits on, when that is not the control's own (a menu's panel).</param>
+    /// <param name="legibility">How far that glass mixes toward the legibility backing: the menu amount for menu panels.</param>
+    public GlassAppearanceTracker(FrameworkElement owner, Func<Color?> tint, Action? changed = null, Func<GlassMaterial>? material = null, double legibility = 0)
     {
         _owner = owner;
         _tint = tint;
         _changed = changed;
+        _material = material;
+        _legibility = legibility;
         owner.Loaded += (_, _) =>
         {
             GlassSystemSettings.Changed -= OnSettingsChanged;
@@ -83,7 +96,7 @@ internal sealed class GlassAppearanceTracker
     {
         var dark = GlassResolve.IsDark(_owner);
         if (GlassScene.GetIsDark(_owner) != dark) GlassScene.SetIsDark(_owner, dark);
-        var foreground = GlassBrushes.Foreground(dark, _tint(), GlassResolve.Material(_owner));
+        var foreground = GlassBrushes.Foreground(dark, _tint(), _material?.Invoke() ?? GlassResolve.Material(_owner), _legibility);
         if (!ReferenceEquals(GlassScene.GetContentForeground(_owner), foreground)) GlassScene.SetContentForeground(_owner, foreground);
         _changed?.Invoke();
     }

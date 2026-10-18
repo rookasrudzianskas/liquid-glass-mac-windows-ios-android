@@ -361,9 +361,12 @@ buttons; the glass re-aligns by itself.
 
 - Clear over imagery; Regular for menus, sheets, compact cards with a few lines of text, and anything large or over
   busy content. Menu panels default to Regular. Long text, settings pages and tables get a solid surface, not glass.
-- Menu panels mix their glass halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark) on their own, so menu
-  text keeps at least 5:1 over any backdrop, even white under dark glass. Don't add a background to the panel or its
-  items to make them readable; the trigger and other glass stay plain glass.
+- Menu panels mix their glass halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark) on their own, so text
+  on an untinted Regular menu (the default) keeps at least 5:1 over any backdrop, even white under dark glass, in the
+  fallback material too; a Clear panel reaches about 4.9:1. On a tint, items take white or `#111113` from the backed
+  glass (at least 4.9:1 with the Windows accent and the usual system colors; very light tints in dark appearance can
+  fall lower). Don't add a background to the panel or its items to make them readable; the trigger and other glass
+  stay plain glass.
 - `Material` is inherited: a Regular card makes every glass control inside it Regular too. Reset nested controls with
   `lg:GlassScene.Material="Clear"` on the card's inner panel (the demo app does this on every card).
 - `Appearance="Automatic"` follows the Windows app mode live. Over a backdrop that is clearly light or dark, set
@@ -418,8 +421,9 @@ buttons; the glass re-aligns by itself.
   the trigger's start edge, also in right-to-left layouts.
 - Items draw in the glass text font whatever font the trigger uses: an icon-only menu (`Header="&#xE712;"` with the
   icon font) needs nothing on its items. Set `FontFamily` on an item, or in `ItemContainerStyle`, to change it. `Icon`
-  glyph strings already use the icon font. The trigger takes the menu's `Foreground`, and the menu's `FontSize` when
-  the application sets one (items and trigger then share it); otherwise the trigger follows `Size` (12 / 14 / 15).
+  glyph strings already use the icon font. The trigger takes the menu's `Foreground` and `FontSize` when the
+  application sets them (items and trigger then share them); otherwise it follows `Size` (12 / 14 / 15) and keeps its
+  own glass's foreground while the items take the panel's, which can differ on a tint.
 - Menu items are `GlassMenuItem` and `Separator` elements, or data: with `ItemsSource`, each data item gets a
   `GlassMenuItem` container that shows it with `ItemTemplate` (or `ItemTemplateSelector`); `ItemContainerStyle`
   applies to every `GlassMenuItem` (separators keep their own style), for example to set `Command` and

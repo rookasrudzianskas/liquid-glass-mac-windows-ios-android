@@ -5,8 +5,8 @@ using Xunit;
 namespace LiquidGlass.Tests;
 
 /// <summary>
-/// Menu panels mix their glass halfway toward a solid backing (OPTICS §3, Legibility backing), so menu text keeps at
-/// least 5:1 contrast over any backdrop.
+/// Menu panels mix their glass halfway toward a solid backing (OPTICS §3, Legibility backing), so text on a Regular
+/// menu keeps at least 5:1 contrast over any backdrop (a Clear menu about 4.9:1).
 /// </summary>
 public class LegibilityTests
 {
@@ -70,6 +70,26 @@ public class LegibilityTests
         Assert.InRange(lowest, 5.0, dark ? 5.1 : 7.2);
     }
 
+    [Theory]
+    [InlineData(false, 6.07)]
+    [InlineData(true, 4.94)]
+    public void ClearMenuTextStaysNearFiveToOne(bool dark, double worst)
+    {
+        // Clear glass tones its backdrop less than Regular, so with the same backing white labels over white in dark
+        // appearance stay just under 5:1; the guides give this figure for Clear panels.
+        const int steps = 10;
+        var foreground = GlassPalette.Foreground(dark);
+        var lowest = double.MaxValue;
+        for (var r = 0; r <= steps; r++)
+            for (var g = 0; g <= steps; g++)
+                for (var b = 0; b <= steps; b++)
+                {
+                    var backdrop = new Rgb(r / (double)steps, g / (double)steps, b / (double)steps);
+                    lowest = System.Math.Min(lowest, Contrast(MenuGlass(backdrop, dark, GlassMaterial.Clear), foreground));
+                }
+        Assert.Equal(worst, lowest, 2);
+    }
+
     [Fact]
     public void FullLegibilityIsTheBackingAndZeroIsTheGlass()
     {
@@ -79,9 +99,9 @@ public class LegibilityTests
         Vectors.Near(new[] { 0xF5 / 255.0, 0xF5 / 255.0, 0xF7 / 255.0 }, GlassMaterialOptics.LegibilityColor(color, false, 1), "light backing");
     }
 
-    /// <summary>Regular menu glass over an opaque backdrop: the material color mixed toward the backing.</summary>
-    private static Rgb MenuGlass(Rgb backdrop, bool dark)
-        => GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.MaterialColor(backdrop, GlassMaterial.Regular, dark), dark, GlassOptics.MenuLegibility);
+    /// <summary>Menu glass (Regular by default) over an opaque backdrop: the material color mixed toward the backing.</summary>
+    private static Rgb MenuGlass(Rgb backdrop, bool dark, GlassMaterial material = GlassMaterial.Regular)
+        => GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.MaterialColor(backdrop, material, dark), dark, GlassOptics.MenuLegibility);
 
     private static double Contrast(Rgb a, Rgb b)
     {
