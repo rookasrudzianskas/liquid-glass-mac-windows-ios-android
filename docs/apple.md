@@ -42,7 +42,7 @@ targets: [
 
 The version requirement resolves once the `1.0.0` release tag is published on GitHub (Swift Package Manager reads versions from tags, so `from: "1.0.0"` finds nothing before that). Until then, depend on the `main` branch: in Xcode choose **Branch** `main` as the dependency rule, and in `Package.swift` write `branch: "main"` in place of `from: "1.0.0"`.
 
-Requirements: iOS 17 or macOS 14 deployment targets, built with Xcode 16 or later (iOS 18 / macOS 15 SDK; Xcode 15 cannot compile the iOS target). There are no third-party dependencies.
+Requirements: iOS 17 or macOS 14 deployment targets, built with Xcode 16 or later (iOS 18 / macOS 15 SDK). Xcode 16 is required: the manifest uses Swift tools 6.0, so Xcode 15 cannot resolve the package (the iOS code also uses the iOS 18 SDK behind an availability check). There are no third-party dependencies.
 
 > The package contains Metal shaders. Xcode compiles them (in an app, with `xcodebuild`, or in Xcode's own package build). The bare command line `swift build` does not compile Metal, so build and test the package with Xcode or `xcodebuild`.
 
@@ -219,7 +219,7 @@ GlassSlider(value: $volume, in: 0...100) { Text("Volume") }
 GlassSlider(value: $volume, in: 0...100, step: 10, tint: .orange) { Text("Volume") }
 ```
 
-The thumb is an opaque white capsule at rest and lifts into clear glass while held (20 × 16 pt growing 2.5 × 2 pt per side with refraction 5 on macOS; 36 × 24 pt on iOS for touch). The lifted lens refracts the track and fill beneath it and stretches along the track with its speed. Press anywhere on the track to jump there and keep dragging; on touch screens a drag starts once the finger moves sideways, so a vertical swipe that starts on a slider scrolls the page and leaves the value alone. Stepped sliders play a selection haptic per step. VoiceOver sees a standard adjustable slider (`accessibilityRepresentation`), and on macOS the arrow keys adjust it when focused. `onEditingChanged` reports drags.
+The thumb is an opaque white capsule at rest and lifts into clear glass while held (20 × 16 pt growing 2.5 × 2 pt per side with refraction 5 on macOS; 36 × 24 pt on iOS for touch). The lifted lens refracts the track and fill beneath it and stretches along the track with its speed. Press anywhere on the track to jump there and keep dragging; on touch screens a drag starts once the finger moves sideways, so a vertical swipe that starts on a slider scrolls the page and leaves the value alone. Stepped sliders play a selection haptic per step. VoiceOver sees a standard adjustable slider (`accessibilityRepresentation`), and on macOS the arrow keys adjust it when focused. `onEditingChanged` reports drags. `.disabled(true)` dims the whole slider (track, fill and thumb) to 45%.
 
 ### GlassSwitch
 
@@ -231,7 +231,7 @@ GlassSwitch("AirDrop", isOn: $airdrop, tint: .green)
 Toggle("Bluetooth", isOn: $bluetooth).toggleStyle(GlassSwitchStyle())
 ```
 
-Tap to toggle or drag the thumb across. The thumb travels on the measured switch spring (response 0.47 s, damping 0.7) and lifts into clear glass while held (32 × 20 pt in a 54 × 24 pt track, growing 9 × 5.5 pt per side with refraction 7.75 on macOS; 37 × 24 in 63 × 28 on iOS). The track takes `tint` (the accent color by default) when on. It's a `Toggle`, so VoiceOver and focus work as usual; Space toggles it on macOS. On iOS 18 and macOS 15, `labelsHidden()` hides the label (it stays the VoiceOver label) and the switch hugs its track; iOS 17 and macOS 14 don't tell toggle styles about hidden labels, so there the label still shows (leave the title empty and set `accessibilityLabel` instead).
+Tap to toggle or drag the thumb across. The thumb travels on the measured switch spring (response 0.47 s, damping 0.7) and lifts into clear glass while held (32 × 20 pt in a 54 × 24 pt track, growing 9 × 5.5 pt per side with refraction 7.75 on macOS; 37 × 24 in 63 × 28 on iOS). The track takes `tint` (the accent color by default) when on. It's a `Toggle`, so VoiceOver and focus work as usual; Space toggles it on macOS. On iOS 18 and macOS 15, `labelsHidden()` hides the label (it stays the VoiceOver label) and the switch hugs its track; iOS 17 and macOS 14 don't tell toggle styles about hidden labels, so there the label still shows (leave the title empty and set `accessibilityLabel` instead). `.disabled(true)` dims the track and thumb to 45%.
 
 ### GlassMenu
 
@@ -255,7 +255,7 @@ GlassMenu("Appearance", systemImage: "circle.lefthalf.filled") {
 
 ![A Regular glass menu grown out of its trigger](images/apple/ios-menu.png)
 
-The trigger is a `GlassButton` (an icon-only trigger is the 44 pt circle on iOS, 28 pt on macOS); `appearance` and `tint` apply to the trigger and the panel. Items with `checked:` reserve a leading column and draw a checkmark when `true` (VoiceOver reads them as selected); disabled items dim and the arrow keys skip them. Opening morphs the trigger's glass into a Regular glass panel (radius 28) on the morph spring while the items condense out of a blur (an unset refraction is the open panel's throughout); closing reverses it. The panel opens below the trigger with trailing edges aligned, flips above when there is no room and stays inside the scene. Items highlight with the foreground color at 8%. Tap outside, press Escape, or choose an item to dismiss; the up and down arrows and Return navigate. The panel draws in the scene's overlay, above the rest of the foreground. Outside a `GlassScene`, `GlassMenu` falls back to the system `Menu` with the same items.
+The trigger is a `GlassButton` (an icon-only trigger is the 44 pt circle on iOS, 28 pt on macOS); `appearance` and `tint` apply to the trigger and the panel. Items with `checked:` draw a checkmark in a leading column when `true` (VoiceOver reads them as selected); once any item of a panel has `checked:`, every item of that panel keeps the column, so icons and titles line up as in a system menu; disabled items dim and the arrow keys skip them. Opening morphs the trigger's glass into a Regular glass panel (radius 28) on the morph spring while the items condense out of a blur (an unset refraction is the open panel's throughout); closing reverses it. The panel opens below the trigger with trailing edges aligned, flips above when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges; it never scrolls, so a menu that fits on neither side runs past the bottom (keep menus short). Items highlight with the foreground color at 8%. Tap outside, press Escape, or choose an item to dismiss; the up and down arrows and Return navigate. The panel draws in the scene's overlay, above the rest of the foreground. Outside a `GlassScene`, `GlassMenu` falls back to the system `Menu` with the same items.
 
 ### GlassProgressiveBlur
 
@@ -393,7 +393,7 @@ Interactive glass follows the finger without owning the touch. On iOS 18 and lat
 - **UIKit/AppKit-backed views in the backdrop** don't appear in glass (see [What can go in GlassContent](#what-can-go-in-glasscontent)). Use `GlassScrollView` to scroll a backdrop.
 - **Rotation.** Inside a `rotationEffect` (or a 3D transform) the refraction is misaligned: the backdrop copy tracks translation and scale, not rotation.
 - **Simultaneous animated `scaleEffect` and `offset` on an ancestor.** SwiftUI's render-time geometry can disagree with the drawn transform while both animate together; the refraction is offset for the duration of that animation and correct when it settles. Animating either alone, layout, position or frame is exact.
-- **Glass doesn't refract other glass** or foreground views, only the scene's backdrop (the same as the other ports).
+- **Glass doesn't refract other glass** or foreground views, only the scene's backdrop. The WPF port also refracts enclosing glass and progressive blurs, and the Compose port a progressive blur beneath the glass ([COMPONENTS.md](../spec/COMPONENTS.md#behavior-every-port-implements)).
 - **The backdrop must lay out identically in every copy**: no `GeometryReader`-driven state written back into the content, no dependence on safe-area insets, no randomness.
 - **Very large backdrops** (thousands of views) are instantiated once per surface.
 - **Linear color pipelines** (`drawingGroup(colorMode: .linear)`) are unsupported.

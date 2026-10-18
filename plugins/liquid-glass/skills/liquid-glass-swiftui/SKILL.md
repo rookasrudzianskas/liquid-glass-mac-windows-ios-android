@@ -49,7 +49,7 @@ Until then use `branch: "main"` (Xcode: dependency rule **Branch**, `main`).
 | Requirement | Value |
 | --- | --- |
 | Deployment target | iOS 17.0 / macOS 14.0 or later (`platforms: [.iOS(.v17), .macOS(.v14)]`) |
-| Toolchain | Xcode 16 or later (iOS 18 / macOS 15 SDK) to build; the deployment target stays iOS 17 / macOS 14. Xcode 15 cannot compile the iOS target. No third-party dependencies |
+| Toolchain | Xcode 16 or later (iOS 18 / macOS 15 SDK) to build; the deployment target stays iOS 17 / macOS 14. The manifest uses Swift tools 6.0, so Xcode 15 cannot resolve the package. No third-party dependencies |
 | Module | `import LiquidGlass` next to `import SwiftUI` |
 | Shaders | `.metal` files compiled by Xcode or `xcodebuild`. Plain `swift build` / `swift run` does not compile Metal (with only the Command Line Tools the package does not build at all): build, run and preview with Xcode |
 
@@ -409,8 +409,8 @@ GlassScene {
   a `GlassSlider` a `label` (or an `accessibilityLabel` when using the label-less init); the label is not drawn, so
   show a visible `Text` or icons beside the slider. Glass layers are hidden from accessibility; a `GlassSurface`
   contains its children, so give a grouping card an `.accessibilityLabel`. Hide decorative backdrops with `.accessibilityHidden(true)` inside `GlassContent`.
-- `.disabled` dims a `GlassButton` (45%) and a `GlassMenuItem`, but a disabled `GlassSlider` or `GlassSwitch` looks
-  enabled: pair `.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
+- `.disabled` dims a `GlassButton`, a `GlassSlider` and a `GlassSwitch`'s track and thumb to 45%, and a
+  `GlassMenuItem` to 40%; don't add your own `.opacity`.
 - Keyboard (macOS): tab bars (with a focus ring, arrows in visual order) and sliders use the arrow keys, switches
   Space, menus arrows, Return and Escape, a focused `GlassScrollView` the arrows, Page Up and Down, Space
   (Shift-Space up), Home and End. Haptics (iOS): tab selection and stepped sliders play selection feedback, switches

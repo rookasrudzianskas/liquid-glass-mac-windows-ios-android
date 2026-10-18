@@ -144,6 +144,7 @@ private struct GlassSwitchControl: View {
     @Environment(\.glassMotion) private var inheritedMotion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.isEnabled) private var isEnabled
 
     private struct DragState {
         var start: Double
@@ -178,6 +179,8 @@ private struct GlassSwitchControl: View {
             )
         }
         .frame(width: size.width, height: size.height)
+        // Disabled, the track and thumb dim, as a disabled GlassButton does.
+        .opacity(isEnabled ? 1 : 0.45)
         .environment(\.layoutDirection, .leftToRight)
         .contentShape(Capsule())
         // A tap toggles; it stays reliable inside scroll views, which may

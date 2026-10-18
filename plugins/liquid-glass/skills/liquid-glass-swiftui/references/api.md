@@ -11,8 +11,9 @@ import LiquidGlass   // module and product name; the package is liquid-glass-mac
 import SwiftUI
 ```
 
-Platforms: iOS 17+, macOS 14+ (`platforms: [.iOS(.v17), .macOS(.v14)]`), built with Xcode 16 or later (the iOS code
-uses the iOS 18 SDK behind an availability check, so Xcode 15 cannot compile the iOS target). The Metal shaders
+Platforms: iOS 17+, macOS 14+ (`platforms: [.iOS(.v17), .macOS(.v14)]`), built with Xcode 16 or later: the manifest uses
+Swift tools 6.0, so Xcode 15 cannot resolve the package (the iOS code also uses the iOS 18 SDK behind an availability
+check). The Metal shaders
 compile only in Xcode or `xcodebuild` builds.
 
 ## Contents
@@ -599,7 +600,7 @@ extension GlassSlider where Label == EmptyView {
 ```
 
 `Value` is `Double`, `Float` or `CGFloat` (not `Int`). The label is not drawn; it names the slider for VoiceOver, so
-show a visible caption or icons beside it. A disabled slider does not dim: add `.opacity(0.45)` with `.disabled`.
+show a visible caption or icons beside it. `.disabled(true)` dims the whole slider (track, fill and thumb) to 45%.
 
 ```swift
 @State private var volume = 40.0
@@ -623,7 +624,7 @@ gray otherwise. Track 63 × 28 pt with a 37 × 24 pt thumb on iOS, 54 × 24 with
 On iOS 18 and macOS 15, `.labelsHidden()` hides the label (it stays the VoiceOver label) and the switch hugs its
 track; iOS 17 and macOS 14 don't report hidden labels to toggle styles, so there the label still shows (leave the
 title empty and set `accessibilityLabel` instead). iOS plays a light impact on change; macOS toggles with Space when
-focused. A disabled switch looks enabled: pair `.disabled(off)` with `.opacity(off ? 0.45 : 1)`.
+focused. `.disabled(true)` dims the track and thumb to 45% (the label keeps its own style).
 
 ```swift
 public struct GlassSwitch<Label: View>: View {
@@ -758,8 +759,9 @@ public struct GlassMenuDivider: View {
   28 pt, 8 pt, 16 pt, 12 pt, 160 on macOS.
 - Title triggers take `LocalizedStringKey` (literals and interpolation work; pass a `String` variable as
   `LocalizedStringKey(name)`); `icon:label:` also takes a `String`.
-- Items with `checked:` (`true` or `false`) reserve a leading column and draw a checkmark when `true`; VoiceOver reads
-  them as selected (`.isSelected`). `ForEach` works inside.
+- Items with `checked:` (`true` or `false`) draw a checkmark in a leading column when `true`; VoiceOver reads them as
+  selected (`.isSelected`). Once any item of a panel has `checked:`, every item of that panel keeps the column, so
+  icons and titles line up. `ForEach` works inside.
 - `.disabled(true)` on an item dims it; the arrow keys and Return skip it.
 - Content: only `GlassMenuItem`, `GlassMenuDivider` and `ForEach` of them; about 8 items or fewer (no scrolling), and
   no submenus (a `GlassMenu` inside a panel never opens).
@@ -1063,7 +1065,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | Frame rate | Springs run on a display link only while something moves. ProMotion iPhones need `CADisableMinimumFrameDurationOnPhone` = `YES` in the app's Info.plist for 120 Hz glass; on macOS the link follows the key window's screen |
 | Outside a `GlassScene` | `GlassSurface` and bars: `Material.regular` / `Material.thin` plus rim; `GlassProgressiveBlur`: `.ultraThinMaterial`; `GlassMenu`: system `Menu` |
 | Presentation attached inside a scene, without its own scene | Not a reliable fallback: glass draws a misaligned copy of the parent backdrop and a `GlassMenu` opens no panel; give the presented view its own `GlassScene` |
-| Disabled `GlassSlider` / `GlassSwitch` | No dimming (`GlassButton` dims to 45%, menu items to 40%): add `.opacity` yourself |
+| Disabled `GlassSlider` / `GlassSwitch` | Dimmed to 45% (the slider whole, the switch's track and thumb), like `GlassButton`; menu items dim to 40% |
 | Inside `GlassContent` | Glass renders only its content in the copies (glass never refracts glass) |
 | `drawingGroup(colorMode: .linear)` | Unsupported: shaders expect SwiftUI's default gamma-encoded pipeline |
 | `rotationEffect` / 3D transforms | Refraction misaligned (copies track translation and scale only) |

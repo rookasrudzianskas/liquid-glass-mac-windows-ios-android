@@ -96,6 +96,8 @@ public struct GlassSlider<Value: BinaryFloatingPoint, Label: View>: View where V
         }
         .frame(height: Self.controlHeight)
         .frame(minWidth: 80)
+        // Disabled, the whole slider (track, fill and thumb) dims, as a disabled GlassButton does.
+        .opacity(isEnabled ? 1 : 0.45)
         .sensoryFeedback(.selection, trigger: stepIndex)
         .accessibilityRepresentation {
             if let step {

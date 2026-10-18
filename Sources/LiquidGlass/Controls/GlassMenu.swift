@@ -160,8 +160,9 @@ extension GlassMenu where Label == SwiftUI.Label<Text, Image?> {
 /// system menu fallback) it is a plain button.
 ///
 /// A disabled item (`.disabled(true)`) dims and is skipped by the arrow keys.
-/// Pass `checked` for items that show a choice: they reserve a leading column
-/// and draw a checkmark in it when `true`.
+/// Pass `checked` for items that show a choice: they draw a checkmark in a
+/// leading column when `true`. Once any item of a panel shows a choice, every
+/// item of that panel reserves the column, so icons and titles line up.
 public struct GlassMenuItem: View {
     private let title: Text
     private let systemImage: String?
@@ -210,10 +211,10 @@ public struct GlassMenuItem: View {
                 panel.choose(action)
             } label: {
                 HStack(spacing: GlassMenuMetrics.iconSpacing) {
-                    if let checked {
+                    if checked != nil || panel.reservesCheckColumn {
                         Image(systemName: "checkmark")
                             .font(GlassMenuMetrics.font.weight(.semibold))
-                            .opacity(checked ? 1 : 0)
+                            .opacity(checked == true ? 1 : 0)
                             .frame(width: GlassMenuMetrics.checkWidth)
                             .accessibilityHidden(true)
                     }
@@ -235,6 +236,7 @@ public struct GlassMenuItem: View {
             .accessibilityAddTraits(checked == true ? .isSelected : [])
             // Disabled items can't be reached with the arrow keys or Return.
             .preference(key: GlassMenuItemKey.self, value: isEnabled ? [GlassMenuItemEntry(id: id, action: action)] : [])
+            .preference(key: GlassMenuCheckColumnKey.self, value: checked != nil)
         } else if let checked {
             // The system menu draws a toggle as a checkmark item.
             Toggle(isOn: Binding(get: { checked }, set: { _ in action() })) {
@@ -334,6 +336,8 @@ final class GlassMenuMorph: GlassAnimating {
 struct GlassMenuPanelContext {
     let highlighted: UUID?
     let itemRadius: GlassRadius
+    /// Some item of the panel shows a choice, so every item keeps the leading check column (as `UIMenu` and `NSMenu` do).
+    var reservesCheckColumn = false
     let choose: (@escaping () -> Void) -> Void
 }
 
@@ -363,6 +367,15 @@ struct GlassMenuItemKey: PreferenceKey {
     }
 }
 
+/// Whether any item of a panel shows a choice (`checked:` set).
+struct GlassMenuCheckColumnKey: PreferenceKey {
+    static let defaultValue = false
+
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 /// The open panel, placed next to its trigger in the scene's coordinates.
 struct GlassMenuPanel<Content: View>: View {
     let options: GlassSurfaceOptions
@@ -376,6 +389,7 @@ struct GlassMenuPanel<Content: View>: View {
 
     @State private var items: [GlassMenuItemEntry] = []
     @State private var highlighted: UUID?
+    @State private var reservesCheckColumn = false
     @FocusState private var focused: Bool
     @Environment(\.layoutDirection) private var layoutDirection
 
@@ -388,6 +402,7 @@ struct GlassMenuPanel<Content: View>: View {
         let context = GlassMenuPanelContext(
             highlighted: highlighted,
             itemRadius: .points(max(0, Double(radius - GlassMenuMetrics.inset))),
+            reservesCheckColumn: reservesCheckColumn,
             choose: { action in
                 action()
                 dismiss()
@@ -407,6 +422,7 @@ struct GlassMenuPanel<Content: View>: View {
             // The items keep the app's layout direction.
             .environment(\.layoutDirection, layoutDirection)
             .onPreferenceChange(GlassMenuItemKey.self) { items = $0 }
+            .onPreferenceChange(GlassMenuCheckColumnKey.self) { reservesCheckColumn = $0 }
             .modifier(GlassMenuMorphing(options: options, presenter: presenter, presenterRadius: presenterRadius, radius: radius, morph: morph))
         }
         .frame(width: scene.width, height: scene.height)
