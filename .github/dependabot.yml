@@ -1,21 +1,22 @@
-# Weekly dependency updates. Minor and patch updates of an ecosystem arrive as one grouped pull request;
-# major updates get a pull request each, so CI checks them one at a time.
+# Monthly dependency updates. GitHub Actions updates, majors included, arrive as one grouped pull request a month.
+# For the other ecosystems, minor and patch updates arrive as one grouped pull request; major updates get a pull
+# request each, so CI checks them one at a time, and toolchain majors are not proposed at all (see each ignore list).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
       prefix: CI
     groups:
       actions:
-        update-types: [minor, patch]
+        update-types: [major, minor, patch]
 
   - package-ecosystem: npm
     directory: /website
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
       prefix: Website
     groups:
@@ -29,19 +30,41 @@ updates:
   - package-ecosystem: gradle
     directory: /platforms/android
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
       prefix: Android
     groups:
       android:
         update-types: [minor, patch]
+    ignore:
+      # Toolchain majors (Android Gradle Plugin, Gradle wrapper, Kotlin, Compose BOM) are adopted deliberately in a
+      # minor release, after the migration and a full test run on every API level, not from a Dependabot pull request.
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.android.library"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "androidx.compose:compose-bom"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: nuget
     directory: /platforms/windows
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
       prefix: Windows
     groups:
       windows:
         update-types: [minor, patch]
+    ignore:
+      # Toolchain majors (.NET packages and the xUnit test stack) are adopted deliberately in a minor release, after
+      # the migration and a full test run on Windows, not from a Dependabot pull request.
+      - dependency-name: "Microsoft.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "System.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "xunit*"
+        update-types: ["version-update:semver-major"]
