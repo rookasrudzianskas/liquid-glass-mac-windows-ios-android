@@ -111,6 +111,13 @@ vec3 lgFrostColor(vec3 frost, vec3 fill, float dark) {
   return opacity * blended + (1.0 - opacity) * frost;
 }
 
+// Menu panels mix their glass toward a solid backing so text always reads:
+// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+vec3 lgLegibility(vec3 c, float dark, float amount) {
+  vec3 backing = mix(vec3(0.960784, 0.960784, 0.968627), vec3(0.109804, 0.109804, 0.117647), dark);
+  return mix(c, backing, amount);
+}
+
 // ---------------------------------------------------------------------------
 // Rim light (premul). tintOn: 0 or 1.
 
@@ -147,7 +154,7 @@ vec4 lgRimOverlay(vec3 field, float dark, float pixel, vec3 tint, float tintOn) 
 // src: refracted backdrop at p + lgRefractionOffset (unpremul; regular glass
 // passes lgFrostColor). base: unrefracted backdrop at p (premul).
 vec4 lgCompose(vec4 src, vec4 base, vec3 field, float material, float dark, float nested,
-               vec3 tint, float tintOn, float pixel) {
+               vec3 tint, float tintOn, float pixel, float legibility) {
   vec3 rgb = lgMaterialColor(src.rgb, material, dark, nested);
   float a = src.a;
   if (tintOn > 0.5) {
@@ -155,6 +162,7 @@ vec4 lgCompose(vec4 src, vec4 base, vec3 field, float material, float dark, floa
     rgb = lgTintColor(rgb, tint, material);
     a = body + (1.0 - body) * a;
   }
+  rgb = lgLegibility(rgb, dark, legibility);
   float ga = a * lgCoverage(field.x, pixel);
   vec4 result = vec4(rgb * ga, ga) + base * (1.0 - ga);
   vec4 rim = lgRimOverlay(field, dark, pixel, tint, tintOn);

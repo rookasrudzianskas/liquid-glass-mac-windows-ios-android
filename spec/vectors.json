@@ -7682,6 +7682,111 @@
    ]
   }
  ],
+ "legibility": {
+  "menuAmount": 0.5,
+  "backing": {
+   "light": [
+    0.960784,
+    0.960784,
+    0.968627
+   ],
+   "dark": [
+    0.109804,
+    0.109804,
+    0.117647
+   ]
+  },
+  "cases": [
+   {
+    "color": [
+     0.2,
+     0.4,
+     0.6
+    ],
+    "dark": false,
+    "amount": 0.5,
+    "value": [
+     0.580392,
+     0.680392,
+     0.784314
+    ]
+   },
+   {
+    "color": [
+     0.2,
+     0.4,
+     0.6
+    ],
+    "dark": true,
+    "amount": 0.5,
+    "value": [
+     0.154902,
+     0.254902,
+     0.358824
+    ]
+   },
+   {
+    "color": [
+     1,
+     1,
+     1
+    ],
+    "dark": true,
+    "amount": 0.5,
+    "value": [
+     0.554902,
+     0.554902,
+     0.558824
+    ]
+   },
+   {
+    "color": [
+     0,
+     0,
+     0
+    ],
+    "dark": false,
+    "amount": 0.5,
+    "value": [
+     0.480392,
+     0.480392,
+     0.484314
+    ]
+   },
+   {
+    "color": [
+     0.9,
+     0.2,
+     0.1
+    ],
+    "dark": true,
+    "amount": 0.25,
+    "value": [
+     0.702451,
+     0.177451,
+     0.104412
+    ]
+   },
+   {
+    "color": [
+     0.5,
+     0.5,
+     0.5
+    ],
+    "dark": false,
+    "amount": 0,
+    "value": [
+     0.5,
+     0.5,
+     0.5
+    ]
+   }
+  ],
+  "worstCase": {
+   "darkOverWhite": 5.089981,
+   "lightOverBlack": 7.151179
+  }
+ },
  "rimOverlay": [
   {
    "distance": -8,
@@ -12942,6 +13047,114 @@
      0.025,
      0.455571,
      0.925777,
+     1
+    ]
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": false,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.797025,
+     0.797025,
+     0.836139,
+     1
+    ]
+   },
+   {
+    "x": 115.2,
+    "y": 0,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": false,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.876713,
+     0.795407,
+     0.83452,
+     1
+    ]
+   },
+   {
+    "x": 0,
+    "y": -88.2,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": false,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.813191,
+     0.768102,
+     0.84977,
+     1
+    ]
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": true,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.290229,
+     0.290229,
+     0.328224,
+     1
+    ]
+   },
+   {
+    "x": 115.2,
+    "y": 0,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": true,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.366272,
+     0.28923,
+     0.327225,
+     1
+    ]
+   },
+   {
+    "x": 0,
+    "y": -88.2,
+    "width": 240,
+    "height": 180,
+    "radius": 28,
+    "material": "regular",
+    "dark": true,
+    "refraction": 60,
+    "pixel": 0.333333,
+    "legibility": 0.5,
+    "value": [
+     0.306008,
+     0.258954,
+     0.343018,
      1
     ]
    }

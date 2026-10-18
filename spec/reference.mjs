@@ -203,6 +203,20 @@ export function tintForeground(tint, material) {
   return (glass + 0.05) / (relativeLuminance(dark) + 0.05) > 1.05 / (glass + 0.05) ? dark : [1, 1, 1];
 }
 
+/** Menu panels mix their glass halfway toward a solid backing so text always reads. */
+export const MENU_LEGIBILITY = 0.5;
+
+/** The solid backing of the legibility mix: #F5F5F7 light, #1C1C1E dark. */
+export function legibilityBacking(dark) {
+  return dark ? [0x1c / 255, 0x1c / 255, 0x1e / 255] : [0xf5 / 255, 0xf5 / 255, 0xf7 / 255];
+}
+
+/** Mix a glass color toward the legibility backing by `amount` (0 leaves it unchanged). */
+export function legibilityColor(rgb, dark, amount) {
+  const backing = legibilityBacking(dark);
+  return rgb.map((c, i) => c + (backing[i] - c) * amount);
+}
+
 /**
  * Regular glass refracts a frosted backdrop: a σ = 7.33 blur, brightened
  * (light) or deepened (dark) by a wide fill blur.
@@ -262,7 +276,7 @@ export function rimOverlay(distance, nx, ny, dark, pixel, tint) {
  * - `base`: the unrefracted backdrop at the pixel, premultiplied.
  * Returns the premultiplied result.
  */
-export function glassPixel({ x, y, width, height, radius, material = "clear", dark = false, refraction = DEFAULT_REFRACTION, tint, pixel = 1 / 3, nested = false, sample, base }) {
+export function glassPixel({ x, y, width, height, radius, material = "clear", dark = false, refraction = DEFAULT_REFRACTION, tint, pixel = 1 / 3, nested = false, legibility = 0, sample, base }) {
   const { extent, exponent } = shapeParams(width, height, radius);
   const f = shapeField(x, y, width, height, extent, exponent);
   const cover = coverage(f.distance, pixel);
@@ -275,6 +289,7 @@ export function glassPixel({ x, y, width, height, radius, material = "clear", da
     const body = material === "regular" ? materials.regular.tintBody : materials.clear.tintBody;
     a = body + (1 - body) * a;
   }
+  if (legibility > 0) rgb = legibilityColor(rgb, dark, legibility);
   const ga = a * cover;
   let out = [rgb[0] * ga, rgb[1] * ga, rgb[2] * ga, ga].map((g, i) => g + base[i] * (1 - ga));
   const rim = rimOverlay(f.distance, f.nx, f.ny, dark, pixel, tint);

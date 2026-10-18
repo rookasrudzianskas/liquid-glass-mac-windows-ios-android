@@ -151,7 +151,8 @@ void main() {
     src = vec4(texture(uScene, uv).rgb, 1.0);
   }
 
-  vec4 color = lgCompose(src, vec4(0.0), field, uMaterial, uDark, uNested, uTint, uTintOn, uPixel);
+  // No legibility backing: the site has no menu panels (OPTICS.md section 3).
+  vec4 color = lgCompose(src, vec4(0.0), field, uMaterial, uDark, uNested, uTint, uTintOn, uPixel, 0.0);
 
   // Increase contrast (OPTICS.md section 8): a 1-unit inner border.
   if (uContrast > 0.5) {

@@ -99,6 +99,17 @@ rgb  = t · (body + (1 − body)·luma(rgb))
 alpha = body + (1 − body)·alpha
 ```
 
+### Legibility backing (menus)
+
+A menu carries text over whatever lies behind it, and Regular glass alone cannot guarantee that text reads: over a white backdrop, dark Regular glass gives white labels only 1.8:1, and over a black backdrop, light Regular glass gives `#111113` labels 2.1:1. Menu panels therefore mix their glass, after the material color and tint, halfway toward a solid backing:
+
+```
+backing = light ? #F5F5F7 : #1C1C1E
+rgb     = mix(rgb, backing, legibility)          // legibility 0.5 on menu panels, 0 elsewhere
+```
+
+With `legibility = 0.5`, menu text in the appearance foreground keeps at least 5.0:1 contrast over any backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light). The panel still refracts and frosts what is behind it, at half strength. Other surfaces use 0; a port may expose the amount for text-heavy panels.
+
 ## 4. Rim light
 
 Painted over the glass (premultiplied), from the same field. `k = 1` in dark appearance, else 0; `aa = pixel`.
@@ -126,7 +137,7 @@ A thin specular line runs along the top and bottom of the outline, a soft diffus
 
 ```
 src    = sample(material == regular ? frosted : backdrop, p + offset)     // unpremul
-rgb    = material color (+ tint) of src
+rgb    = material color (+ tint) of src, then mixed toward the legibility backing (menus)
 ga     = alpha · coverage
 glass  = (rgb·ga, ga) + base·(1 − ga)          // base: unrefracted backdrop at p, premul
 result = rim + glass·(1 − rim.a)
