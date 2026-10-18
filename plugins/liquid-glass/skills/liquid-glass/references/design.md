@@ -53,7 +53,7 @@ When in doubt, use Regular for anything holding more than a short label.
 
 - Tint marks the primary action or a state (recording, selected filter). One tinted control per view.
 - Use saturated system-like hues (blue `#007AFF`, green `#34C759`, red `#FF3B30`, orange `#FF9500`). Pastels wash out over bright backdrops.
-- Tint colors the glass; labels on tinted glass should be white.
+- Tint colors the glass; leave the label color to the library, which picks white or `#111113` for contrast (white on blue, red or purple; dark on light tints such as yellow, mint or green).
 - On sliders and switches the tint colors the fill and the track instead.
 
 ## Motion

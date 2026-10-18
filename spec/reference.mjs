@@ -188,6 +188,21 @@ export function tintColor([r, g, b], tint, material) {
   return tint.map((t) => sat(t * (body + (1 - body) * l)));
 }
 
+/** WCAG 2 relative luminance of a gamma-encoded sRGB color. */
+export function relativeLuminance([r, g, b]) {
+  const linear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+}
+
+/** Foreground on tinted glass (§8): white or #111113, whichever contrasts more with the tint over a mid-tone backdrop. */
+export function tintForeground(tint, material) {
+  const body = material === "regular" ? materials.regular.tintBody : materials.clear.tintBody;
+  const pass = body + (1 - body) * 0.5;
+  const glass = relativeLuminance(tint.map((t) => t * pass));
+  const dark = [17 / 255, 17 / 255, 19 / 255];
+  return (glass + 0.05) / (relativeLuminance(dark) + 0.05) > 1.05 / (glass + 0.05) ? dark : [1, 1, 1];
+}
+
 /**
  * Regular glass refracts a frosted backdrop: a σ = 7.33 blur, brightened
  * (light) or deepened (dark) by a wide fill blur.

@@ -67,10 +67,10 @@ Optional APIs that one port adds for its platform. They are not part of the shar
 
 ## Behavior every port implements
 
-1. **Scene and content.** The scene renders its content once as the backdrop. Glass surfaces anywhere inside the scene (any depth) register with it and refract that content at their exact on-screen position, including while they move, scale or animate. Surface children (labels, icons) draw above the glass and are not refracted.
+1. **Scene and content.** The scene renders its content once as the backdrop. Glass surfaces anywhere inside the scene (any depth) register with it and refract that content at their exact on-screen position, including while they move, scale or animate. Surface children (labels, icons) draw above the glass and are not refracted. Where glass overlaps other scene layers the ports differ: WPF glass refracts the scene's backdrop, any progressive blur and the glass of the surfaces that enclose it; Compose glass over a progressive-blur band refracts the blurred content; SwiftUI glass refracts the sharp backdrop only.
 2. **Materials and appearance** exactly as in `OPTICS.md`, including tint, rim light and the Regular frost.
 3. **Interaction** with the press/release/glow springs, volume-preserving stretch, and reduced-motion behavior.
-4. **Tabs:** a glass lens slides between items on the track spring and stretches with its speed; the selected label is full opacity, the rest 0.85 (desktop) or tinted secondary (touch). Keyboard arrows move selection on desktop.
+4. **Tabs:** a glass lens of the bar's material (a Regular bar stays frosted under the selection) slides between items on the track spring and stretches with its speed. On iOS the selected label takes the accent color and the rest are at 62%; on Android and desktop the selected label is at full opacity and the rest at 0.85, which stays legible over mid-tone backdrops. Keyboard arrows move selection on desktop.
 5. **Slider and switch:** native-feeling value controls; the thumb lifts into Clear glass while pressed (sizes in `OPTICS.md` §6 and the sizing table above). Switch uses the measured spring (response 0.47, damping 0.7). Haptics on touch platforms where the OS provides them.
 6. **Menu:** a Regular glass panel that grows out of its trigger with the morph spring and collapses back into it; items highlight with `currentColor` at 8%; dismiss on outside tap and Escape.
 7. **Progressive blur** at any edge of the content with the level/weight model of `OPTICS.md` §7.

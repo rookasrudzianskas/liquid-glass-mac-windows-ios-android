@@ -165,5 +165,5 @@ Edge blur over the backdrop. Six blur levels plus the sharp backdrop; level `i` 
 
 - **Reduce transparency:** replace the material with an opaque fill (`#F2F2F7` at 0.94 light, `#1C1C1E` at 0.94 dark), keep the rim light.
 - **Increase contrast:** add a 1-unit inner border (`black 0.18` light, `white 0.28` dark) and use the Regular material.
-- **Foreground:** text and icons on glass default to `#111113` (light) and `#FFFFFF` (dark).
+- **Foreground:** text and icons on glass default to `#111113` (light) and `#FFFFFF` (dark). On tinted glass, in either appearance, they take whichever of the two has the higher WCAG 2 contrast ratio with the tint as the glass draws it over a mid-tone backdrop, `t · (body + (1 − body)·0.5)` (§3, `body` 0.78 Regular, 0.68 Clear): white on blue, red or purple, `#111113` on yellow, mint, green or orange.
 - Glass never carries meaning by itself: controls keep their platform accessibility roles, labels, focus and keyboard behavior.
