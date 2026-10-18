@@ -151,22 +151,3 @@
   color: var(--shiki-foreground);
   scrollbar-width: none;
 }
-
-/* Install and verify commands in narrow columns wrap instead of hiding their
-   ends behind a sideways scroll; a wrapped line continues indented. Copy still
-   copies the original lines. */
-:is(.dl-platform__install, .dl-verify, .install-card, .platform__install) .shiki {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-:is(.dl-platform__install, .dl-verify, .install-card, .platform__install) .shiki code {
-  width: auto;
-}
-
-:is(.dl-platform__install, .dl-verify, .install-card, .platform__install) .shiki .line {
-  display: inline-block;
-  width: 100%;
-  padding-left: 2ch;
-  text-indent: -2ch;
-}
