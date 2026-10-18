@@ -283,8 +283,7 @@ public class RenderingTests
                 AssertFloor(pressed, label, floor, $"{what}: highlighted row (shader)");
             }
 
-            // The fallback material (software rendering, so RenderTargetBitmap shows it). The panel takes the render mode
-            // when it opens.
+            // The fallback material, as the window shows it (the panel takes the render mode when it opens).
             menu.IsOpen = false;
             Sta.Pump();
             GlassScene.SetRenderMode(scene, GlassRenderMode.Fallback);
@@ -294,23 +293,31 @@ public class RenderingTests
             Sta.Pump();
             Assert.Equal(GlassLensMode.Fallback, panel.RenderedMode);
             Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
-            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(root);
-            var pixels = new byte[width * height * 4];
-            bitmap.CopyPixels(pixels, width * 4, 0);
-            (byte R, byte G, byte B) At(FrameworkElement row)
-            {
-                var p = row.TransformToAncestor(root).Transform(Sample(row));
-                var i = ((int)p.Y * width + (int)p.X) * 4;
-                return (pixels[i + 2], pixels[i + 1], pixels[i]);
-            }
             var fallback = FallbackMenuGlass(backdrop, material, dark, tint);
             var fallbackHighlighted = Highlight(fallback, label);
-            Report(what, "fallback", fallback, At(rows[0]), fallbackHighlighted, At(rows[1]), label);
-            AssertColor(fallback, At(rows[0]), 3, $"{what}: menu glass (fallback)");
-            AssertColor(fallbackHighlighted, At(rows[1]), 3, $"{what}: highlighted row (fallback)");
-            AssertFloor(At(rows[0]), label, floor, $"{what}: plain row (fallback)");
-            AssertFloor(At(rows[1]), label, floor, $"{what}: highlighted row (fallback)");
+            var fallbackScale = GlassResolve.Scale(panel);
+            (int, int) At(FrameworkElement row)
+            {
+                var p = Sample(row);
+                return ((int)(p.X * fallbackScale), (int)(p.Y * fallbackScale));
+            }
+            bool FallbackDrawn(ScreenPixels s)
+            {
+                var (x, y) = At(rows[0]);
+                var c = s.Rgb(x, y);
+                return Math.Abs(c.R - fallback.R * 255) < 24 && Math.Abs(c.G - fallback.G * 255) < 24 && Math.Abs(c.B - fallback.B * 255) < 24;
+            }
+            var fallbackCapture = ScreenPixels.CaptureWhen(window, rows[0], FallbackDrawn, 30);
+            var plainAtFallback = At(rows[0]);
+            var fallbackPlain = (fallbackCapture ?? ScreenPixels.Capture(window, rows[0])).Rgb(plainAtFallback.Item1, plainAtFallback.Item2);
+            var pressedAtFallback = At(rows[1]);
+            var fallbackPressed = ScreenPixels.Capture(window, rows[1]).Rgb(pressedAtFallback.Item1, pressedAtFallback.Item2);
+            Report(what, "fallback", fallback, fallbackPlain, fallbackHighlighted, fallbackPressed, label);
+            Assert.True(fallbackCapture is not null, $"{what}: the fallback menu never reached the screen");
+            AssertColor(fallback, fallbackPlain, 3, $"{what}: menu glass (fallback)");
+            AssertColor(fallbackHighlighted, fallbackPressed, 3, $"{what}: highlighted row (fallback)");
+            AssertFloor(fallbackPlain, label, floor, $"{what}: plain row (fallback)");
+            AssertFloor(fallbackPressed, label, floor, $"{what}: highlighted row (fallback)");
             // Where the labels contrast least, the fallback's are at least as legible as the shader's.
             Assert.True(Contrast(fallbackHighlighted, label) >= Contrast(highlighted, label),
                 $"{what}: highlighted row {Contrast(fallbackHighlighted, label):F3}:1 in the fallback, {Contrast(highlighted, label):F3}:1 in the shader");
