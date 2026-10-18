@@ -64,8 +64,9 @@ public static class GlassMaterialOptics
 
     /// <summary>
     /// Mixes a glass color toward the solid legibility backing of the appearance (<see cref="GlassPalette.LegibilityBacking"/>)
-    /// by <paramref name="amount"/>: <see cref="GlassOptics.MenuLegibility"/> (0.5) on menu panels, 0 (the color unchanged)
-    /// elsewhere. Applied after the material color and tint.
+    /// by <paramref name="amount"/>: <see cref="GlassOptics.MenuLegibility"/> (0.6) on an open menu panel, times its open
+    /// progress while it grows out of its trigger, and 0 (the color unchanged) elsewhere. Applied after the material
+    /// color and tint.
     /// </summary>
     /// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#legibility-backing-menus">Liquid Glass optics specification: Legibility backing</seealso>
     public static Rgb LegibilityColor(Rgb color, bool dark, double amount)

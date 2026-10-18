@@ -17,8 +17,8 @@ public readonly struct GlassSurfaceOptics
     /// <param name="pixel">One device pixel in layout units.</param>
     /// <param name="nested">The surface sits inside other glass.</param>
     /// <param name="legibility">
-    /// How far the glass mixes toward the solid legibility backing: <see cref="GlassOptics.MenuLegibility"/> on menu
-    /// panels, 0 elsewhere.
+    /// How far the glass mixes toward the solid legibility backing: <see cref="GlassOptics.MenuLegibility"/> on open menu
+    /// panels (times the open progress while they grow out of their trigger), 0 elsewhere.
     /// </param>
     public GlassSurfaceOptics(double width, double height, GlassRadius radius, GlassMaterial material = GlassMaterial.Clear,
         bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false,
@@ -73,7 +73,8 @@ public readonly struct GlassSurfaceOptics
 
     /// <summary>
     /// How far the glass mixes toward the solid legibility backing, after the material color and tint
-    /// (<see cref="GlassMaterialOptics.LegibilityColor"/>): <see cref="GlassOptics.MenuLegibility"/> on menu panels, 0 elsewhere.
+    /// (<see cref="GlassMaterialOptics.LegibilityColor"/>): <see cref="GlassOptics.MenuLegibility"/> on open menu panels
+    /// (times the open progress while they grow out of their trigger), 0 elsewhere.
     /// </summary>
     public double Legibility { get; }
 }

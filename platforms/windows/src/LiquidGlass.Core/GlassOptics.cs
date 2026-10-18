@@ -29,13 +29,24 @@ public static class GlassOptics
     public const double LumaBlue = 0.072;
 
     /// <summary>
-    /// How far menu panels mix their glass toward the solid legibility backing
-    /// (<see cref="GlassPalette.LegibilityBacking"/>), after the material color and tint, so that text in the
-    /// appearance's foreground on a Regular menu keeps at least 5:1 contrast over any backdrop (a Clear menu about
-    /// 4.9:1). Every other surface uses 0.
+    /// How far an open menu panel mixes its glass toward the solid legibility backing
+    /// (<see cref="GlassPalette.LegibilityBacking"/>), after the material color and tint. The amount applies as
+    /// <c>MenuLegibility · morph</c>, where <c>morph</c> is the menu's open progress clamped to <c>[0, 1]</c> (0 at the
+    /// trigger, 1 open, never more while the morph spring overshoots), so the glass leaves its trigger as the trigger's
+    /// own glass. Open, the labels of an untinted menu (Regular or Clear, in either appearance) and of a menu tinted
+    /// with a system color keep at least 5.2:1 contrast over any backdrop in <see cref="GlassPalette.MenuForeground"/>,
+    /// highlighted rows (<see cref="MenuHighlight"/>) included; the panel still refracts and frosts what is behind it,
+    /// at 40% strength. Every other surface uses 0.
     /// </summary>
     /// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#legibility-backing-menus">Liquid Glass optics specification: Legibility backing</seealso>
-    public const double MenuLegibility = 0.5;
+    public const double MenuLegibility = 0.6;
+
+    /// <summary>
+    /// How far a highlighted menu row (pointer over it, keyboard focus or a press) mixes its label color
+    /// (<see cref="GlassPalette.MenuForeground"/>) into the glass beneath it.
+    /// </summary>
+    /// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#legibility-backing-menus">Liquid Glass optics specification: Legibility backing</seealso>
+    public const double MenuHighlight = 0.08;
 }
 
 /// <summary>The two glass materials.</summary>

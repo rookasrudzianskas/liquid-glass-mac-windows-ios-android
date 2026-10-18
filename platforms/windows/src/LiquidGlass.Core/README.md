@@ -6,8 +6,8 @@ the shared golden vectors.
 
 - Continuous-corner shapes: corner parameters, signed distance field and outline polygon (`GlassShape`, `GlassRadius`).
 - Refraction through the 20-unit bevel (`GlassRefraction`).
-- Clear and Regular materials, tint, frost and the legibility backing of menu panels (`GlassMaterialOptics`,
-  `GlassMaterials`, `GlassPalette`).
+- Clear and Regular materials, tint, frost, and the legibility backing and label color of menu panels
+  (`GlassMaterialOptics`, `GlassMaterials`, `GlassPalette`).
 - Rim light (`GlassRimLight`) and the full per-pixel composite (`GlassPixel`).
 - Closed-form springs (`Spring`, `SpringSolver`, `GlassSprings`), press and drag response (`GlassInteractionModel`) and
   value-control motion (`GlassControlMotion`).
