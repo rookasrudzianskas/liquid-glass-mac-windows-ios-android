@@ -109,7 +109,9 @@ const legibility = {
       }
       return low;
     };
-    const system = [[0, 122, 255], [52, 199, 89], [255, 59, 48], [255, 149, 0], [255, 204, 0], [175, 82, 222], [255, 45, 85], [88, 86, 214], [90, 200, 250], [0, 199, 190]].map((c) => c.map((x) => x / 255));
+    // Apple's system colors in their light and dark variants (the most luminous of the platforms' palettes).
+    const system = [[0, 122, 255], [52, 199, 89], [255, 59, 48], [255, 149, 0], [255, 204, 0], [175, 82, 222], [255, 45, 85], [88, 86, 214], [90, 200, 250], [0, 199, 190],
+      [10, 132, 255], [48, 209, 88], [255, 69, 58], [255, 159, 10], [255, 214, 10], [191, 90, 242], [255, 55, 95], [94, 92, 230], [100, 210, 255], [102, 212, 207]].map((c) => c.map((x) => x / 255));
     const untinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].map((d) => floor(m, d))));
     const tinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].flatMap((d) => system.map((t) => floor(m, d, t)))));
     return {
