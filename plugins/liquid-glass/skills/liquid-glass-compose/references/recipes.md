@@ -543,7 +543,7 @@ Notes:
 - In a `GlassToolbar`, put the `GlassMenu` straight in the toolbar's content with an icon `GlassButton` as the trigger: `trigger = { GlassButton(Icons.Filled.MoreVert, "More", onClick = { open = true }) }`. The toolbar positions it.
 - Keep `open` in `remember`, not `rememberSaveable`: a menu should not reopen after a configuration change.
 - Inside a scene the panel draws in the scene's overlay (the outermost scene when nested) and refracts the whole scene. Outside any scene it opens in a `Popup` with the fallback material.
-- The panel brings its own legibility backing (its glass mixed halfway toward `#F5F5F7` / `#1C1C1E`), so its labels read over white photos in dark appearance and over black in light: add no background or scrim to it.
+- The panel brings its own legibility backing (its glass mixed 60% toward `#F5F5F7` / `#1C1C1E`) and picks its label color from it, so the labels of an untinted menu, or one tinted with a system color, read over white photos in dark appearance and over black in light: add no background or scrim to it. Tint with a deep color or not at all; very light tints (pure yellow, lime, white) can fall below 4.5:1.
 - The panel is as wide as its widest item (220 dp at least, the safe width at most) and long labels wrap; pass `modifier = Modifier.width(280.dp)` to fix it. Items are 44 dp tall with 22 dp corners inside the 28 dp panel (6 dp inset): concentric.
 
 ## 6. Progressive blur over a scrolling list

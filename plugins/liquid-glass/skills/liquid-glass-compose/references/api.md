@@ -660,7 +660,7 @@ Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
 
 A menu that grows out of its trigger: a Regular glass panel morphing from the trigger's outline on the morph spring (0.42 s, bounce 0.18), covering it, and collapsing back into it when dismissed. The trigger fades out as the panel grows. Opened from a `GlassToolbar` item, the panel grows out of and covers the item's whole cluster. Tapping outside, Back and Escape dismiss it; choosing an item runs its action and dismisses it. The panel is a pane titled "Menu" for TalkBack, takes focus when it opens and returns focus to the trigger for keyboard users when it closes.
 
-The panel's glass is mixed halfway toward a solid backing, `#F5F5F7` light and `#1C1C1E` dark, after the material color and tint (the legibility backing of `spec/OPTICS.md` §3), so the labels of an untinted Regular panel keep at least 5:1 contrast over any backdrop (5.09:1 white over white in dark, 7.15:1 `#111113` over black in light; Regular glass alone gives 1.8:1 and 2.1:1 there). It still refracts and frosts the backdrop, at half strength. The fallback material folds the same backing into its fill. Only menu panels have it, and it is not an option.
+The panel's glass is mixed 60% toward a solid backing, `#F5F5F7` light and `#1C1C1E` dark, after the material color and tint (the legibility backing of `spec/OPTICS.md` §3). The backing fades in with the morph, from none at the trigger to the full amount open and never more while the spring overshoots, so the glass leaves the trigger as the trigger's own glass. Items take the menu's label color (`menuForeground` in the reference): the glass foreground on an untinted panel; on a tinted one white or `#111113`, whichever contrasts more with the tint mixed toward the backing (a light menu tinted system blue gets `#111113`). A highlighted row mixes that color into the glass at 8%. Untinted panels, Regular or Clear, in either appearance, and panels tinted with the system colors keep their labels at 5.2:1 or more over any backdrop, highlighted rows included (6.51:1 white over white in dark, 8.74:1 `#111113` over black in light, 5.24:1 at worst for an untinted highlighted row, 5.26:1 for the system tints; Regular glass alone gives 1.8:1 and 2.1:1 there). Very light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance. The panel still refracts and frosts the backdrop, at 40% strength. The fallback material folds the same backing into its fill. Only menu panels have it, and it is not an option.
 
 Inside a `GlassScene` the panel is drawn in the **outermost** scene's overlay, above every nested scene's glass, and refracts that scene. It is placed over the trigger (aligned to the trigger's top, or bottom when there is no room, and to its nearer side) and kept inside the safe drawing insets plus an 8 dp margin. Outside a scene it opens in a `Popup` with the fallback material, following the system's dark theme unless you pass `appearance`.
 
@@ -702,10 +702,10 @@ public fun GlassMenuDivider()
 | `modifier` | `Modifier` | Modifier of the **panel**, not the trigger. The panel is as wide as its widest item, at least 220 dp and at most the safe area's width minus 8 dp margins (`Modifier.width(280.dp)` fixes it), with a 6 dp inset; taller than the safe area, it scrolls. To place the trigger, wrap the `GlassMenu` in a `Box(Modifier.align(…))` or put it in a `Row` / `GlassToolbar`. |
 | `material` | `GlassMaterial.Regular` | The panel's material; the legibility backing applies to either. |
 | `appearance` | null | |
-| `tint` | `Color.Unspecified` | Colors the panel's glass. |
+| `tint` | `Color.Unspecified` | Colors the panel's glass, before the backing. The labels take white or `#111113`, whichever contrasts more with the tint mixed toward the backing; the system colors keep 5.2:1, very light tints (pure yellow, lime, white) may not. |
 | `shape` | `GlassShape(28.dp)` | The panel's outline. |
 | `motion` | null | `None` opens and closes instantly. |
-| `content` | | `ColumnScope`: `GlassMenuItem`, `GlassMenuDivider` or any composable. `LocalGlassContentColor` is the panel's foreground. |
+| `content` | | `ColumnScope`: `GlassMenuItem`, `GlassMenuDivider` or any composable. `LocalGlassContentColor` is the menu's label color (the items use it). |
 | `text` (item) | | Label, 17 sp regular; long labels and large fonts wrap. |
 | `onClick` (item) | | The action; the menu then dismisses itself. |
 | `icon` (item) | null | Leading 20 dp icon. |
@@ -713,7 +713,7 @@ public fun GlassMenuDivider()
 | `destructive` (item) | false | Draws the item in red (`#FF3B30`), for actions like Delete. |
 | `checked` (item) | null | null for an action (`Role.Button`); `true` / `false` makes it a choice (`Role.Checkbox` with toggle state) and shows a check mark when true. |
 
-Items are at least 44 dp tall (more with large fonts), 14 dp horizontal padding, highlighted with the foreground at 8% while pressed or focused (plus a 2 dp focus ring for keyboard focus), in 22 dp corners (concentric with the 28 dp panel and 6 dp inset). `GlassMenuDivider` is a 1 dp line in the foreground at 12%, padded 14 dp horizontally and 4 dp vertically.
+Items are at least 44 dp tall (more with large fonts), 14 dp horizontal padding, highlighted with the menu's label color at 8% while hovered, focused or pressed (plus a 2 dp focus ring for keyboard focus), in 22 dp corners (concentric with the 28 dp panel and 6 dp inset). `GlassMenuDivider` is a 1 dp line in the foreground at 12%, padded 14 dp horizontally and 4 dp vertically.
 
 ```kotlin
 var open by remember { mutableStateOf(false) }

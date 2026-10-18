@@ -5,7 +5,7 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 <p align="center">
   <img src="images/android/hero-dark.png" width="24%" alt="Hero: a frosted glass card over the Aurora wallpaper, with a floating toolbar and tab bar">
   <img src="images/android/controls-light.png" width="24%" alt="Controls, scrolled to the end: glass icon buttons, sliders and switches on a frosted card, a segmented tab bar and a menu trigger above the floating tab bar">
-  <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button, its glass mixed halfway toward a solid dark backing so the white labels read over the wallpaper">
+  <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button, its glass mixed 60% toward a solid dark backing so the white labels read over the wallpaper">
   <img src="images/android/blur-light.png" width="24%" alt="A scrolling journal under progressive edge blur and a glass toolbar">
 </p>
 
@@ -145,7 +145,7 @@ One shader pass draws every surface: per pixel it finds the surfaces that cover 
 
 A surface's children (labels, icons) draw in their normal place, above the glass, and are not refracted. Uniforms are captured when a `RenderEffect` is created, so the shader passes are rebuilt whenever the content layer redraws: when its content changes, a surface moves (also when an ancestor's layer moves it without a relayout, as `Modifier.scale` or `graphicsLayer(translationX = …)` do, which the scene checks before each frame is drawn), a scene option changes, or a spring advances. Nothing runs while the scene is still.
 
-The output is checked on a real GPU in two ways. `ShaderVectorTest` runs the shader's own functions (shape field, edge profile, refraction offset, tone curves, tint, rim light and the full pixel composite) on the device GPU for every case in `spec/vectors.json`, at the spec's GPU tolerance of 2e-3, like the Metal and HLSL ports; the worst difference measured on an Android 17 emulator is 8.6e-5. `GlassRenderingTest` renders Clear, Regular, dark and tinted glass through the library's own scene, over a uniform backdrop and over the vectors' linear gradient (so refraction moves the color), and compares every pixel along the rims, edges and middle with the Kotlin port of `spec/reference.mjs`, at 2/255 for the 8-bit readback; it also covers Clear glass nested in Regular glass, glass under an ancestor's changing scale and translation, scene options changing while glass is on screen, and the size-based default refraction (a small capsule travels 0.75 × its height, measured at rest while its glass is grown, and scene and surface values are used as given). `GlassDensityTest` repeats the reference cases at a phone density (2.625), so the frost σ, the one-pixel antialiasing and the bevel run in real pixels. The worst difference measured is 1.5/255.
+The output is checked on a real GPU in two ways. `ShaderVectorTest` runs the shader's own functions (shape field, edge profile, refraction offset, tone curves, tint, the legibility backing, rim light and the full pixel composite) on the device GPU for every case in `spec/vectors.json`, at the spec's GPU tolerance of 2e-3, like the Metal and HLSL ports; the worst difference measured on an Android 17 emulator is 8.6e-5. `GlassRenderingTest` renders Clear, Regular, dark and tinted glass through the library's own scene, over a uniform backdrop and over the vectors' linear gradient (so refraction moves the color), and compares every pixel along the rims, edges and middle with the Kotlin port of `spec/reference.mjs`, at 2/255 for the 8-bit readback; it also covers Clear glass nested in Regular glass, glass under an ancestor's changing scale and translation, scene options changing while glass is on screen, and the size-based default refraction (a small capsule travels 0.75 × its height, measured at rest while its glass is grown, and scene and surface values are used as given). It renders menus with a row held pressed: untinted Regular and Clear menus and menus tinted system blue and system yellow, over white and over black in both appearances, on the GPU, and Regular and Clear menus in the fallback material. The items must take the label color of `menuForeground`, every pixel of glass beside the labels, on the plain rows and the pressed one, must keep at least 5.2:1 with it (5.25:1 is the lowest measured, an untinted Clear menu in dark appearance over white), the GPU glass must match the reference's glass, tinted and then backed, and the pressed row must be that glass with the label color mixed in at 8%. `GlassDensityTest` repeats the reference cases at a phone density (2.625), so the frost σ, the one-pixel antialiasing and the bevel run in real pixels. The worst difference measured is 1.5/255.
 
 ### Nesting scenes
 
@@ -284,7 +284,11 @@ Row(verticalAlignment = Alignment.CenterVertically) {
 
 A Regular glass panel that grows out of its trigger on the morph spring, covering it, and collapses back into it. A menu opened from a `GlassToolbar` item grows out of, and covers, the item's whole cluster. Outside taps, Back and Escape dismiss it; choosing an item runs its action and dismisses it.
 
-The panel carries the legibility backing of [OPTICS §3](../spec/OPTICS.md#legibility-backing-menus): after the material color and tint, its glass is mixed halfway toward a solid `#F5F5F7` (light) or `#1C1C1E` (dark). Labels of an untinted Regular panel, in the glass foreground, therefore keep at least 5:1 contrast over any backdrop: 5.09:1 for white labels over white in dark appearance (1.8:1 without the backing) and 7.15:1 for `#111113` over black in light (2.1:1). The panel still refracts and frosts what lies behind it, at half strength. Other surfaces have no backing, and the amount is not an option.
+The panel carries the legibility backing of [OPTICS §3](../spec/OPTICS.md#legibility-backing-menus): after the material color and tint, its glass is mixed 60% toward a solid `#F5F5F7` (light) or `#1C1C1E` (dark). The backing fades in with the morph, from none at the trigger to the full amount open, and never goes past it while the spring overshoots, so the glass leaves the trigger as the trigger's own glass and returns to it. The panel still refracts and frosts what lies behind it, at 40% strength. Other surfaces have no backing, and the amount is not an option.
+
+Items take the menu's label color. On an untinted panel that is the glass foreground (`#111113` light, white dark). On a tinted panel it is white or `#111113`, whichever contrasts more with the tint mixed toward the backing, so it follows the appearance as well as the tint: a light menu tinted system blue (`#007AFF`) gets `#111113` labels, though the tint alone would take white. A highlighted row (hovered, keyboard-focused or pressed) mixes that color into the glass at 8%.
+
+Untinted panels, Regular or Clear, in either appearance, and panels tinted with the system colors keep their labels at 5.2:1 or more over any backdrop, highlighted rows included. White labels over white in dark appearance get 6.51:1 (1.8:1 without the backing) and `#111113` over black in light 8.74:1 (2.1:1). The lowest is 5.24:1 for an untinted highlighted row and 5.26:1 for the system tints (system yellow in dark appearance over white). Very light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper color, or not at all.
 
 ```kotlin
 var open by remember { mutableStateOf(false) }
@@ -300,7 +304,7 @@ GlassMenu(
 }
 ```
 
-`checked` is null for actions; `true` or `false` makes the item a choice, shown with a check mark and announced as checked or not (a checkbox). The panel is as wide as its widest item, at least 220 dp and at most the safe area's width; longer labels and large fonts wrap onto more lines, and a panel taller than the safe area scrolls. Outside a scene the menu opens in a popup with the fallback material; the fallback material mixes the same backing into its fill, so menus read there and below Android 13 too.
+`checked` is null for actions; `true` or `false` makes the item a choice, shown with a check mark and announced as checked or not (a checkbox). The panel is as wide as its widest item, at least 220 dp and at most the safe area's width; longer labels and large fonts wrap onto more lines, and a panel taller than the safe area scrolls. Outside a scene the menu opens in a popup with the fallback material; the fallback material mixes the same backing into its fill, so menus keep the same floor there and below Android 13 too.
 
 ### `GlassProgressiveBlur`
 
@@ -384,7 +388,7 @@ A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed str
 | Wholly outside the `GlassContent`'s bounds | The fallback material (the content layer has nothing there to refract). Glass across the content's edge keeps the GPU glass. |
 | More than 16 surfaces | Surfaces beyond the limit get the fallback material (Regular surfaces over a platform blur, Clear ones a translucent fill). |
 
-Glass never crashes and never draws nothing. Fallback menus mix the legibility backing into their fill like the GPU glass, so their labels stay legible.
+Glass never crashes and never draws nothing. Fallback menus mix the legibility backing into their fill like the GPU glass, so their labels keep the same 5.2:1 floor.
 
 ## Limitations
 
@@ -423,7 +427,7 @@ The Gradle project lives in `platforms/android`. It needs JDK 17 and the Android
 
 ```sh
 cd platforms/android
-./gradlew :liquidglass:testDebugUnitTest          # Kotlin optics vs spec/vectors.json
+./gradlew :liquidglass:testDebugUnitTest          # Kotlin optics vs spec/vectors.json, menu label colors and contrast floors
 ./gradlew :liquidglass:connectedDebugAndroidTest  # shader vs spec/vectors.json, rendered glass vs the reference and menu label contrast on the GPU (Android 13+); the fallback on older versions
 ./gradlew lint
 ./gradlew :liquidglass:publishReleasePublicationToArtifactsRepository :liquidglass:exportAar
