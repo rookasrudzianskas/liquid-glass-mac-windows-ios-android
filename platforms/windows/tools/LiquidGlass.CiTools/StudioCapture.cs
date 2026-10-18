@@ -159,11 +159,22 @@ internal static class StudioCapture
         var pattern = (ExpandCollapsePattern)found;
         var before = pattern.Current.ExpandCollapseState;
         pattern.Expand();
-        Thread.Sleep(500);
+        // Wait until the panel and its items are in the tree (a loaded runner can take a while), then let the panel
+        // finish growing out of its trigger, so the shot shows it open rather than a fixed delay that may fall short.
+        AutomationElementCollection menus;
+        var items = 0;
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        do
+        {
+            Thread.Sleep(100);
+            menus = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Menu));
+            items = menus.Count > 0 ? menus[0].FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem)).Count : 0;
+        }
+        while (items == 0 && DateTime.UtcNow < deadline);
+        Thread.Sleep(600);
         var after = pattern.Current.ExpandCollapseState;
         if (after != ExpandCollapseState.Expanded) throw new InvalidOperationException($"{description}: {after} after Expand");
-        var menus = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Menu));
-        var items = menus.Count > 0 ? menus[0].FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem)).Count : 0;
+        if (items == 0) throw new InvalidOperationException($"{description}: Expanded, but no menu items appeared");
         var buttons = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, name)).Count;
         return $"{description}, ExpandCollapse {before} -> {after}; {menus.Count} menu with {items} items; {buttons} element(s) named '{name}'";
     }

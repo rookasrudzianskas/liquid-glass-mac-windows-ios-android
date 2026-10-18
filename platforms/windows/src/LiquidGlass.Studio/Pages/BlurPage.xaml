@@ -25,7 +25,8 @@
       <Button Content="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" />
     </lg:GlassToolbar>
 
-    <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,26" SelectedIndex="0" AutomationProperties.Name="Lists">
+    <!-- Dark glass in either appearance: its labels stay legible over the stories' colored images as they pass. -->
+    <lg:GlassTabBar Appearance="Dark" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,26" SelectedIndex="0" AutomationProperties.Name="Lists">
       <lg:GlassTabBarItem Content="Latest" />
       <lg:GlassTabBarItem Content="Saved" />
       <lg:GlassTabBarItem Content="Shared" />

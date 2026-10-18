@@ -436,8 +436,9 @@ Menus default to Regular; everything else to Clear. Material is inherited, so se
 the glass inside; reset it for nested controls with `lg:GlassScene.Material="Clear"`.
 
 **Appearance.** `Automatic` follows Settings › Personalization › Colors › *Choose your app mode* and updates live.
-Foreground defaults to `#111113` on light glass and white on dark or strongly tinted glass; set `Foreground` to
-override it.
+Foreground defaults to `#111113` on light glass and white on dark glass. On tinted glass, in either appearance, it is
+whichever of the two has the higher WCAG contrast with the tinted glass (white on blue, red or purple; `#111113` on
+yellow, mint, green or orange), as on the other platforms. Set `Foreground` to override it.
 
 **Radius.** `GlassRadius` parses `16`, `capsule` and `circle`. Fixed radii are superellipse corners with continuous
 curvature; large radii blend into a capsule, so animating the radius never jumps.

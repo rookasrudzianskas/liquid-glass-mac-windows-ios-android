@@ -6,6 +6,8 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The executable's icon, which the window's title bar and the taskbar show too. -->
+    <ApplicationIcon>Assets\HelloGlass.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

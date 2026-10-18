@@ -164,7 +164,7 @@ Read-only attached properties, maintained by each glass control on itself (use t
 | Attached property | Type | Accessor | Meaning |
 | --- | --- | --- | --- |
 | `IsDark` | `bool` | `GetIsDark(DependencyObject)` | The control draws dark glass (appearance resolved against Windows). |
-| `ContentForeground` | `Brush` | `GetContentForeground(DependencyObject)` | Default text/icon color: `#111113` on light glass, white on dark glass or on a tint whose luma < 0.62; `SystemColors.ControlTextBrush` in a contrast theme. |
+| `ContentForeground` | `Brush` | `GetContentForeground(DependencyObject)` | Default text/icon color: `#111113` on light glass, white on dark glass; on a tint, in either appearance, whichever of the two has the higher WCAG contrast with the tinted glass (`GlassPalette.ForegroundOnTint`: white on blue, red or purple, `#111113` on yellow, mint, green or orange); `SystemColors.ControlTextBrush` in a contrast theme. |
 | `IsFocusVisible` | `bool` | `GetIsFocusVisible(DependencyObject)` | Keyboard focus arrived from the keyboard; templates show the focus ring. |
 
 All `Get*`/`Set*` accessors throw `ArgumentNullException` for a null element.
@@ -913,6 +913,8 @@ public static class GlassPalette
     public static Rgba ReducedTransparency(bool dark)
     public static Rgba ContrastBorder(bool dark)
     public static Rgb Foreground(bool dark)
+    public static Rgb ForegroundOnTint(Rgb tint, GlassMaterial material)  // white or #111113, the higher WCAG contrast with the tinted glass
+    public static double RelativeLuminance(Rgb color)                      // WCAG 2
 }
 public readonly struct GlassVeil { public GlassVeil(double gray, double opacity); public double Gray { get; } public double Opacity { get; } public double Apply(double v); }
 public static class GlassFallback { public static GlassVeil Veil(GlassMaterial material, bool dark) }

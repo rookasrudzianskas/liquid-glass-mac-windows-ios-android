@@ -21,8 +21,8 @@ What it shows:
   [Windows guide](../../../docs/windows.md).
 - A `GlassSwitch` labelled **Frosted** that turns the card between Regular (frosted) and Clear glass, with a style
   trigger in XAML. The controls on the card stay Clear glass either way.
-- A `GlassToolbar` with two icon buttons: **Switch appearance** turns the card between light and dark glass, and
-  **Profile** selects the Settings tab.
+- A `GlassToolbar` with two icon buttons: **Switch appearance** (a moon in light appearance, a sun in dark) turns the
+  card between light and dark glass, and **Profile** selects the Settings tab.
 - A floating `GlassTabBar` with three tabs: Home, Explore and Settings.
 - Light and dark: the card and the window's title bar (Windows 10 version 2004 and later) follow the Windows app mode
   (Settings > Personalization > Colors) until the toolbar switches them; the bars stay dark glass, so their white
@@ -36,11 +36,12 @@ What it shows:
 | File | What it holds |
 | --- | --- |
 | `MainWindow.xaml` | The screen. |
-| `MainWindow.xaml.cs` | The handlers of the four buttons, and the title bar that follows the card's appearance. |
+| `MainWindow.xaml.cs` | The handlers of the four buttons, and the title bar and appearance glyph that follow the card's appearance. |
 | `App.xaml` | Starts `MainWindow`. |
-| `HelloGlass.csproj` | `net8.0-windows` with WPF and nullable reference types; the library reference and the wallpaper. |
+| `HelloGlass.csproj` | `net8.0-windows` with WPF and nullable reference types; the library reference, the wallpaper and the icon. |
 | `app.manifest` | Per-monitor DPI awareness, so the one-pixel rim light stays sharp on every display scale. |
 | `Assets/aurora.jpg` | The wallpaper, a copy of `assets/wallpapers/aurora-2048.jpg`. |
+| `Assets/HelloGlass.ico` | The application icon (title bar and taskbar), a copy of `platforms/windows/packaging/LiquidGlass.ico`. |
 
 ## Run it
 

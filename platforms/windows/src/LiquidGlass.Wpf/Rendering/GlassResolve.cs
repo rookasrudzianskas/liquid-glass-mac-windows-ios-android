@@ -83,7 +83,7 @@ internal sealed class GlassAppearanceTracker
     {
         var dark = GlassResolve.IsDark(_owner);
         if (GlassScene.GetIsDark(_owner) != dark) GlassScene.SetIsDark(_owner, dark);
-        var foreground = GlassBrushes.Foreground(dark, _tint());
+        var foreground = GlassBrushes.Foreground(dark, _tint(), GlassResolve.Material(_owner));
         if (!ReferenceEquals(GlassScene.GetContentForeground(_owner), foreground)) GlassScene.SetContentForeground(_owner, foreground);
         _changed?.Invoke();
     }

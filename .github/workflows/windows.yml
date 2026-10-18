@@ -3,11 +3,12 @@ name: Windows
 # Builds and verifies the WPF port, and the Hello Glass example (examples/wpf), on a real Windows machine. Pushes to main
 # and manual runs then report back through git: the `report` job force-pushes one fresh commit with logs, test results,
 # fxc shader bytecode, screenshots of Studio and the example, and the list of release files with their checksums to the
-# orphan branch `ci-windows`. No binaries go there: every clone of the repository that fetches all branches (Swift
-# Package Manager's cache does) would download them. Pull requests run the same checks with a read-only token and keep
-# the report as a workflow artifact. Every run keeps the complete release set (packages and all three Studio zips, built
-# as continuous-integration builds) as the `windows-release` artifact. The `feed` job compares those packages with the
-# ones the project's NuGet feed serves (feed.txt in the report).
+# orphan branch `ci-windows`. The release binaries never go there, but the screenshots, the gallery and the test results
+# do (about 18 MB, mostly PNG): every clone of the repository that fetches all branches (Swift Package Manager's cache
+# does) downloads that one commit too, so the branch stays a single commit. Pull requests run the same checks with a
+# read-only token and keep the report as a workflow artifact. Every run keeps the complete release set (packages and all
+# three Studio zips, built as continuous-integration builds) as the `windows-release` artifact. The `feed` job compares
+# those packages with the ones the project's NuGet feed serves (feed.txt in the report).
 on:
   push:
     branches: [main]

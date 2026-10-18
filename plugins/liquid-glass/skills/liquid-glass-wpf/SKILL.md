@@ -365,8 +365,9 @@ buttons; the glass re-aligns by itself.
   `lg:GlassScene.Material="Clear"` on the card's inner panel (the demo app does this on every card).
 - `Appearance="Automatic"` follows the Windows app mode live. Over a backdrop that is clearly light or dark, set
   `lg:GlassScene.Appearance` to match it (light glass over light paper, dark over night imagery).
-- Text on glass inherits `GlassScene.ContentForeground` (`#111113` light, white dark or on a dark tint). Do not
-  force `Foreground` through implicit `TextBlock` styles; set `Foreground` on a control only to override deliberately.
+- Text on glass inherits `GlassScene.ContentForeground` (`#111113` light, white dark; on a tint white or `#111113`,
+  whichever contrasts more). Do not force `Foreground` through implicit `TextBlock` styles; set `Foreground` on a
+  control only to override deliberately.
 - On glass, use `TextBlock` for labels and `Glass*` controls for input. `Label`, `CheckBox`, `RadioButton`, `TextBox`,
   `ComboBox` and a plain `Button` outside a toolbar keep their Windows theme: the system text color (black on dark
   glass) and Aero chrome. If you need one, bind

@@ -32,6 +32,28 @@ public static class GlassPalette
 
     /// <summary>Foreground for an appearance.</summary>
     public static Rgb Foreground(bool dark) => dark ? ForegroundDark : ForegroundLight;
+
+    /// <summary>
+    /// Foreground on glass tinted with <paramref name="tint"/>, in either appearance: <see cref="ForegroundDark"/>
+    /// (white) or <see cref="ForegroundLight"/> (<c>#111113</c>), whichever has the higher WCAG contrast with the tint as
+    /// the glass draws it over a mid-tone backdrop, <c>tint · (body + (1 − body)·0.5)</c> (white on blue, red or
+    /// purple; <c>#111113</c> on yellow, mint, green or orange).
+    /// </summary>
+    public static Rgb ForegroundOnTint(Rgb tint, GlassMaterial material)
+    {
+        var body = GlassMaterials.TintBody(material);
+        var pass = body + (1 - body) * 0.5;
+        var glass = RelativeLuminance(new Rgb(tint.R * pass, tint.G * pass, tint.B * pass));
+        var onWhite = 1.05 / (glass + 0.05);
+        var onDark = (glass + 0.05) / (RelativeLuminance(ForegroundLight) + 0.05);
+        return onDark > onWhite ? ForegroundLight : ForegroundDark;
+    }
+
+    /// <summary>WCAG 2 relative luminance of a gamma-encoded sRGB color.</summary>
+    public static double RelativeLuminance(Rgb color)
+        => 0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);
+
+    private static double Linear(double c) => c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
 }
 
 /// <summary>

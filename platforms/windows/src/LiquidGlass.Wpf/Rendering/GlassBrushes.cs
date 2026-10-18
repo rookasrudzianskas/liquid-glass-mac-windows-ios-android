@@ -10,11 +10,15 @@ internal static class GlassBrushes
 
     public static readonly Brush ForegroundDark = Freeze(new SolidColorBrush(ToColor(GlassPalette.ForegroundDark)));
 
-    /// <summary>The default foreground of glass with the given appearance and tint.</summary>
-    public static Brush Foreground(bool dark, Color? tint)
+    /// <summary>
+    /// The default foreground of glass with the given appearance, tint and material: on a tint, in either appearance,
+    /// white or <c>#111113</c>, whichever contrasts more with the tinted glass (<see cref="GlassPalette.ForegroundOnTint"/>).
+    /// </summary>
+    public static Brush Foreground(bool dark, Color? tint, GlassMaterial material)
     {
         if (SystemParameters.HighContrast) return SystemColors.ControlTextBrush;
-        if (tint is { } t && t.A > 0 && new Rgb(t.R / 255.0, t.G / 255.0, t.B / 255.0).Luma < 0.62) return ForegroundDark;
+        if (tint is { } t && t.A > 0)
+            return GlassPalette.ForegroundOnTint(ToRgb(t), material) == GlassPalette.ForegroundLight ? ForegroundLight : ForegroundDark;
         return dark ? ForegroundDark : ForegroundLight;
     }
 

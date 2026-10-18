@@ -16,8 +16,11 @@
     </lg:GlassScene.Content>
 
     <!-- The bars are dark glass in either appearance: white labels stay legible over the wallpaper's deep colors. -->
-    <lg:GlassToolbar Appearance="Dark" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="20,16,20,0">
-      <Button Content="&#xE706;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+    <!-- Grayscale text rendering keeps the icon glyphs free of ClearType color fringes on the glass. -->
+    <lg:GlassToolbar Appearance="Dark" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="20,16,20,0"
+                     TextOptions.TextRenderingMode="Grayscale">
+      <!-- A moon in light appearance, a sun in dark: the appearance the button switches to (MainWindow.xaml.cs). -->
+      <Button x:Name="AppearanceButton" Content="&#xE708;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
               AutomationProperties.Name="Switch appearance" ToolTip="Switch between light and dark"
               Click="OnSwitchAppearance" />
       <lg:GlassToolbarSpacer />
@@ -43,7 +46,7 @@
       <StackPanel lg:GlassScene.Material="Clear">
         <TextBlock Text="Hello, Glass" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="34"
                    FontWeight="Bold" AutomationProperties.HeadingLevel="Level1" />
-        <TextBlock Text="Native glass over a live backdrop." FontSize="15" Opacity="0.75" TextTrimming="CharacterEllipsis"
+        <TextBlock Text="Native glass over a live backdrop." FontSize="15" TextTrimming="CharacterEllipsis"
                    Margin="0,6,0,20" />
         <StackPanel Orientation="Horizontal">
           <lg:GlassButton Content="Get started" Size="Large" Tint="#0A84FF" Click="OnGetStarted" />

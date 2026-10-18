@@ -35,7 +35,9 @@
       <Button Content="&#xE712;" FontFamily="{StaticResource Studio.IconFont}" FontWeight="Normal" FontSize="15" AutomationProperties.Name="More" ToolTip="More" />
     </lg:GlassToolbar>
 
-    <lg:GlassTabBar VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,28" SelectedIndex="0" AutomationProperties.Name="Sections">
+    <!-- Over the wallpaper's deep bottom the bar is dark glass in either appearance, so its labels stay legible (as on
+         iOS, Android and in Hello Glass). -->
+    <lg:GlassTabBar Appearance="Dark" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,28" SelectedIndex="0" AutomationProperties.Name="Sections">
       <lg:GlassTabBarItem Content="Home" />
       <lg:GlassTabBarItem Content="Explore" />
       <lg:GlassTabBarItem Content="Library" />

@@ -19,10 +19,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        // The title bar follows the card: the Windows app mode until the toolbar switches it.
+        // The title bar and the appearance button follow the card: the Windows app mode until the toolbar switches it.
         DependencyPropertyDescriptor.FromProperty(GlassScene.IsDarkProperty, typeof(GlassSurface))
-            .AddValueChanged(Card, (_, _) => UpdateTitleBar());
-        SourceInitialized += (_, _) => UpdateTitleBar();
+            .AddValueChanged(Card, (_, _) => UpdateAppearance());
+        SourceInitialized += (_, _) => UpdateAppearance();
+        UpdateAppearance();
     }
 
     private void OnSwitchAppearance(object sender, RoutedEventArgs e)
@@ -35,11 +36,14 @@ public partial class MainWindow : Window
     private void OnLearnMore(object sender, RoutedEventArgs e)
         => Process.Start(new ProcessStartInfo(Guide) { UseShellExecute = true })?.Dispose();
 
-    private void UpdateTitleBar()
+    private void UpdateAppearance()
     {
+        var isDark = GlassScene.GetIsDark(Card);
+        // The glyph shows the appearance the button switches to: a sun (E706) in dark, a moon (E708) in light.
+        AppearanceButton.Content = isDark ? "\uE706" : "\uE708";
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero) return;
-        var dark = GlassScene.GetIsDark(Card) ? 1 : 0;
+        var dark = isDark ? 1 : 0;
         _ = DwmSetWindowAttribute(hwnd, UseImmersiveDarkMode, ref dark, sizeof(int));
     }
 
