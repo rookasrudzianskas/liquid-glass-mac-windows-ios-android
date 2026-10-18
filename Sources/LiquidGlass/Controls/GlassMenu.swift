@@ -5,7 +5,10 @@ import SwiftUI
 ///
 /// The trigger is a ``GlassButton`` (a plain item inside a ``GlassToolbar``).
 /// Opening morphs the trigger's glass into the panel on the morph spring
-/// while the items condense out of a blur; closing reverses it. Items
+/// while the items condense out of a blur; closing reverses it. The panel's
+/// glass mixes halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E`
+/// dark, ``GlassOptics/menuLegibility``), so its items keep at least 5:1
+/// contrast over any backdrop while it still refracts and frosts. Items
 /// highlight with the foreground color at 8%. Tap outside, press Escape, or
 /// choose an item to dismiss; the arrow keys and Return navigate the items.
 ///
@@ -470,7 +473,9 @@ enum GlassMenuNavigation {
 }
 
 /// Grows the panel's glass out of the trigger's outline and condenses its
-/// items out of a blur as the outline opens.
+/// items out of a blur as the outline opens. The legibility backing fades in
+/// with the morph, so the glass leaves the trigger as the trigger's glass and
+/// the open panel carries the full ``GlassOptics/menuLegibility``.
 private struct GlassMenuMorphing: ViewModifier {
     let options: GlassSurfaceOptions
     let presenter: CGRect
@@ -502,7 +507,7 @@ private struct GlassMenuMorphing: ViewModifier {
                             refraction: options.refraction, tint: options.tint, interactive: false, motion: options.motion
                         ),
                         defaultMaterial: .regular, outline: rect.offsetBy(dx: -union.minX, dy: -union.minY),
-                        restingSize: proxy.size,
+                        restingSize: proxy.size, legibility: GlassOptics.menuLegibility * min(1, max(0, m)),
                         content: Color.clear.frame(width: union.width, height: union.height)
                     )
                     .offset(x: union.minX, y: union.minY)
