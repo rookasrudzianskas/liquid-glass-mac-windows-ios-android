@@ -786,6 +786,9 @@ function collectApple(ctx) {
     else if (zip && !mentionsIos(entry.name) && (lower.includes("studio") || lower.endsWith(".app.zip"))) found.mac.push(entry);
     else if (dir && lower.endsWith(".xcframework")) found.xcf.push(entry);
     else if (dir && lower.endsWith(".app")) (isIosAppBundle(entry) ? found.ios : found.mac).push(entry);
+    // platforms/apple/scripts/package-macos.sh writes README.txt next to the macOS zip: the first-launch
+    // steps, which website/scripts/content.mjs turns into the download's note. It is not published itself.
+    else if (entry.stat.isFile() && lower === "readme.txt") continue;
     else warn(`ignoring unrecognised Apple artifact ${entry.display}`);
   }
 
@@ -1582,11 +1585,36 @@ function planNuGetFeed(ctx, groups) {
 }
 
 // -------------------------------------------------------------------------------------------
-// Source zip: git archive of HEAD
+// Source zip: git archive of the release tag (refs/tags/<version>), or of HEAD without one
 // -------------------------------------------------------------------------------------------
 
 function git(ctx, args) {
   return execFileSync("git", ["-C", ctx.rootReal, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+// The commit the release tag refs/tags/<version> points to, fetching that tag from origin when it is
+// not in the checkout yet (a clone without tags); null when there is no such tag.
+function releaseTagCommit(ctx) {
+  const ref = `refs/tags/${ctx.version}`;
+  const resolve = () => {
+    try {
+      return git(ctx, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+    } catch {
+      return null;
+    }
+  };
+  const local = resolve();
+  if (local) return local;
+  try {
+    execFileSync("git", ["-C", ctx.rootReal, "fetch", "--quiet", "--no-tags", "origin", `+${ref}:${ref}`], {
+      stdio: ["ignore", "ignore", "pipe"],
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      timeout: 30000,
+    });
+  } catch {
+    return null; // offline, no origin, or the tag is not published yet
+  }
+  return resolve();
 }
 
 function collectSource(ctx) {
@@ -1606,11 +1634,16 @@ function collectSource(ctx) {
     // Only archive when --root is the top of its own repository (not a folder inside another one).
     const top = fs.realpathSync(git(ctx, ["rev-parse", "--show-toplevel"]));
     if (top !== ctx.rootReal) throw new Error(`${ctx.rootReal} is not the top of a git repository`);
-    const commit = git(ctx, ["rev-parse", "--verify", "HEAD^{commit}"]);
+    // The release's source is the tagged commit, even when main has moved on (docs, website); a
+    // checkout without the tag (before the release is tagged) archives HEAD.
+    const tagged = releaseTagCommit(ctx);
+    const commit = tagged ?? git(ctx, ["rev-parse", "--verify", "HEAD^{commit}"]);
+    if (!tagged) warn(`no release tag ${ctx.version} (refs/tags/${ctx.version}): the source zip is built from HEAD ${commit.slice(0, 12)}`);
     const committedMs = Number(git(ctx, ["log", "-1", "--format=%ct", commit])) * 1000;
     const outRel = `downloads/${fileName}`;
     planOutput(ctx, outRel, { kind: "git-archive", prefix: `liquid-glass-engineering-${ctx.version}/`, commit });
-    addItem(ctx, { ...spec, outRel, sourceTimeMs: committedMs, input: `git HEAD ${commit.slice(0, 12)}`, extra: { commit } });
+    const input = tagged ? `git tag ${ctx.version} ${commit.slice(0, 12)}` : `git HEAD ${commit.slice(0, 12)}`;
+    addItem(ctx, { ...spec, outRel, sourceTimeMs: committedMs, input, extra: { commit } });
   } catch (err) {
     spec.hint += ` (${String(err.stderr || err.message).trim().split("\n")[0]})`;
     addItem(ctx, spec);
