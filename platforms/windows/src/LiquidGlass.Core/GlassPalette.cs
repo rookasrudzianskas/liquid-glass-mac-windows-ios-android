@@ -24,6 +24,12 @@ public static class GlassPalette
     /// <summary>Text and icons on dark glass (<c>#FFFFFF</c>).</summary>
     public static Rgb ForegroundDark { get; } = new(1, 1, 1);
 
+    /// <summary>The solid backing menu panels mix their glass toward, light appearance (<c>#F5F5F7</c>).</summary>
+    public static Rgb LegibilityBackingLight { get; } = Rgb.FromBytes(0xF5, 0xF5, 0xF7);
+
+    /// <summary>The solid backing menu panels mix their glass toward, dark appearance (<c>#1C1C1E</c>).</summary>
+    public static Rgb LegibilityBackingDark { get; } = Rgb.FromBytes(0x1C, 0x1C, 0x1E);
+
     /// <summary>Reduced-transparency fill for an appearance.</summary>
     public static Rgba ReducedTransparency(bool dark) => dark ? ReducedTransparencyDark : ReducedTransparencyLight;
 
@@ -32,6 +38,12 @@ public static class GlassPalette
 
     /// <summary>Foreground for an appearance.</summary>
     public static Rgb Foreground(bool dark) => dark ? ForegroundDark : ForegroundLight;
+
+    /// <summary>
+    /// The legibility backing for an appearance: <c>#F5F5F7</c> light, <c>#1C1C1E</c> dark. Menu panels mix their glass
+    /// toward it by <see cref="GlassOptics.MenuLegibility"/> (<see cref="GlassMaterialOptics.LegibilityColor"/>).
+    /// </summary>
+    public static Rgb LegibilityBacking(bool dark) => dark ? LegibilityBackingDark : LegibilityBackingLight;
 
     /// <summary>
     /// Foreground on glass tinted with <paramref name="tint"/>, in either appearance: <see cref="ForegroundDark"/>

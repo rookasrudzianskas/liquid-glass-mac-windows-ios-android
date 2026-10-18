@@ -63,6 +63,18 @@ public static class GlassMaterialOptics
     }
 
     /// <summary>
+    /// Mixes a glass color toward the solid legibility backing of the appearance (<see cref="GlassPalette.LegibilityBacking"/>)
+    /// by <paramref name="amount"/>: <see cref="GlassOptics.MenuLegibility"/> (0.5) on menu panels, 0 (the color unchanged)
+    /// elsewhere. Applied after the material color and tint.
+    /// </summary>
+    /// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#legibility-backing-menus">Liquid Glass optics specification: Legibility backing</seealso>
+    public static Rgb LegibilityColor(Rgb color, bool dark, double amount)
+    {
+        var backing = GlassPalette.LegibilityBacking(dark);
+        return new Rgb(GlassMath.Mix(color.R, backing.R, amount), GlassMath.Mix(color.G, backing.G, amount), GlassMath.Mix(color.B, backing.B, amount));
+    }
+
+    /// <summary>
     /// Regular glass refracts a frosted backdrop: the σ = 7.33 <paramref name="frost"/> brightened (light) or
     /// deepened (dark) by the wide <paramref name="fill"/> blur at the same point.
     /// </summary>

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 
 namespace LiquidGlass;
 
@@ -6,8 +7,22 @@ namespace LiquidGlass;
 public readonly struct GlassSurfaceOptics
 {
     /// <summary>Creates surface optics.</summary>
+    /// <param name="width">Width of the outline in layout units.</param>
+    /// <param name="height">Height of the outline in layout units.</param>
+    /// <param name="radius">Corner radius.</param>
+    /// <param name="material">Material.</param>
+    /// <param name="dark">Dark appearance.</param>
+    /// <param name="refraction">Optical travel at the outline, in layout units.</param>
+    /// <param name="tint">Tint color, if any.</param>
+    /// <param name="pixel">One device pixel in layout units.</param>
+    /// <param name="nested">The surface sits inside other glass.</param>
+    /// <param name="legibility">
+    /// How far the glass mixes toward the solid legibility backing: <see cref="GlassOptics.MenuLegibility"/> on menu
+    /// panels, 0 elsewhere.
+    /// </param>
     public GlassSurfaceOptics(double width, double height, GlassRadius radius, GlassMaterial material = GlassMaterial.Clear,
-        bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false)
+        bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false,
+        double legibility = 0)
     {
         Width = width;
         Height = height;
@@ -18,6 +33,15 @@ public readonly struct GlassSurfaceOptics
         Tint = tint;
         Pixel = pixel;
         Nested = nested;
+        Legibility = legibility;
+    }
+
+    /// <summary>Creates surface optics without the legibility backing (the 1.0.0 signature, kept for compiled callers).</summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public GlassSurfaceOptics(double width, double height, GlassRadius radius, GlassMaterial material, bool dark, double refraction, Rgb? tint,
+        double pixel, bool nested)
+        : this(width, height, radius, material, dark, refraction, tint, pixel, nested, 0)
+    {
     }
 
     /// <summary>Width of the outline in layout units.</summary>
@@ -46,6 +70,12 @@ public readonly struct GlassSurfaceOptics
 
     /// <summary>The surface sits inside other glass.</summary>
     public bool Nested { get; }
+
+    /// <summary>
+    /// How far the glass mixes toward the solid legibility backing, after the material color and tint
+    /// (<see cref="GlassMaterialOptics.LegibilityColor"/>): <see cref="GlassOptics.MenuLegibility"/> on menu panels, 0 elsewhere.
+    /// </summary>
+    public double Legibility { get; }
 }
 
 /// <summary>Composites one pixel of a glass surface exactly as the shaders do.</summary>
@@ -76,6 +106,7 @@ public static class GlassPixel
             rgb = GlassMaterialOptics.TintColor(rgb, tint, optics.Material);
             a = GlassMaterialOptics.TintAlpha(a, optics.Material);
         }
+        if (optics.Legibility > 0) rgb = GlassMaterialOptics.LegibilityColor(rgb, optics.Dark, optics.Legibility);
         var ga = a * cover;
         var glass = new Rgba(rgb.R * ga + backdrop.R * (1 - ga), rgb.G * ga + backdrop.G * (1 - ga), rgb.B * ga + backdrop.B * (1 - ga), ga + backdrop.A * (1 - ga));
         var rim = GlassRimLight.Overlay(field.Distance, field.NormalX, field.NormalY, optics.Dark, optics.Pixel, optics.Tint);

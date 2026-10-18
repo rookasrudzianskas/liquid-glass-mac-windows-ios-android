@@ -70,10 +70,36 @@ public class OpticsTests
         var c = Vectors.Root.GetProperty("glassPixel").GetProperty("cases").EnumerateArray().ElementAt(index);
         var x = c.Number("x");
         var y = c.Number("y");
+        // Menu cases carry the legibility backing amount; the others leave it out (0).
+        var legibility = c.TryGetProperty("legibility", out var amount) ? amount.GetDouble() : 0;
         var optics = new GlassSurfaceOptics(c.Number("width"), c.Number("height"), c.Radius(), c.Material(), c.Flag("dark"),
-            c.Number("refraction"), c.OptionalColor("tint"), Vectors.Exact(c.Number("pixel")));
+            c.Number("refraction"), c.OptionalColor("tint"), Vectors.Exact(c.Number("pixel")), legibility: legibility);
         var value = GlassPixel.Compose(x, y, optics, (dx, dy) => Backdrop(x + dx, y + dy), Backdrop(x, y));
         Vectors.Near(c.Numbers("value"), value, $"glass pixel #{index}");
+    }
+
+    [Fact]
+    public void TheVectorsCoverMenuPanelsInBothAppearances()
+    {
+        var menus = Vectors.Root.GetProperty("glassPixel").GetProperty("cases").EnumerateArray()
+            .Where(c => c.TryGetProperty("legibility", out _)).ToArray();
+        Assert.Contains(menus, c => !c.Flag("dark"));
+        Assert.Contains(menus, c => c.Flag("dark"));
+        Assert.All(menus, c => Assert.Equal(GlassOptics.MenuLegibility, c.Number("legibility")));
+    }
+
+    [Fact]
+    public void LegibilityZeroLeavesThePixelUnchanged()
+    {
+        // The 1.0.0 constructor (no legibility) and an explicit 0 composite the same pixel.
+        Rgba Backdrop0(double dx, double dy) => Backdrop(10 + dx, -20 + dy);
+        var before = new GlassSurfaceOptics(240, 180, GlassRadius.FromValue(28), GlassMaterial.Regular, true, 60, null, 1.0 / 3, false);
+        var zero = new GlassSurfaceOptics(240, 180, GlassRadius.FromValue(28), GlassMaterial.Regular, true, 60, null, 1.0 / 3, false, 0);
+        Assert.Equal(0, before.Legibility);
+        Assert.Equal(GlassPixel.Compose(10, -20, before, Backdrop0, Backdrop(10, -20)), GlassPixel.Compose(10, -20, zero, Backdrop0, Backdrop(10, -20)));
+        var menu = new GlassSurfaceOptics(240, 180, GlassRadius.FromValue(28), GlassMaterial.Regular, dark: true, legibility: GlassOptics.MenuLegibility);
+        Assert.Equal(GlassOptics.MenuLegibility, menu.Legibility);
+        Assert.NotEqual(GlassPixel.Compose(10, -20, before, Backdrop0, Backdrop(10, -20)), GlassPixel.Compose(10, -20, menu, Backdrop0, Backdrop(10, -20)));
     }
 
     [Fact]

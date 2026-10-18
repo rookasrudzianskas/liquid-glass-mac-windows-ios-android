@@ -27,6 +27,14 @@ public static class GlassOptics
 
     /// <summary>Blue weight of the luma used by tint and saturation.</summary>
     public const double LumaBlue = 0.072;
+
+    /// <summary>
+    /// How far menu panels mix their glass toward the solid legibility backing
+    /// (<see cref="GlassPalette.LegibilityBacking"/>), after the material color and tint, so that menu text in the
+    /// appearance's foreground keeps at least 5:1 contrast over any backdrop. Every other surface uses 0.
+    /// </summary>
+    /// <seealso href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/spec/OPTICS.md#legibility-backing-menus">Liquid Glass optics specification: Legibility backing</seealso>
+    public const double MenuLegibility = 0.5;
 }
 
 /// <summary>The two glass materials.</summary>
