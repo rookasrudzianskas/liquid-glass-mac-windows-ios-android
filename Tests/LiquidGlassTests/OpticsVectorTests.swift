@@ -174,9 +174,10 @@ final class OpticsVectorTests: XCTestCase {
     }
 
     /// The label floors (`legibility.worstCase`): over a 6 × 6 × 6 grid of
-    /// solid backdrops, plain and highlighted rows of untinted menus and of
-    /// menus tinted with the system colors, Regular and Clear, light and
-    /// dark, keep at least 5.2:1.
+    /// solid backdrops, plain and highlighted rows of untinted menus keep at
+    /// least 5.2:1, and of menus tinted with the system colors of either
+    /// appearance at least 5.0:1 (5.07:1, the dark variant of yellow), Regular
+    /// and Clear, light and dark.
     func testMenuWorstCase() {
         let worst = Vectors.object("legibility")["worstCase"] as? [String: Any] ?? [:]
         func floor(_ material: GlassMaterial, dark: Bool, tint: SIMD3<Double>?) -> Double {
@@ -195,7 +196,7 @@ final class OpticsVectorTests: XCTestCase {
         assertClose(untinted, worst.double("untintedWithHighlight"), accuracy: tolerance, "untinted menus with the highlight")
         assertClose(tinted, worst.double("systemTintsWithHighlight"), accuracy: tolerance, "system tints with the highlight")
         XCTAssertGreaterThanOrEqual(untinted, 5.2)
-        XCTAssertGreaterThanOrEqual(tinted, 5.2)
+        XCTAssertGreaterThanOrEqual(tinted, 5.0)
     }
 
     func testRimOverlay() {

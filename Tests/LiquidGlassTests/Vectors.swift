@@ -117,12 +117,14 @@ enum MenuWorstCase {
         return steps.flatMap { r in steps.flatMap { g in steps.map { b in SIMD3(r, g, b) } } }
     }()
 
-    /// The platform system colors the tinted floor covers (their light
-    /// variants): blue, green, red, orange, yellow, purple, pink, indigo,
-    /// teal and mint.
+    /// The system colors the tinted floor covers, Apple's light variants then
+    /// their dark ones: blue, green, red, orange, yellow, purple, pink,
+    /// indigo, teal and mint.
     static let systemTints: [SIMD3<Double>] = [
         [0, 122, 255], [52, 199, 89], [255, 59, 48], [255, 149, 0], [255, 204, 0],
         [175, 82, 222], [255, 45, 85], [88, 86, 214], [90, 200, 250], [0, 199, 190],
+        [10, 132, 255], [48, 209, 88], [255, 69, 58], [255, 159, 10], [255, 214, 10],
+        [191, 90, 242], [255, 55, 95], [94, 92, 230], [100, 210, 255], [102, 212, 207],
     ].map { SIMD3<Double>($0[0], $0[1], $0[2]) / 255 }
 
     /// Untinted and tinted menus: Regular and Clear, light and dark.

@@ -15,11 +15,10 @@ import SwiftUI
 /// contrasts more with the tint mixed toward the backing. A highlighted item
 /// (hovered, focused or pressed) mixes that color into the glass at 8%.
 /// Untinted menus, Regular or Clear, keep at least 5.2:1 contrast over any
-/// backdrop in both appearances, highlighted items included, and so do
-/// menus tinted with the system colors as they resolve in light mode;
-/// in dark mode `.yellow`, the lightest of them, keeps 5.07:1 on a
-/// highlighted item. Very light tints (pure yellow, lime, white) can fall
-/// below 4.5:1 over a white backdrop in dark appearance: tint a menu with a
+/// backdrop in both appearances, highlighted items included; menus tinted
+/// with the system colors, as they resolve in either appearance, keep at
+/// least 5.0:1. Very light tints (pure yellow, lime, white) can fall below
+/// 4.5:1 over a white backdrop in dark appearance: tint a menu with a
 /// deeper color, or not at all. Tap outside, press Escape, or choose an
 /// item to dismiss; the arrow keys and Return navigate the items.
 ///

@@ -676,10 +676,10 @@ final class RenderTests: XCTestCase {
     /// on light glass and white on dark, whichever the tint, where the tint
     /// alone would give a light blue menu white labels (2.1:1 over white).
     /// Over white and black, on plain glass and on a highlighted row, its
-    /// items keep at least 5.2:1 with the system colors as they resolve in
-    /// light mode (the colors of the spec's floor), also on dark glass; in
-    /// dark mode, systemYellow's dark variant leaves 5.07:1 on a highlighted
-    /// row of dark glass over white.
+    /// items keep at least 5.0:1 with the system colors as they resolve in
+    /// either color scheme (the spec's tinted floor; the lowest is
+    /// systemYellow's dark variant, 5.07:1 on a highlighted row of dark glass
+    /// over white).
     func testTintedMenuLabels() throws {
         let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
         for (name, color) in systemTints {
@@ -691,13 +691,10 @@ final class RenderTests: XCTestCase {
                 let dark = appearance == .dark
                 let ink = GlassOptics.menuForeground(tint: tint, material: .regular, dark: dark)
                 XCTAssertEqual(ink, dark ? white : lightGlassInk, "\(name) \(appearance) menu label")
-                // The light variants are the spec's colors; systemYellow's
-                // dark variant on dark glass keeps 5:1.
-                let floor = scheme == .dark && name == "systemYellow" ? 5 : 5.2
                 for backdrop in [white, black] {
                     let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, tint: color, colorScheme: scheme)
                     assertMenuPanel(menu, ink: ink, model: menuModel(backdrop, material: .regular, dark: dark, tint: tint),
-                                    accuracy: tolerance, floor: floor,
+                                    accuracy: tolerance, floor: 5.0,
                                     "\(name) \(tint.array) \(appearance) menu in \(scheme) mode over \(backdrop == white ? "white" : "black")")
                 }
             }

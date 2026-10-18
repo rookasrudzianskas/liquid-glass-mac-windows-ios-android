@@ -307,7 +307,7 @@ GlassScene {
   dark) by up to 0.6; no other surface has it. Menu items take `GlassOptics.menuForeground`: the appearance
   foreground untinted, or on a tinted menu white or `#111113` by contrast with the tint mixed toward the backing. So
   untinted menus, Regular or Clear, light or dark, keep at least 5.2:1 over any backdrop, even plain white or black,
-  highlighted items included, and so do menus tinted with a system color (`.yellow` in dark mode keeps 5.07:1). Very
+  highlighted items included, and menus tinted with a system color (either appearance's variant) at least 5.0:1. Very
   light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper
   color or not at all.
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
@@ -358,7 +358,7 @@ GlassScene {
 - Keep toolbars, tab bars and menus in the scene's foreground: outside a scene they draw the fallback material and a
   `GlassMenu` falls back to the system `Menu`. Let the scene cover the window so menus have room.
 - Menu items need no backing of your own: the panel's legibility backing and label color keep their text at 5.2:1
-  or more over any backdrop (untinted, or tinted with a system color), and a highlighted item mixes its label color
+  or more over any backdrop untinted, 5.0:1 tinted with a system color, and a highlighted item mixes its label color
   into the glass at 8%. A menu panel opens below its trigger with trailing edges aligned, flips above
   when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls:
   a menu that fits on neither side runs past the scene's bottom edge. Keep menus short (about 8 items or fewer);

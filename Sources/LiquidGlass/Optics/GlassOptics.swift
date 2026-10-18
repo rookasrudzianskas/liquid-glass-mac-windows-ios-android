@@ -226,7 +226,9 @@ public enum GlassOptics {
     /// its open progress, so the glass leaves the trigger as the trigger's
     /// own glass. With labels in ``menuForeground(tint:material:dark:legibility:)``,
     /// untinted menus, Regular or Clear, keep at least 5.2:1 contrast over
-    /// any backdrop, highlighted rows included. Every other surface uses 0.
+    /// any backdrop, highlighted rows included, and menus tinted with the
+    /// system colors of either appearance at least 5.0:1. Every other
+    /// surface uses 0.
     public static let menuLegibility = 0.6
 
     /// How far a highlighted menu row (hovered, focused with the keyboard or

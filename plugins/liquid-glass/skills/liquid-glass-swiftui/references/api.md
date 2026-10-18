@@ -684,17 +684,17 @@ tinted menu, white or `#111113`, whichever contrasts more with `mix(tint · (bod
 (body 0.78 Regular, 0.68 Clear), so a light menu tinted blue has `#111113` items while its trigger keeps a white
 label. Untinted menus, Regular or Clear, in both appearances, keep at least 5.2:1 over any backdrop, highlighted items
 included (5.24:1 at worst, Clear in dark appearance over white; 6.51:1 white over white on dark Regular without the
-highlight, 8.74:1 `#111113` over black in light); menus tinted with the system colors as they resolve in light mode
-keep at least 5.2:1 too, and in dark mode `.yellow`'s lighter variant keeps 5.07:1 on a highlighted item (dark Regular
-over white). Very light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint
-menus with a deeper color or not at all. No other surface has the backing. The panel opens below the trigger with
-trailing edges aligned (the left edges, right to left) and 8 pt from it, flips above when it does not fit below but
-fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that fits on neither side
-runs past the scene's bottom edge. A highlighted item (hovered, focused or pressed) mixes the label color into the
-glass at 8% (`GlassOptics.menuHighlight`). Tap outside, press Escape (or the VoiceOver escape gesture), or choose an
-item to dismiss; up/down arrows and Return navigate, skipping disabled items. The panel draws in the enclosing scene's
-overlay; outside a `GlassScene` the menu falls back to the system `Menu` with the same items (checked items become
-toggles there).
+highlight, 8.74:1 `#111113` over black in light); menus tinted with the system colors, as they resolve in either
+appearance, keep at least 5.0:1 (5.07:1 at worst, the dark-appearance `.yellow` on a highlighted item of dark Regular
+over white; 5.26:1 for the light-appearance colors). Very light tints (pure yellow, lime, white) can fall below 4.5:1
+over white in dark appearance: tint menus with a deeper color or not at all. No other surface has the backing. The
+panel opens below the trigger with trailing edges aligned (the left edges, right to left) and 8 pt from it, flips
+above when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never
+scrolls: a menu that fits on neither side runs past the scene's bottom edge. A highlighted item (hovered, focused or
+pressed) mixes the label color into the glass at 8% (`GlassOptics.menuHighlight`). Tap outside, press Escape (or the
+VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping disabled items.
+The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the system `Menu` with
+the same items (checked items become toggles there).
 
 ```swift
 public struct GlassMenu<Label: View, Content: View>: View {
@@ -1064,7 +1064,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
-| `GlassMenu` panel legibility backing (mix, light, dark) | 0.6 times the open progress, `#F5F5F7`, `#1C1C1E`; untinted menu text (Regular or Clear) and system-tinted menu text at 5.2:1 or more over any backdrop, highlighted items included (`.yellow` in dark mode 5.07:1) | same |
+| `GlassMenu` panel legibility backing (mix, light, dark) | 0.6 times the open progress, `#F5F5F7`, `#1C1C1E`; untinted menu text (Regular or Clear) at 5.2:1 or more over any backdrop, system-tinted menu text (either appearance) at 5.0:1 or more, highlighted items included | same |
 | Highlight of pressed / hovered / focused items | foreground at 8% (menus: the label color, `menuForeground`) | same |
 | Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more (menu items: with the tint mixed toward the backing) | same |
 

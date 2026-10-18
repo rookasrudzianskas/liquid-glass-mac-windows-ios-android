@@ -213,8 +213,9 @@ final class ShaderVectorTests: XCTestCase {
 
     /// The label floors (`legibility.worstCase`) on the shader's menu glass:
     /// over a 6 × 6 × 6 grid of solid backdrops, plain and highlighted rows
-    /// of untinted menus and of menus tinted with the system colors, Regular
-    /// and Clear, light and dark, keep at least 5.2:1.
+    /// of untinted menus keep at least 5.2:1, and of menus tinted with the
+    /// system colors of either appearance at least 5.0:1, Regular and Clear,
+    /// light and dark.
     func testMenuWorstCase() throws {
         let legibility = Vectors.object("legibility")
         let worst = legibility["worstCase"] as? [String: Any] ?? [:]
@@ -230,7 +231,7 @@ final class ShaderVectorTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(inputs.count, 4 * 11 * 216)
+        XCTAssertEqual(inputs.count, 4 * 21 * 216)
         let results = try evaluate(mode: 9, inputs)
         var untintedFloor = Double.infinity, tintedFloor = Double.infinity
         for (i, r) in results.enumerated() {
@@ -241,7 +242,7 @@ final class ShaderVectorTests: XCTestCase {
         assertClose(untintedFloor, worst.double("untintedWithHighlight"), accuracy: 0.06, "GPU untinted menus with the highlight")
         assertClose(tintedFloor, worst.double("systemTintsWithHighlight"), accuracy: 0.06, "GPU system tints with the highlight")
         XCTAssertGreaterThanOrEqual(untintedFloor, 5.2)
-        XCTAssertGreaterThanOrEqual(tintedFloor, 5.2)
+        XCTAssertGreaterThanOrEqual(tintedFloor, 5.0)
     }
 
     func testRimOverlay() throws {
