@@ -100,6 +100,10 @@ inline float4 lgFill(SwiftUI::Layer layer, float2 q, float sigma, float4 valid) 
         rgb = lgTintColor(rgb, tint.rgb, material.x);
         a = body + (1.0 - body) * a;
     }
+    // Every mode: in the opaque fallback this mixes the fill toward the
+    // backing (#F2F2F7 to about #F4F4F7 light; the dark fill is the backing
+    // already), and in mode 2 a is 0, so the platform material's overlay
+    // draws the backing instead.
     rgb = lgLegibility(rgb, dark, legibility);
     float cover = lgCoverage(field.x, pixel);
     float ga = a * cover * opacity;

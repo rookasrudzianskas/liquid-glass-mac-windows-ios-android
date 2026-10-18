@@ -202,6 +202,32 @@ final class BehaviorTests: XCTestCase {
         XCTAssertEqual(probe.ran, ["one", "three"])
     }
 
+    /// The panel's legibility backing (`spec/OPTICS.md` §3) follows the
+    /// morph: none at the trigger, so the glass leaves it as the trigger's
+    /// glass, ``GlassOptics/menuLegibility`` open, and never more while the
+    /// spring overshoots.
+    func testMenuLegibilityFollowsTheMorph() {
+        let morph = GlassMenuMorph()
+        XCTAssertEqual(morph.legibility, 0, "closed")
+        morph.open(motion: .full)
+        var midway = false, overshoot = false
+        for _ in 0..<240 {
+            _ = morph.advance(by: 1.0 / 120.0)
+            let m = morph.progress
+            XCTAssertEqual(morph.legibility, GlassOptics.menuLegibility * min(1, max(0, m)), accuracy: 1e-12, "at progress \(m)")
+            XCTAssertLessThanOrEqual(morph.legibility, GlassOptics.menuLegibility)
+            if m > 0.2 && m < 0.8 { midway = true }
+            if m > 1 { overshoot = true }
+        }
+        XCTAssertTrue(midway, "the morph passes through the middle")
+        XCTAssertTrue(overshoot, "the morph spring overshoots the open panel")
+        XCTAssertEqual(morph.legibility, GlassOptics.menuLegibility, accuracy: 1e-6, "open")
+        morph.close(motion: .none)
+        XCTAssertEqual(morph.legibility, 0, "closed again")
+        morph.open(motion: .none)
+        XCTAssertEqual(morph.legibility, GlassOptics.menuLegibility, "opened without motion")
+    }
+
     // MARK: Drag intent
 
     func testDragIntentCommitsSidewaysAndDeclinesVertical() {

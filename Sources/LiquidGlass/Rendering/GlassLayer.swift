@@ -194,7 +194,10 @@ struct GlassLayer: View, Animatable {
             GlassShape(radius: style.radius)
                 .fill(style.material == .regular ? Material.regular : Material.thin)
                 // The legibility backing over the material: the same mix
-                // toward it that the shader applies to the glass.
+                // toward it that the shader applies to the glass. A guard:
+                // no menu panel draws here today, since GlassMenu falls
+                // back to the system menu outside a scene and the scene's
+                // overlay always has a backdrop.
                 .overlay {
                     if style.legibility > 0 {
                         GlassShape(radius: style.radius)

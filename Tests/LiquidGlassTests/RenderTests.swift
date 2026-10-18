@@ -500,6 +500,78 @@ final class RenderTests: XCTestCase {
         XCTAssertLessThanOrEqual((rtl.pixel(330, 120) - SIMD4(gray.x, gray.y, gray.z, 1)).array.map(abs).max() ?? 0, tolerance, "glass where the left-to-right panel would be")
     }
 
+    /// The scene of the menu render tests: tall enough that the panel's
+    /// frosted layer stays inside it.
+    private let menuScene = CGSize(width: 400, height: 300)
+
+    /// An open menu panel (Regular, untinted) under a trigger at the top
+    /// right, over a solid `backdrop`, with a 20 pt square in the glass
+    /// foreground standing in for a label; the panel's and the label's
+    /// rectangles in points.
+    private func renderMenuPanel(
+        appearance: GlassAppearance, backdrop: SIMD3<Double>, reduceTransparency: Bool = false
+    ) throws -> (image: Bitmap, panel: CGRect, label: CGRect) {
+        let morph = GlassMenuMorph()
+        morph.open(motion: .none)
+        let trigger = CGRect(x: 300, y: 20, width: 44, height: 44)
+        let inset = GlassMenuMetrics.inset
+        let width = max(GlassMenuMetrics.minWidth, 180 + 2 * inset), height = 90 + 2 * inset
+        let panel = CGRect(x: trigger.maxX - width, y: trigger.maxY + GlassMenuMetrics.offset, width: width, height: height)
+        let label = CGRect(x: panel.minX + inset + 80, y: panel.minY + inset + 35, width: 20, height: 20)
+        let ground = Color(.sRGB, red: backdrop.x, green: backdrop.y, blue: backdrop.z)
+        let image = try render(GlassScene(material: .clear, appearance: appearance) {
+            GlassContent { ground }
+            GlassMenuPanel(
+                options: GlassSurfaceOptions(material: nil, appearance: nil, radius: 28, refraction: nil, tint: nil, interactive: true, motion: nil),
+                presenter: trigger, presenterRadius: 22, scene: menuScene, morph: morph, dismiss: {},
+                content: Rectangle().fill(.foreground).frame(width: 20, height: 20).frame(width: 180, height: 90)
+            )
+        }
+        .environment(\._accessibilityReduceTransparency, reduceTransparency), size: menuScene, settle: true)
+        return (image, panel, label)
+    }
+
+    /// The pixels of a menu panel's face: past the rim's inner glow (4.5 pt
+    /// inside the outline) and clear of the label.
+    private func menuFace(panel: CGRect, label: CGRect) -> [(Int, Int)] {
+        let shape = GlassOptics.shapeParameters(width: Double(panel.width), height: Double(panel.height), radius: 28)
+        let keepOut = label.insetBy(dx: -2, dy: -2)
+        var face: [(Int, Int)] = []
+        for py in Int(panel.minY)..<Int(panel.maxY) {
+            for px in Int(panel.minX)..<Int(panel.maxX) {
+                let x = Double(px) + 0.5, y = Double(py) + 0.5
+                let field = GlassOptics.shapeField(
+                    x: x - Double(panel.midX), y: y - Double(panel.midY), width: Double(panel.width), height: Double(panel.height),
+                    extent: shape.extent, exponent: shape.exponent)
+                if field.distance < -6, !keepOut.contains(CGPoint(x: x, y: y)) { face.append((px, py)) }
+            }
+        }
+        return face
+    }
+
+    /// Checks a rendered menu panel: its label draws in `ink`, and every face
+    /// pixel matches `model` within `accuracy` and keeps at least `floor`
+    /// contrast with the label.
+    private func assertMenuPanel(
+        _ menu: (image: Bitmap, panel: CGRect, label: CGRect), ink: SIMD3<Double>, model: SIMD3<Double>,
+        accuracy: Double, floor: Double, _ name: String, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let drawn = menu.image.pixel(Int(menu.label.midX), Int(menu.label.midY))
+        assertClose(SIMD3(drawn.x, drawn.y, drawn.z).array, ink.array, accuracy: tolerance, "\(name): label color", file: file, line: line)
+        let face = menuFace(panel: menu.panel, label: menu.label)
+        var lowest = Double.infinity, at = (0, 0), worst = 0.0, got = SIMD3<Double>()
+        for (px, py) in face {
+            let p = menu.image.pixel(px, py), glass = SIMD3(p.x, p.y, p.z)
+            let ratio = contrastRatio(glass, ink)
+            if ratio < lowest { lowest = ratio; at = (px, py) }
+            let d = (glass - model).array.map(abs).max() ?? 0
+            if d > worst { worst = d; got = glass }
+        }
+        XCTAssertGreaterThan(face.count, 10_000, "\(name): face pixels", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(lowest, floor, "\(name): label contrast at \(at)", file: file, line: line)
+        XCTAssertLessThanOrEqual(worst, accuracy, "\(name): glass \(got.array) against the model's \(model.array)", file: file, line: line)
+    }
+
     /// Menu text reads over any backdrop (`spec/OPTICS.md` §3): the open
     /// panel's glass mixes halfway toward its solid backing, so white labels
     /// on dark glass over a white backdrop and `#111113` labels on light glass
@@ -507,63 +579,44 @@ final class RenderTests: XCTestCase {
     /// glass alone gives 1.8 and 2.1, which a Regular surface, with no
     /// backing, still shows).
     func testMenuTextContrastsOverAnyBackdrop() throws {
-        let morph = GlassMenuMorph()
-        morph.open(motion: .none)
-        // Tall enough that the panel's frosted layer stays inside the scene.
-        let scene = CGSize(width: 400, height: 300)
-        let trigger = CGRect(x: 300, y: 20, width: 44, height: 44)
-        let inset = GlassMenuMetrics.inset
-        let width = max(GlassMenuMetrics.minWidth, 180 + 2 * inset), height = 90 + 2 * inset
-        let panel = CGRect(x: trigger.maxX - width, y: trigger.maxY + GlassMenuMetrics.offset, width: width, height: height)
-        let label = CGRect(x: panel.minX + inset + 80, y: panel.minY + inset + 35, width: 20, height: 20)
         for (appearance, backdrop) in [(GlassAppearance.dark, SIMD3<Double>(1, 1, 1)), (.light, SIMD3<Double>(0, 0, 0))] {
             let dark = appearance == .dark
             let ink = dark ? SIMD3<Double>(1, 1, 1) : lightGlassInk
-            let ground = Color(.sRGB, red: backdrop.x, green: backdrop.y, blue: backdrop.z)
-            let menu = try render(GlassScene(material: .clear, appearance: appearance) {
-                GlassContent { ground }
-                GlassMenuPanel(
-                    options: GlassSurfaceOptions(material: nil, appearance: nil, radius: 28, refraction: nil, tint: nil, interactive: true, motion: nil),
-                    presenter: trigger, presenterRadius: 22, scene: scene, morph: morph, dismiss: {},
-                    content: Rectangle().fill(.foreground).frame(width: 20, height: 20).frame(width: 180, height: 90)
-                )
-            }, size: scene, settle: true)
-            // The label draws in the glass foreground.
-            let drawn = menu.pixel(Int(label.midX), Int(label.midY))
-            assertClose(SIMD3(drawn.x, drawn.y, drawn.z).array, ink.array, accuracy: tolerance, "\(appearance) menu label color")
-            // The face, past the rim's inner glow (4.5 pt inside the
-            // outline), around the label.
+            let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop)
             let model = GlassOptics.legibilityColor(
                 GlassOptics.materialColor(backdrop, material: .regular, dark: dark), dark: dark, amount: GlassOptics.menuLegibility)
-            let shape = GlassOptics.shapeParameters(width: Double(panel.width), height: Double(panel.height), radius: 28)
-            let keepOut = label.insetBy(dx: -2, dy: -2)
-            var lowest = Double.infinity, at = (0, 0), worst = 0.0, count = 0
-            for py in Int(panel.minY)..<Int(panel.maxY) {
-                for px in Int(panel.minX)..<Int(panel.maxX) {
-                    let x = Double(px) + 0.5, y = Double(py) + 0.5
-                    let field = GlassOptics.shapeField(
-                        x: x - Double(panel.midX), y: y - Double(panel.midY), width: Double(panel.width), height: Double(panel.height),
-                        extent: shape.extent, exponent: shape.exponent)
-                    guard field.distance < -6, !keepOut.contains(CGPoint(x: x, y: y)) else { continue }
-                    count += 1
-                    let p = menu.pixel(px, py), glass = SIMD3(p.x, p.y, p.z)
-                    let ratio = contrastRatio(glass, ink)
-                    if ratio < lowest { lowest = ratio; at = (px, py) }
-                    worst = max(worst, (glass - model).array.map(abs).max() ?? 0)
-                }
-            }
-            XCTAssertGreaterThan(count, 10_000, "\(appearance) menu face pixels")
-            XCTAssertGreaterThanOrEqual(lowest, 4.5, "\(appearance) menu glass over \(dark ? "white" : "black"): label contrast at \(at)")
-            XCTAssertLessThanOrEqual(worst, tolerance, "\(appearance) menu glass against the model's \(model.array)")
+            assertMenuPanel(menu, ink: ink, model: model, accuracy: tolerance, floor: 4.5,
+                            "\(appearance) menu over \(dark ? "white" : "black")")
 
             // A Regular surface of the panel's size carries no backing.
+            let ground = Color(.sRGB, red: backdrop.x, green: backdrop.y, blue: backdrop.z)
             let surface = try render(GlassScene(material: .regular, appearance: appearance) {
                 GlassContent { ground }
-                GlassSurface(radius: 28) { Color.clear.frame(width: panel.width, height: panel.height) }
+                GlassSurface(radius: 28) { Color.clear.frame(width: menu.panel.width, height: menu.panel.height) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }, size: scene)
-            let center = surface.pixel(Int(scene.width / 2), Int(scene.height / 2))
+            }, size: menuScene)
+            let center = surface.pixel(Int(menuScene.width / 2), Int(menuScene.height / 2))
             XCTAssertLessThan(contrastRatio(SIMD3(center.x, center.y, center.z), ink), 2.5, "\(appearance) Regular surface without the menu backing")
+        }
+    }
+
+    /// Under Reduce Transparency the panel draws the opaque fill
+    /// (`spec/OPTICS.md` §8, `#F2F2F7` light and `#1C1C1E` dark at 94%), and
+    /// the backing mixes into that fill as into the glass: light, about
+    /// `#F4F4F7`, which an 8-bit readback tells apart from the plain fill;
+    /// dark, the fill is the backing already. Labels keep far more than 5:1
+    /// over the backdrops that are hardest on them.
+    func testMenuUnderReduceTransparency() throws {
+        for (appearance, backdrop) in [(GlassAppearance.dark, SIMD3<Double>(1, 1, 1)), (.light, SIMD3<Double>(0, 0, 0))] {
+            let dark = appearance == .dark
+            let ink = dark ? SIMD3<Double>(1, 1, 1) : lightGlassInk
+            let fill = dark ? SIMD3<Double>(0x1C, 0x1C, 0x1E) / 255 : SIMD3<Double>(0xF2, 0xF2, 0xF7) / 255
+            let mixed = GlassOptics.legibilityColor(fill, dark: dark, amount: GlassOptics.menuLegibility)
+            let model = mixed * 0.94 + backdrop * 0.06
+            let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, reduceTransparency: true)
+            // About one 8-bit step: the plain fill is 1.4 steps off in light.
+            assertMenuPanel(menu, ink: ink, model: model, accuracy: 1.0 / 255.0, floor: 12,
+                            "reduce transparency \(appearance) menu over \(dark ? "white" : "black")")
         }
     }
 

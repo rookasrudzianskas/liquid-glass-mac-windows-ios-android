@@ -50,7 +50,7 @@ public enum GlassMaterial: String, CaseIterable, Hashable, Sendable {
 ```
 
 ```swift
-GlassSurface(material: .regular, radius: 28) { Text("Legible over anything").padding() }
+GlassSurface(material: .regular, radius: 28) { Text("Legible over busy content").padding() }
 ```
 
 ### GlassAppearance
@@ -677,12 +677,15 @@ Toggle("Bluetooth", isOn: $bluetooth).toggleStyle(GlassSwitchStyle())
 A menu whose trigger is a `GlassButton` (a plain item inside a `GlassToolbar`); `appearance` and `tint` apply to the
 trigger and the panel. Opening morphs the trigger's glass into a Regular panel on the morph spring while the items
 condense out of a blur; closing reverses it. The panel's glass mixes halfway (`GlassOptics.menuLegibility`) toward a
-solid backing, `#F5F5F7` light and `#1C1C1E` dark, which fades in as it opens: menu text keeps at least 5:1 contrast
-over any backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light)
-while the panel still refracts and frosts at half strength. No other surface has the backing. The panel opens below
-the trigger with trailing edges aligned (the left edges, right to left) and 8 pt from it, flips above when it does
-not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that
-fits on neither side runs past the scene's bottom edge. Items highlight with the foreground at 8%. Tap outside, press
+solid backing, `#F5F5F7` light and `#1C1C1E` dark, which fades in as it opens, while the panel still refracts and
+frosts at half strength. In an untinted Regular menu (the default) the text keeps at least 5:1 contrast over any
+backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light); an
+untinted `.clear` menu keeps about 4.9:1 at worst. A tinted menu has no such floor: its labels are white or `#111113`
+for the tint while the backing follows the appearance, so over white a light menu tinted blue leaves white labels
+about 2.1:1 (4.1:1 without the backing). No other surface has the backing. The panel opens below the trigger with
+trailing edges aligned (the left edges, right to left) and 8 pt from it, flips above when it does not fit below but
+fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that fits on neither side
+runs past the scene's bottom edge. Items highlight with the foreground at 8%. Tap outside, press
 Escape (or the VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping
 disabled items. The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the
 system `Menu` with the same items (checked items become toggles there).
@@ -1051,7 +1054,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
-| `GlassMenu` panel legibility backing (mix, light, dark) | 0.5, `#F5F5F7`, `#1C1C1E`; menu text at 5:1 or more over any backdrop | same |
+| `GlassMenu` panel legibility backing (mix, light, dark) | 0.5, `#F5F5F7`, `#1C1C1E`; untinted Regular menu text at 5:1 or more over any backdrop (Clear about 4.9:1; tinted, no floor) | same |
 | Highlight of pressed / hovered / focused items | foreground at 8% | foreground at 8% |
 | Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more | same |
 

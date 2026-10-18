@@ -304,7 +304,10 @@ GlassScene {
 
 - Defaults: material `.clear`, appearance `.automatic`, refraction by size, motion `.full`. Menu panels are Regular
   unless you pass a material, and their glass mixes halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark),
-  so menu text keeps at least 5:1 contrast over any backdrop, even plain white or black; no other surface has it.
+  so the text of an untinted Regular menu keeps at least 5:1 contrast over any backdrop, even plain white or black;
+  no other surface has it. An untinted `.clear` menu keeps about 4.9:1 at worst. A tinted menu has no such floor:
+  its labels follow the tint and the backing the appearance (a light menu tinted blue over white leaves white labels
+  about 2.1:1), so leave menus untinted where their text must read over any backdrop.
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
 - A surface's `material` applies to that surface only; it does not cascade to controls inside it. Set defaults for a
@@ -351,11 +354,11 @@ GlassScene {
   `GlassButton` beside the toolbar. Do not wrap a toolbar in a `GlassSurface` or give its items `.liquidGlass`.
 - Keep toolbars, tab bars and menus in the scene's foreground: outside a scene they draw the fallback material and a
   `GlassMenu` falls back to the system `Menu`. Let the scene cover the window so menus have room.
-- Menu items need no backing of your own: the panel's legibility backing keeps their text at 5:1 or more over any
-  backdrop. A menu panel opens below its trigger with trailing edges aligned, flips above when it does not fit below
-  but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that fits on neither
-  side runs past the scene's bottom edge. Keep menus short (about 8 items or fewer); there are no submenus (a
-  `GlassMenu` inside a panel never opens).
+- Items of an untinted Regular menu need no backing of your own: the panel's legibility backing keeps their text
+  at 5:1 or more over any backdrop. A menu panel opens below its trigger with trailing edges aligned, flips above
+  when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls:
+  a menu that fits on neither side runs past the scene's bottom edge. Keep menus short (about 8 items or fewer);
+  there are no submenus (a `GlassMenu` inside a panel never opens).
 - Put only `GlassMenuItem`, `GlassMenuDivider` and `ForEach` of them in a menu. The panel renders in the scene's
   overlay with the scene's environment, so `.environment(model)`, `.glassAppearance`, `.disabled` or `.font` set
   between the scene and the menu do not reach its items (a custom row reading an environment object injected there

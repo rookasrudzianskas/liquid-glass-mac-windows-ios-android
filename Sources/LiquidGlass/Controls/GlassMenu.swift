@@ -7,10 +7,14 @@ import SwiftUI
 /// Opening morphs the trigger's glass into the panel on the morph spring
 /// while the items condense out of a blur; closing reverses it. The panel's
 /// glass mixes halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E`
-/// dark, ``GlassOptics/menuLegibility``), so its items keep at least 5:1
-/// contrast over any backdrop while it still refracts and frosts. Items
-/// highlight with the foreground color at 8%. Tap outside, press Escape, or
-/// choose an item to dismiss; the arrow keys and Return navigate the items.
+/// dark, ``GlassOptics/menuLegibility``) while it still refracts and frosts,
+/// so the items of an untinted Regular menu (the default) keep at least 5:1
+/// contrast over any backdrop; an untinted Clear menu about 4.9:1 at worst.
+/// A tint has no such floor: its labels follow the tint and the backing the
+/// appearance, so over white a light menu tinted blue leaves its white
+/// labels about 2.1:1. Items highlight with the foreground color at 8%. Tap
+/// outside, press Escape, or choose an item to dismiss; the arrow keys and
+/// Return navigate the items.
 ///
 /// ```swift
 /// GlassMenu(icon: "ellipsis", label: "More") {
@@ -45,7 +49,8 @@ public struct GlassMenu<Label: View, Content: View>: View {
     ///     and their labels; `nil` inherits.
     ///   - radius: The panel's corner radius. Default 28.
     ///   - tint: Colors the trigger's and the panel's glass; labels on it
-    ///     turn white or dark for contrast.
+    ///     turn white or dark for contrast with the tint. A tinted panel's
+    ///     labels can fall well below 5:1 over some backdrops.
     ///   - motion: Overrides the scene's motion level.
     ///   - content: ``GlassMenuItem``s and ``GlassMenuDivider``s.
     ///   - label: The trigger's label.
@@ -314,6 +319,11 @@ final class GlassMenuMorph: GlassAnimating {
     /// Whether the panel is visible, including while it collapses.
     var isPresented: Bool { isOpen || progress > 0.001 }
 
+    /// The panel glass's mix toward the legibility backing: it follows the
+    /// morph from 0 at the trigger to ``GlassOptics/menuLegibility`` open,
+    /// and the spring's overshoot never takes it past that.
+    var legibility: Double { GlassOptics.menuLegibility * min(1, max(0, progress)) }
+
     func open(motion: GlassMotion) { retarget(1, open: true, motion: motion) }
     func close(motion: GlassMotion) { retarget(0, open: false, motion: motion) }
 
@@ -507,7 +517,7 @@ private struct GlassMenuMorphing: ViewModifier {
                             refraction: options.refraction, tint: options.tint, interactive: false, motion: options.motion
                         ),
                         defaultMaterial: .regular, outline: rect.offsetBy(dx: -union.minX, dy: -union.minY),
-                        restingSize: proxy.size, legibility: GlassOptics.menuLegibility * min(1, max(0, m)),
+                        restingSize: proxy.size, legibility: morph.legibility,
                         content: Color.clear.frame(width: union.width, height: union.height)
                     )
                     .offset(x: union.minX, y: union.minY)
