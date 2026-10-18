@@ -1176,7 +1176,7 @@ async function buildLlms(docs, skills, packages) {
     "Install:",
     "",
     `- Swift Package Manager (iOS 17+, macOS 14+; builds with Xcode 16 or later): \`.package(url: "${REPO_URL}", from: "${version}")\`, product \`LiquidGlass\``,
-    `- Gradle (Jetpack Compose, Android 7+, glass on 13+): repository \`maven("${SITE_URL}/maven")\` in settings.gradle.kts, then \`implementation("io.github.rookasrudzianskas:liquid-glass-compose:${version}")\``,
+    `- Gradle (Jetpack Compose, Android 7+, glass on 13+): repository \`maven("${SITE_URL}/maven")\` in settings.gradle.kts, then \`implementation("io.github.rookasrudzianskas:liquid-glass-compose:${version}")\` (the Android quick start's \`Icons.Default.*\` also needs \`implementation("androidx.compose.material:material-icons-core:1.7.6")\`, which apps on Material 3 usually have already)`,
     `- Gradle from JitPack, built from the ${version} release tag (JitPack builds each version on its first request, which can take a few minutes): repository \`maven("https://jitpack.io")\`, then \`implementation("com.github.${repoSlug.replace("/", ":")}:${version}")\``,
     `- NuGet (WPF on .NET Framework 4.8, .NET 8 and .NET 10): the package ${nugetId} ${version} is on the project feed, not nuget.org: \`dotnet nuget add source ${SITE_URL}/nuget/index.json -n liquid-glass\`, then \`dotnet add package ${nugetId} --version ${version}\``,
     "",

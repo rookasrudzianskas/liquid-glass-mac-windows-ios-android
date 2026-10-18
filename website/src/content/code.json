@@ -9,11 +9,11 @@
   },
   "gradleDep": {
     "lang": "kotlin",
-    "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
+    "code": "// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n    // Icons.Default.* in the quick start; apps on Material 3 usually have it already.\n    implementation(\"androidx.compose.material:material-icons-core:1.7.6\")\n}"
   },
   "gradleSetup": {
     "lang": "kotlin",
-    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"{{SITE_URL}}/maven\")\n    }\n}\n\n// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n}"
+    "code": "// settings.gradle.kts\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        maven(\"{{SITE_URL}}/maven\")\n    }\n}\n\n// app/build.gradle.kts\ndependencies {\n    implementation(\"io.github.rookasrudzianskas:liquid-glass-compose:{{VERSION}}\")\n    // Icons.Default.* in the quick start; apps on Material 3 usually have it already.\n    implementation(\"androidx.compose.material:material-icons-core:1.7.6\")\n}"
   },
   "nugetCli": {
     "lang": "shellscript",
