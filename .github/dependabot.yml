@@ -1,6 +1,7 @@
 # Monthly dependency updates. GitHub Actions updates, majors included, arrive as one grouped pull request a month.
-# For the other ecosystems, minor and patch updates arrive as one grouped pull request; major updates get a pull
-# request each, so CI checks them one at a time, and toolchain majors are not proposed at all (see each ignore list).
+# For the website and Windows, minor and patch updates arrive as one grouped pull request and major updates get a
+# pull request each; toolchain majors are not proposed at all, and Android takes patch updates only (see each
+# ignore list).
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -28,27 +29,24 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gradle
-    directory: /platforms/android
+    # The Hello Glass example builds the library from source in a composite build, which uses one Android Gradle
+    # Plugin and Kotlin version for both builds, so both catalogs and both wrappers move together.
+    directories: ["/platforms/android", "/examples/compose/HelloGlass"]
     schedule:
       interval: monthly
     commit-message:
       prefix: Android
     groups:
       android:
-        update-types: [minor, patch]
+        update-types: [patch]
     ignore:
-      # Toolchain majors (Android Gradle Plugin, Gradle wrapper, Kotlin, Compose BOM) are adopted deliberately in a
-      # minor release, after the migration and a full test run on every API level, not from a Dependabot pull request.
-      - dependency-name: "com.android.application"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "com.android.library"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "gradle-wrapper"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "org.jetbrains.kotlin*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "androidx.compose:compose-bom"
-        update-types: ["version-update:semver-major"]
+      # The library exposes Compose and Kotlin to every app that uses it, and minor releases of Kotlin, the Android
+      # Gradle Plugin and AndroidX raise those apps' floors (Kotlin metadata, compileSdk, AGP). On the 1.0.x line
+      # only patch updates are proposed; minor and major toolchain upgrades (including every Compose BOM, whose
+      # calendar versions read as majors) are adopted deliberately in a minor release, after the migration and a
+      # full test run on every API level.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: nuget
     directory: /platforms/windows

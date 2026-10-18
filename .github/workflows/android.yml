@@ -34,8 +34,8 @@ jobs:
       run:
         working-directory: platforms/android
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -72,8 +72,8 @@ jobs:
       run:
         working-directory: examples/compose/HelloGlass
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -102,8 +102,8 @@ jobs:
         # 28: the fallback without RenderEffect. Each must draw glass and never crash.
         api-level: [34, 31, 28]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"

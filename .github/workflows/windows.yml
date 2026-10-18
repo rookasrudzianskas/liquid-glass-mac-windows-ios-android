@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
         working-directory: platforms/windows
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -327,7 +327,7 @@ jobs:
           # The report lists the release files; the files themselves are the windows-release artifact.
           $list = "$env:REPORT\release.txt"
           foreach ($file in Get-ChildItem $env:RELEASE -Recurse -File | Sort-Object FullName) {
-            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$($file.FullName.Substring($env:RELEASE.Length + 1)): $($file.Length) bytes, sha256 $hash" | Add-Content $list
           }
           Get-Content $list -ErrorAction SilentlyContinue
@@ -346,7 +346,7 @@ jobs:
           Get-Content "$env:REPORT\consumer.txt" -ErrorAction SilentlyContinue | Select-String ": runs, shader " | ForEach-Object { "consumer $($_.Line)" } | Add-Content $summary
           Get-Content "$env:REPORT\blur\blur.txt" -ErrorAction SilentlyContinue | Add-Content $summary
           foreach ($trx in Get-ChildItem "$env:REPORT\tests" -Filter *.trx -ErrorAction SilentlyContinue) {
-            [xml]$x = Get-Content $trx.FullName
+            [xml]$x = Get-Content -LiteralPath $trx.FullName
             $c = $x.TestRun.ResultSummary.Counters
             "$($trx.Name): total $($c.total), passed $($c.passed), failed $($c.failed)" | Add-Content $summary
           }
@@ -387,7 +387,7 @@ jobs:
     # feed is behind this commit's packages, not that the commit is broken, so it does not fail the run.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: windows-release
