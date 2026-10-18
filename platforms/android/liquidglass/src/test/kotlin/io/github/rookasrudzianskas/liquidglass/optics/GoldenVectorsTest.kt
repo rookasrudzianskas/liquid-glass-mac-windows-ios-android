@@ -195,12 +195,13 @@ class GoldenVectorsTest {
         assertTrue(contrastRatio(materialColor(white, regular = true, dark = true), white) < 2f)
         assertTrue(contrastRatio(materialColor(black, regular = true, dark = false), ink) < 2.2f)
         // Over a 6 x 6 x 6 grid of backdrops, highlighted rows included: untinted menus, Regular or Clear, in both
-        // appearances, and menus tinted with the system colors keep 5.2:1.
+        // appearances keep 5.2:1, and menus tinted with the system colors of either appearance 5.0:1.
         val untinted = listOf(true, false).minOf { regular -> listOf(false, true).minOf { dark -> menuFloor(regular, dark, null) } }
         val tinted = SYSTEM_TINTS.minOf { tint -> listOf(true, false).minOf { regular -> listOf(false, true).minOf { dark -> menuFloor(regular, dark, tint) } } }
         close(worst.f("untintedWithHighlight"), untinted, "untintedWithHighlight", tolerance = 1e-3f)
         close(worst.f("systemTintsWithHighlight"), tinted, "systemTintsWithHighlight", tolerance = 1e-3f)
-        assertTrue("menu labels keep 5.2:1 (untinted $untinted, system tints $tinted)", untinted >= 5.2f && tinted >= 5.2f)
+        assertTrue("untinted menu labels keep 5.2:1 ($untinted)", untinted >= UNTINTED_MENU_FLOOR)
+        assertTrue("system-tinted menu labels keep 5.0:1 ($tinted)", tinted >= TINTED_MENU_FLOOR)
     }
 
     /**

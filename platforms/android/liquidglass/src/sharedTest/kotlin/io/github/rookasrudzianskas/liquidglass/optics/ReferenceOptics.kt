@@ -203,12 +203,20 @@ internal fun glassPixel(
 
 /**
  * The system colors spec/generate-vectors.mjs holds tinted menus to (legibility.worstCase.systemTintsWithHighlight),
- * gamma-encoded sRGB: blue, green, red, orange, yellow, purple, pink, indigo, teal and mint.
+ * gamma-encoded sRGB: blue, green, red, orange, yellow, purple, pink, indigo, teal and mint, in their light-appearance
+ * variants and then their dark-appearance ones.
  */
 internal val SYSTEM_TINTS: List<FloatArray> =
-    listOf(0x007AFF, 0x34C759, 0xFF3B30, 0xFF9500, 0xFFCC00, 0xAF52DE, 0xFF2D55, 0x5856D6, 0x5AC8FA, 0x00C7BE).map { rgb ->
+    listOf(
+        0x007AFF, 0x34C759, 0xFF3B30, 0xFF9500, 0xFFCC00, 0xAF52DE, 0xFF2D55, 0x5856D6, 0x5AC8FA, 0x00C7BE,
+        0x0A84FF, 0x30D158, 0xFF453A, 0xFF9F0A, 0xFFD60A, 0xBF5AF2, 0xFF375F, 0x5E5CE6, 0x64D2FF, 0x66D4CF,
+    ).map { rgb ->
         floatArrayOf(((rgb shr 16) and 0xFF) / 255f, ((rgb shr 8) and 0xFF) / 255f, (rgb and 0xFF) / 255f)
     }
+
+/** The menus' contrast floors (spec/OPTICS.md §3), highlighted rows included: untinted, and tinted with [SYSTEM_TINTS]. */
+internal const val UNTINTED_MENU_FLOOR: Float = 5.2f
+internal const val TINTED_MENU_FLOOR: Float = 5.0f
 
 /** [glass] with the menu row highlight: [label] mixed in by [MENU_HIGHLIGHT] (spec/OPTICS.md §3). */
 internal fun highlighted(glass: FloatArray, label: FloatArray): FloatArray = FloatArray(3) { mix(glass[it], label[it], MENU_HIGHLIGHT) }

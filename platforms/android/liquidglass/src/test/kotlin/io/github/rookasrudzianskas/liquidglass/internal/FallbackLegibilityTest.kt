@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import io.github.rookasrudzianskas.liquidglass.GlassDefaults
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import io.github.rookasrudzianskas.liquidglass.optics.SYSTEM_TINTS
+import io.github.rookasrudzianskas.liquidglass.optics.TINTED_MENU_FLOOR
+import io.github.rookasrudzianskas.liquidglass.optics.UNTINTED_MENU_FLOOR
 import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
 import io.github.rookasrudzianskas.liquidglass.optics.highlighted
 import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
@@ -61,8 +63,8 @@ class FallbackLegibilityTest {
     }
 
     /**
-     * Fallback menus keep their labels ([menuForeground]) at 5.2:1 over white and black, highlighted rows
-     * included, like the GPU glass: untinted and tinted with the system colors, in both appearances, Regular glass
+     * Fallback menus keep their labels ([menuForeground]) over white and black, highlighted rows included, at the
+     * GPU glass's floors: 5.2:1 untinted, 5.0:1 tinted with the system colors. In both appearances, Regular glass
      * with and without the platform blur, Clear glass (always an unblurred fill) and the Reduce Transparency fill.
      * A fill is affine in the backdrop, so white and black bound every backdrop.
      */
@@ -80,7 +82,8 @@ class FallbackLegibilityTest {
                     for (backdrop in backdrops.take(2)) {
                         val glass = over(fill, backdrop)
                         val contrast = minOf(contrastRatio(label, glass), contrastRatio(label, highlighted(glass, label)))
-                        assertTrue("material $material dark=$dark blurred=$blurred tint=${tint?.toList()} over ${backdrop.toList()}: $contrast", contrast >= 5.2f)
+                        val floor = if (tint == null) UNTINTED_MENU_FLOOR else TINTED_MENU_FLOOR
+                        assertTrue("material $material dark=$dark blurred=$blurred tint=${tint?.toList()} over ${backdrop.toList()}: $contrast", contrast >= floor)
                     }
                 }
             }

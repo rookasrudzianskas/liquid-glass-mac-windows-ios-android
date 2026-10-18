@@ -131,9 +131,10 @@ import kotlin.math.roundToInt
  * appearance foreground, or on a tinted panel in white or `#111113`, whichever
  * contrasts more with the tint mixed toward the backing; a highlighted row
  * (hover, focus, press) mixes that color into the glass at 8%. Untinted
- * panels, Regular or Clear, and panels tinted with the system colors keep
- * their labels at 5.2:1 or more over any backdrop, highlighted rows included,
- * also with the fallback material. Very light tints (pure yellow, lime,
+ * panels, Regular or Clear, keep their labels at 5.2:1 or more over any
+ * backdrop, highlighted rows included, and panels tinted with the system
+ * colors of either appearance at 5.0:1 or more, also with the fallback
+ * material. Very light tints (pure yellow, lime,
  * white) can fall below 4.5:1 over white in dark appearance: use a deeper
  * tint, or none.
  * Tapping outside, Back and Escape dismiss it; choosing an item runs its

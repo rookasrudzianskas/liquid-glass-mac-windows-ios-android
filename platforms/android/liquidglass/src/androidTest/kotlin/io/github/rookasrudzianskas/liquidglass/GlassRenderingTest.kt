@@ -60,6 +60,8 @@ import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
+import io.github.rookasrudzianskas.liquidglass.optics.TINTED_MENU_FLOOR
+import io.github.rookasrudzianskas.liquidglass.optics.UNTINTED_MENU_FLOOR
 import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
 import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
@@ -935,7 +937,8 @@ class GlassRenderingTest {
      * Opens a [GlassMenu] of [material] (three items, no motion) over the uniform [backdrop] in [appearance],
      * tinted with [tint] when it is specified, holds a finger down on its second row so the row is highlighted,
      * and checks the glass behind the labels. The items take the label color of [menuForeground]; every interior
-     * pixel beside the labels, on the plain rows and the highlighted one, has at least [MenuFloor] with it; the
+     * pixel beside the labels, on the plain rows and the highlighted one, keeps the menus' floor with it
+     * ([UNTINTED_MENU_FLOOR], or [TINTED_MENU_FLOOR] on a tint); the
      * labels are drawn in it; the highlighted row is the plain glass with the label color mixed in at
      * [MENU_HIGHLIGHT]; and on the GPU path the plain glass is the reference's glass (tinted) with the menus'
      * legibility backing. [extraSurfaces] small surfaces below the menu take up the GPU slots first, so with
@@ -953,6 +956,7 @@ class GlassRenderingTest {
         val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
         val tintRgb = if (tint.isSpecified) floatArrayOf(tint.red, tint.green, tint.blue) else null
         val case = "$material menu dark=$dark tint=${tintRgb?.toList()} over ${backdrop.take(3)} extra=$extraSurfaces"
+        val floor = if (tintRgb == null) UNTINTED_MENU_FLOOR else TINTED_MENU_FLOOR
         var sceneBounds = Rect.Zero
         var panelBounds = Rect.Zero
         var label = Color.Unspecified
@@ -1061,7 +1065,7 @@ class GlassRenderingTest {
                     "glass error ${plainError * 255}/255, highlight error ${highlightError * 255}/255",
             )
             when {
-                lowest < MenuFloor -> "$case: label contrast $lowest below $MenuFloor at $lowestAt"
+                lowest < floor -> "$case: label contrast $lowest below $floor at $lowestAt"
                 text < 3f -> "$case: menu labels not drawn (best contrast with the glass $text)"
                 gpu && plainError > Tolerance -> "$case: menu glass differs from the reference by ${plainError * 255}/255 (expected ${expected.toList()})"
                 highlightError > Tolerance -> "$case: the pressed row is not the glass with its label color mixed in at 8% (off by ${highlightError * 255}/255, expected ${lit.toList()})"
@@ -1088,8 +1092,9 @@ class GlassRenderingTest {
 
     /*
      * Tinted menus: the labels take white or #111113 by contrast with the tint mixed toward the backing, so the
-     * system colors keep the floor too. Yellow in dark appearance over white is the spec's worst system tint
-     * (5.26:1 with a highlighted row); blue in light appearance takes #111113 where the tint alone would take white.
+     * system colors of either appearance keep 5.0:1. The dark-appearance system yellow (#FFD60A) in dark
+     * appearance over white is the spec's worst system tint (5.07:1 with a highlighted row), the light-appearance
+     * yellow there 5.26:1; blue in light appearance takes #111113 where the tint alone would take white.
      */
 
     private fun assertTintedMenusLegible(tint: Color) {
@@ -1103,6 +1108,9 @@ class GlassRenderingTest {
 
     @Test
     fun menusTintedSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFFFFCC00))
+
+    @Test
+    fun menusTintedDarkSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFFFFD60A))
 
     @Test
     fun fallbackMenusKeepTheirLabelsLegible() {
@@ -1175,12 +1183,6 @@ class GlassRenderingTest {
 
         /** How far inside a menu panel's outline its glass is sampled, clear of the rim light. */
         const val MenuInterior = 16
-
-        /**
-         * The menus' contrast floor (spec/OPTICS.md §3): untinted menus and the system tints keep 5.2:1 over any
-         * backdrop, highlighted rows included (5.24:1 and 5.26:1 at worst in the reference).
-         */
-        const val MenuFloor = 5.2f
 
         /** A menu's inset around its items, and the height of one item at density 1. */
         const val MenuInset = 6

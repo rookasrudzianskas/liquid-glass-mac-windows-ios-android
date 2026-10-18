@@ -133,8 +133,8 @@ internal fun darkLabelOnTint(r: Float, g: Float, b: Float, regular: Boolean): Bo
 /**
  * How far an open menu panel mixes its glass toward the [legibilityBacking], after the material color and tint
  * (`spec/OPTICS.md` §3, "Legibility backing"); the panel applies it times its open progress. Labels in
- * [menuForeground] keep at least 5.2:1 over any backdrop on untinted panels, Regular or Clear, and on panels
- * tinted with the system colors, highlighted rows included. Every other surface uses 0.
+ * [menuForeground] keep at least 5.2:1 over any backdrop on untinted panels, Regular or Clear, and 5.0:1 on panels
+ * tinted with the system colors of either appearance, highlighted rows included. Every other surface uses 0.
  */
 internal const val MENU_LEGIBILITY: Float = 0.6f
 
