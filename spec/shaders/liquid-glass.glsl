@@ -112,7 +112,8 @@ vec3 lgFrostColor(vec3 frost, vec3 fill, float dark) {
 }
 
 // Menu panels mix their glass toward a solid backing so text always reads:
-// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+// #F5F5F7 light, #1C1C1E dark. amount is 0.6 on menu panels (times the open
+// progress of the menu), 0 elsewhere.
 vec3 lgLegibility(vec3 c, float dark, float amount) {
   vec3 backing = mix(vec3(0.960784, 0.960784, 0.968627), vec3(0.109804, 0.109804, 0.117647), dark);
   return mix(c, backing, amount);

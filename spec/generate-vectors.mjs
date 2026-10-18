@@ -88,12 +88,37 @@ const ink = [0x11 / 255, 0x11 / 255, 0x13 / 255];
 const legibility = {
   menuAmount: R.MENU_LEGIBILITY,
   backing: { light: round(R.legibilityBacking(false)), dark: round(R.legibilityBacking(true)) },
-  cases: [[[0.2, 0.4, 0.6], false, 0.5], [[0.2, 0.4, 0.6], true, 0.5], [[1, 1, 1], true, 0.5], [[0, 0, 0], false, 0.5], [[0.9, 0.2, 0.1], true, 0.25], [[0.5, 0.5, 0.5], false, 0]]
+  highlight: R.MENU_HIGHLIGHT,
+  cases: [[[0.2, 0.4, 0.6], false, 0.6], [[0.2, 0.4, 0.6], true, 0.6], [[1, 1, 1], true, 0.6], [[0, 0, 0], false, 0.6], [[0.9, 0.2, 0.1], true, 0.25], [[0.5, 0.5, 0.5], false, 0]]
     .map(([color, dark, amount]) => ({ color, dark, amount, value: round(R.legibilityColor(color, dark, amount)) })),
-  worstCase: {
-    darkOverWhite: round(contrast(R.legibilityColor(R.materialColor([1, 1, 1], "regular", true), true, R.MENU_LEGIBILITY), [1, 1, 1])),
-    lightOverBlack: round(contrast(R.legibilityColor(R.materialColor([0, 0, 0], "regular", false), false, R.MENU_LEGIBILITY), ink)),
-  },
+  menuForeground: [[null, "regular", false], [null, "regular", true], [[0, 0.478, 1], "regular", false], [[0, 0.478, 1], "regular", true],
+    [[1, 0.8, 0], "regular", true], [[1, 0.8, 0], "regular", false], [[0.204, 0.78, 0.349], "clear", true], [[1, 0.231, 0.188], "clear", false]]
+    .map(([tint, material, dark]) => ({ tint, material, dark, value: round(R.menuForeground(tint, material, dark)) })),
+  worstCase: (() => {
+    // Labels over a 6x6x6 grid of backdrops, with and without the row highlight.
+    const steps = [0, 0.2, 0.4, 0.6, 0.8, 1];
+    const grid = steps.flatMap((r) => steps.flatMap((g) => steps.map((b) => [r, g, b])));
+    const floor = (material, dark, tint) => {
+      const fg = R.menuForeground(tint, material, dark);
+      let low = Infinity;
+      for (const bg of grid) {
+        let rgb = R.materialColor(bg, material, dark);
+        if (tint) rgb = R.tintColor(rgb, tint, material);
+        rgb = R.legibilityColor(rgb, dark, R.MENU_LEGIBILITY);
+        low = Math.min(low, contrast(rgb, fg), contrast(rgb.map((c, i) => c + (fg[i] - c) * R.MENU_HIGHLIGHT), fg));
+      }
+      return low;
+    };
+    const system = [[0, 122, 255], [52, 199, 89], [255, 59, 48], [255, 149, 0], [255, 204, 0], [175, 82, 222], [255, 45, 85], [88, 86, 214], [90, 200, 250], [0, 199, 190]].map((c) => c.map((x) => x / 255));
+    const untinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].map((d) => floor(m, d))));
+    const tinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].flatMap((d) => system.map((t) => floor(m, d, t)))));
+    return {
+      darkOverWhite: round(contrast(R.legibilityColor(R.materialColor([1, 1, 1], "regular", true), true, R.MENU_LEGIBILITY), [1, 1, 1])),
+      lightOverBlack: round(contrast(R.legibilityColor(R.materialColor([0, 0, 0], "regular", false), false, R.MENU_LEGIBILITY), ink)),
+      untintedWithHighlight: round(untinted),
+      systemTintsWithHighlight: round(tinted),
+    };
+  })(),
 };
 for (const dark of [false, true]) {
   const width = 240, height = 180, radius = 28;

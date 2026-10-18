@@ -101,14 +101,18 @@ alpha = body + (1 − body)·alpha
 
 ### Legibility backing (menus)
 
-A menu carries text over whatever lies behind it, and Regular glass alone cannot guarantee that text reads: over a white backdrop, dark Regular glass gives white labels only 1.8:1, and over a black backdrop, light Regular glass gives `#111113` labels 2.1:1. Menu panels therefore mix their glass, after the material color and tint, halfway toward a solid backing:
+A menu carries text over whatever lies behind it, and Regular glass alone cannot guarantee that text reads: over a white backdrop, dark Regular glass gives white labels only 1.8:1, and over a black backdrop, light Regular glass gives `#111113` labels 2.1:1. Menu panels therefore mix their glass, after the material color and tint, toward a solid backing:
 
 ```
 backing = light ? #F5F5F7 : #1C1C1E
-rgb     = mix(rgb, backing, legibility)          // legibility 0.5 on menu panels, 0 elsewhere
+rgb     = mix(rgb, backing, legibility · morph)   // legibility 0.6 on menu panels, 0 elsewhere
 ```
 
-With `legibility = 0.5`, menu text in the appearance foreground keeps at least 5.0:1 contrast over any backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light). The panel still refracts and frosts what is behind it, at half strength. Other surfaces use 0; a port may expose the amount for text-heavy panels.
+`morph` is the menu's open progress (0 at the trigger, 1 open, clamped to 1 while the morph spring overshoots), so the glass leaves its trigger as the trigger's own glass and the backing fades in as the panel opens.
+
+**Labels.** Untinted menus draw their items in the appearance foreground (`#111113` light, white dark). A tinted menu draws them in whichever of white and `#111113` has the higher WCAG 2 contrast with the tint as the menu draws it over a mid-tone backdrop: `mix(t · (body + (1 − body)·0.5), backing, legibility)` (`menuForeground` in the reference). A highlighted row (hover, keyboard focus, press) mixes the label color into the glass at 8%.
+
+**Floor.** With `legibility = 0.6`, every untinted menu label, Regular or Clear, keeps at least 5.2:1 over any backdrop in both appearances, highlighted rows included (6.35:1 at worst without the highlight); menus tinted with the platform's system colors keep at least 5.2:1 too. Very light tints (pure yellow, lime, white) can fall below 4.5:1 over a white backdrop in dark appearance: tint menus with a deeper color, or not at all. The panel still refracts and frosts what is behind it, at 40% strength. Other surfaces use 0; a port may expose the amount for text-heavy panels.
 
 ## 4. Rim light
 

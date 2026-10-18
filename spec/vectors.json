@@ -7683,7 +7683,7 @@
   }
  ],
  "legibility": {
-  "menuAmount": 0.5,
+  "menuAmount": 0.6,
   "backing": {
    "light": [
     0.960784,
@@ -7696,6 +7696,7 @@
     0.117647
    ]
   },
+  "highlight": 0.08,
   "cases": [
    {
     "color": [
@@ -7704,11 +7705,11 @@
      0.6
     ],
     "dark": false,
-    "amount": 0.5,
+    "amount": 0.6,
     "value": [
-     0.580392,
-     0.680392,
-     0.784314
+     0.656471,
+     0.736471,
+     0.821176
     ]
    },
    {
@@ -7718,11 +7719,11 @@
      0.6
     ],
     "dark": true,
-    "amount": 0.5,
+    "amount": 0.6,
     "value": [
-     0.154902,
-     0.254902,
-     0.358824
+     0.145882,
+     0.225882,
+     0.310588
     ]
    },
    {
@@ -7732,11 +7733,11 @@
      1
     ],
     "dark": true,
-    "amount": 0.5,
+    "amount": 0.6,
     "value": [
-     0.554902,
-     0.554902,
-     0.558824
+     0.465882,
+     0.465882,
+     0.470588
     ]
    },
    {
@@ -7746,11 +7747,11 @@
      0
     ],
     "dark": false,
-    "amount": 0.5,
+    "amount": 0.6,
     "value": [
-     0.480392,
-     0.480392,
-     0.484314
+     0.576471,
+     0.576471,
+     0.581176
     ]
    },
    {
@@ -7782,9 +7783,117 @@
     ]
    }
   ],
+  "menuForeground": [
+   {
+    "tint": null,
+    "material": "regular",
+    "dark": false,
+    "value": [
+     0.066667,
+     0.066667,
+     0.07451
+    ]
+   },
+   {
+    "tint": null,
+    "material": "regular",
+    "dark": true,
+    "value": [
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "tint": [
+     0,
+     0.478,
+     1
+    ],
+    "material": "regular",
+    "dark": false,
+    "value": [
+     0.066667,
+     0.066667,
+     0.07451
+    ]
+   },
+   {
+    "tint": [
+     0,
+     0.478,
+     1
+    ],
+    "material": "regular",
+    "dark": true,
+    "value": [
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "tint": [
+     1,
+     0.8,
+     0
+    ],
+    "material": "regular",
+    "dark": true,
+    "value": [
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "tint": [
+     1,
+     0.8,
+     0
+    ],
+    "material": "regular",
+    "dark": false,
+    "value": [
+     0.066667,
+     0.066667,
+     0.07451
+    ]
+   },
+   {
+    "tint": [
+     0.204,
+     0.78,
+     0.349
+    ],
+    "material": "clear",
+    "dark": true,
+    "value": [
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "tint": [
+     1,
+     0.231,
+     0.188
+    ],
+    "material": "clear",
+    "dark": false,
+    "value": [
+     0.066667,
+     0.066667,
+     0.07451
+    ]
+   }
+  ],
   "worstCase": {
-   "darkOverWhite": 5.089981,
-   "lightOverBlack": 7.151179
+   "darkOverWhite": 6.511648,
+   "lightOverBlack": 8.742397,
+   "untintedWithHighlight": 5.241933,
+   "systemTintsWithHighlight": 5.263582
   }
  },
  "rimOverlay": [
@@ -13060,11 +13169,11 @@
     "dark": false,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.797025,
-     0.797025,
-     0.836139,
+     0.829777,
+     0.829777,
+     0.862637,
      1
     ]
    },
@@ -13078,11 +13187,11 @@
     "dark": false,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.876713,
-     0.795407,
-     0.83452,
+     0.893527,
+     0.828482,
+     0.861342,
      1
     ]
    },
@@ -13096,11 +13205,11 @@
     "dark": false,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.813191,
-     0.768102,
-     0.84977,
+     0.843218,
+     0.807147,
+     0.873948,
      1
     ]
    },
@@ -13114,11 +13223,11 @@
     "dark": true,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.290229,
-     0.290229,
-     0.328224,
+     0.254144,
+     0.254144,
+     0.286108,
      1
     ]
    },
@@ -13132,11 +13241,11 @@
     "dark": true,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.366272,
-     0.28923,
-     0.327225,
+     0.314978,
+     0.253345,
+     0.285309,
      1
     ]
    },
@@ -13150,11 +13259,11 @@
     "dark": true,
     "refraction": 60,
     "pixel": 0.333333,
-    "legibility": 0.5,
+    "legibility": 0.6,
     "value": [
-     0.306008,
-     0.258954,
-     0.343018,
+     0.270449,
+     0.232806,
+     0.301585,
      1
     ]
    }

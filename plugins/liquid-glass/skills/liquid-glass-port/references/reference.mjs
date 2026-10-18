@@ -203,8 +203,11 @@ export function tintForeground(tint, material) {
   return (glass + 0.05) / (relativeLuminance(dark) + 0.05) > 1.05 / (glass + 0.05) ? dark : [1, 1, 1];
 }
 
-/** Menu panels mix their glass halfway toward a solid backing so text always reads. */
-export const MENU_LEGIBILITY = 0.5;
+/** Menu panels mix their glass toward a solid backing by this amount, so their text always reads. */
+export const MENU_LEGIBILITY = 0.6;
+
+/** A highlighted menu row mixes its label color into the glass by this amount. */
+export const MENU_HIGHLIGHT = 0.08;
 
 /** The solid backing of the legibility mix: #F5F5F7 light, #1C1C1E dark. */
 export function legibilityBacking(dark) {
@@ -215,6 +218,19 @@ export function legibilityBacking(dark) {
 export function legibilityColor(rgb, dark, amount) {
   const backing = legibilityBacking(dark);
   return rgb.map((c, i) => c + (backing[i] - c) * amount);
+}
+
+/**
+ * Label color of a menu (§3): the appearance foreground when untinted; on a tinted menu, white or #111113,
+ * whichever contrasts more with the tint mixed toward the legibility backing over a mid-tone backdrop.
+ */
+export function menuForeground(tint, material, dark, legibility = MENU_LEGIBILITY) {
+  const ink = [17 / 255, 17 / 255, 19 / 255];
+  if (!tint) return dark ? [1, 1, 1] : ink;
+  const body = material === "regular" ? materials.regular.tintBody : materials.clear.tintBody;
+  const pass = body + (1 - body) * 0.5;
+  const glass = relativeLuminance(legibilityColor(tint.map((t) => t * pass), dark, legibility));
+  return (glass + 0.05) / (relativeLuminance(ink) + 0.05) > 1.05 / (glass + 0.05) ? ink : [1, 1, 1];
 }
 
 /**
