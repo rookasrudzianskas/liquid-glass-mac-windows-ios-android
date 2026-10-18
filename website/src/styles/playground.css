@@ -623,3 +623,18 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Phones: the platform tabs, Copy and the collapse button share one row with
+   every icon at its own size (360 px wide and up). */
+@media (max-width: 420px) {
+  .pg-code__bar {
+    gap: 2px;
+    padding: 6px 4px 6px 6px;
+  }
+  .pg-code__tab {
+    padding: 0 10px;
+  }
+  .pg-code__bar .copy-button {
+    padding: 0 8px;
+  }
+}

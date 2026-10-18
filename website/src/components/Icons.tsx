@@ -2,9 +2,10 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-function Icon({ size = 20, children, ...rest }: IconProps) {
+function Icon({ size = 20, children, className, ...rest }: IconProps) {
   return (
     <svg
+      className={className ? `icon ${className}` : "icon"}
       width={size}
       height={size}
       viewBox="0 0 24 24"

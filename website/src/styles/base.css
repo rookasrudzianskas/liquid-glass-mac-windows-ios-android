@@ -131,6 +131,11 @@ img {
   height: auto;
 }
 
+/* Icons keep their intrinsic size in flex rows that run short of room. */
+.icon {
+  flex-shrink: 0;
+}
+
 h1,
 h2,
 h3,
@@ -310,6 +315,7 @@ code {
 
 .icon-button {
   display: inline-grid;
+  flex-shrink: 0;
   place-items: center;
   width: 38px;
   height: 38px;
