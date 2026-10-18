@@ -245,7 +245,7 @@ Every option, default and platform-specific addition is in the guides: [SwiftUI]
 - **Increase contrast** switches to the Regular material and adds a one-unit inner border. Windows contrast themes draw glass with system colors.
 - **Reduced motion** removes grow, stretch and overshoot, and springs become crossfades. The system setting always applies.
 - **Controls keep their platform roles**, labels, values and keyboard behavior for VoiceOver, TalkBack and UI Automation, with focus rings on desktop and Dynamic Type or font scaling on touch. Glass itself is decorative.
-- **Glass never crashes and never draws nothing.** Where the GPU path is unavailable (Android 12 and earlier, Windows without pixel shader 3.0 or in software rendering), it draws a fallback material with the rim light: over the platform's blur where there is one (Android 12, Regular glass on Windows), otherwise a translucent fill.
+- **Glass never crashes and never draws nothing.** Where the GPU path is unavailable (Android 12 and earlier, Windows without pixel shader 3.0 or in software rendering), it draws a fallback material with the rim light: over the platform's blur where there is one (Regular glass on Android 12 and on Windows), otherwise a translucent fill.
 
 ## Limitations
 
@@ -253,7 +253,7 @@ Each guide lists its port's limits in full ([SwiftUI](docs/apple.md#limitations)
 
 - **Glass refracts the scene's content layer, not the views beside it.** Whatever should show through the glass goes into `GlassContent` (`GlassScene.Content` in WPF); other views in the scene, and the labels on the glass, are not refracted.
 - **SwiftUI: views backed by UIKit or AppKit** (a native `ScrollView`, `List`, `TextField`, `Map`, `WebView` or any `UIViewRepresentable`) cannot be drawn into the glass layer, so glass over them shows nothing of them. Keep them in the foreground, and scroll a backdrop with `GlassScrollView`.
-- **Jetpack Compose: 16 GPU surfaces per scene** (`GlassDefaults.MaxSurfacesPerScene`). Surfaces beyond the limit draw the fallback material over a platform blur; nest scenes to go further.
+- **Jetpack Compose: 16 GPU surfaces per scene** (`GlassDefaults.MaxSurfacesPerScene`). Surfaces beyond the limit draw the fallback material (Regular surfaces over a platform blur, Clear ones a translucent fill); nest scenes to go further.
 - **Rotation:** the SwiftUI and Compose ports follow an ancestor's translation and scale, not its rotation: inside a rotated view SwiftUI misaligns the refraction and Compose draws the axis-aligned bounds. WPF follows rotation and skew too.
 - **WPF: menus stay inside their window**, floating in the scene so they can refract its backdrop.
 
@@ -333,7 +333,7 @@ jitpack.yml                           JitPack build of the Android library
 | Part | Toolchain | Build and test |
 | --- | --- | --- |
 | Apple | Xcode 16 or later | `xcodebuild test -scheme LiquidGlass -destination 'platform=macOS'` |
-| Android | JDK 17 (the Gradle wrapper is included) | `cd platforms/android && ./gradlew :liquidglass:testDebugUnitTest` |
+| Android | JDK 17 and the Android SDK (platform 35); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties` (the Gradle wrapper is included) | `cd platforms/android && ./gradlew :liquidglass:testDebugUnitTest` |
 | Windows | .NET 10 SDK (builds on macOS and Linux; the WPF tests need Windows) | `cd platforms/windows && scripts/dotnet.sh test tests/LiquidGlass.Core.Tests` |
 | Website | Node 22 (20.19 or later) | `cd website && npm ci && npm run build` |
 

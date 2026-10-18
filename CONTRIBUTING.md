@@ -15,7 +15,7 @@ Thanks for helping. Liquid Glass Engineering is one optical model in four places
 | Part | Toolchain |
 | --- | --- |
 | Apple (`Package.swift`, `Sources/`, `Tests/`, `platforms/apple/`) | Xcode 16 or later (iOS 18 / macOS 15 SDK; the deployment targets stay iOS 17 and macOS 14). When Xcode is not the selected developer directory, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. `swift build` alone does not compile the Metal shaders; use `xcodebuild`. |
-| Android (`platforms/android/`) | JDK 17. The Gradle wrapper is checked in. |
+| Android (`platforms/android/`) | JDK 17 and the Android SDK (platform 35); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties`. The Gradle wrapper is checked in. |
 | Windows (`platforms/windows/`) | .NET 10 SDK (`global.json`). `scripts/dotnet.sh` builds on macOS and Linux too; the WPF tests and the Studio need Windows. |
 | Website and scripts (`website/`, `scripts/`, `spec/`) | Node 22 (20.19 or later). The scripts use only Node built-ins. |
 
@@ -72,7 +72,7 @@ On macOS and Linux the [Windows workflow](.github/workflows/windows.yml) is the 
 ```sh
 npm ci
 npm run dev        # local server
-npm run build      # typecheck, build, prerender and link check
+npm run build      # collects the downloads if missing, then typecheck, build, prerender and link check
 npm run lint
 ```
 

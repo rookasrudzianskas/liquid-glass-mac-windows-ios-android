@@ -7,7 +7,7 @@ body:
       value: |
         Issues are public. Use this form only to ask for a private channel: never describe the problem, the people involved or the affected systems here. The maintainer will reply with a way to send the report privately.
 
-        For a vulnerability, try the private advisory form first, as described in the [security policy](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/SECURITY.md).
+        For a vulnerability, see the [security policy](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/SECURITY.md): this form is the way to start, and if the repository's Security tab shows a Report a vulnerability button, that sends a private advisory directly.
   - type: checkboxes
     id: no-details
     attributes:

@@ -11,7 +11,7 @@ Fixes are released as a new patch version of the libraries (Swift package, `liqu
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately, not in a public issue: open the repository's **Security** tab and choose **Report a vulnerability** ([direct link](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/security/advisories/new)). This sends a private advisory to the maintainer. If that option is not shown, ask for a private contact with the [private contact request](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/issues/new?template=private_contact.yml) issue form, without any details of the problem.
+Please report vulnerabilities privately, not in a public issue: ask for a private contact with the [private contact request](https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/issues/new?template=private_contact.yml) issue form, without any details of the problem, and the maintainer replies with a private way to send the report. If the repository's **Security** tab shows a **Report a vulnerability** button, you can use it instead: it sends a private advisory to the maintainer directly.
 
 Include what is affected (library, platform and version, Studio app, website or a download), how to reproduce it and the impact you see. The maintainer aims to acknowledge a report within a week. Once a fix is released, the advisory is published with credit to the reporter, unless you prefer otherwise.
 
