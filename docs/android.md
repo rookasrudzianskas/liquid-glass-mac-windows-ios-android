@@ -5,7 +5,7 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 <p align="center">
   <img src="images/android/hero-dark.png" width="24%" alt="Hero: a frosted glass card over the Aurora wallpaper, with a floating toolbar and tab bar">
   <img src="images/android/controls-light.png" width="24%" alt="Controls, scrolled to the end: glass icon buttons, sliders and switches on a frosted card, a segmented tab bar and a menu trigger above the floating tab bar">
-  <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button">
+  <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button, its glass mixed halfway toward a solid dark backing so the white labels read over the wallpaper">
   <img src="images/android/blur-light.png" width="24%" alt="A scrolling journal under progressive edge blur and a glass toolbar">
 </p>
 
@@ -284,6 +284,8 @@ Row(verticalAlignment = Alignment.CenterVertically) {
 
 A Regular glass panel that grows out of its trigger on the morph spring, covering it, and collapses back into it. A menu opened from a `GlassToolbar` item grows out of, and covers, the item's whole cluster. Outside taps, Back and Escape dismiss it; choosing an item runs its action and dismisses it.
 
+The panel carries the legibility backing of [OPTICS §3](../spec/OPTICS.md#legibility-backing-menus): after the material color and tint, its glass is mixed halfway toward a solid `#F5F5F7` (light) or `#1C1C1E` (dark). Labels of an untinted Regular panel, in the glass foreground, therefore keep at least 5:1 contrast over any backdrop: 5.09:1 for white labels over white in dark appearance (1.8:1 without the backing) and 7.15:1 for `#111113` over black in light (2.1:1). The panel still refracts and frosts what lies behind it, at half strength. Other surfaces have no backing, and the amount is not an option.
+
 ```kotlin
 var open by remember { mutableStateOf(false) }
 GlassMenu(
@@ -298,7 +300,7 @@ GlassMenu(
 }
 ```
 
-`checked` is null for actions; `true` or `false` makes the item a choice, shown with a check mark and announced as checked or not (a checkbox). The panel is as wide as its widest item, at least 220 dp and at most the safe area's width; longer labels and large fonts wrap onto more lines, and a panel taller than the safe area scrolls. Outside a scene the menu opens in a popup with the fallback material.
+`checked` is null for actions; `true` or `false` makes the item a choice, shown with a check mark and announced as checked or not (a checkbox). The panel is as wide as its widest item, at least 220 dp and at most the safe area's width; longer labels and large fonts wrap onto more lines, and a panel taller than the safe area scrolls. Outside a scene the menu opens in a popup with the fallback material; the fallback material mixes the same backing into its fill, so menus read there and below Android 13 too.
 
 ### `GlassProgressiveBlur`
 
@@ -382,7 +384,7 @@ A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed str
 | Wholly outside the `GlassContent`'s bounds | The fallback material (the content layer has nothing there to refract). Glass across the content's edge keeps the GPU glass. |
 | More than 16 surfaces | Surfaces beyond the limit get the fallback material (Regular surfaces over a platform blur, Clear ones a translucent fill). |
 
-Glass never crashes and never draws nothing.
+Glass never crashes and never draws nothing. Fallback menus mix the legibility backing into their fill like the GPU glass, so their labels stay legible.
 
 ## Limitations
 
@@ -422,7 +424,7 @@ The Gradle project lives in `platforms/android`. It needs JDK 17 and the Android
 ```sh
 cd platforms/android
 ./gradlew :liquidglass:testDebugUnitTest          # Kotlin optics vs spec/vectors.json
-./gradlew :liquidglass:connectedDebugAndroidTest  # shader vs spec/vectors.json and rendered glass vs the reference on the GPU (Android 13+); the fallback on older versions
+./gradlew :liquidglass:connectedDebugAndroidTest  # shader vs spec/vectors.json, rendered glass vs the reference and menu label contrast on the GPU (Android 13+); the fallback on older versions
 ./gradlew lint
 ./gradlew :liquidglass:publishReleasePublicationToArtifactsRepository :liquidglass:exportAar
 ./gradlew :studio:assembleRelease

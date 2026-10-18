@@ -660,6 +660,8 @@ Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
 
 A menu that grows out of its trigger: a Regular glass panel morphing from the trigger's outline on the morph spring (0.42 s, bounce 0.18), covering it, and collapsing back into it when dismissed. The trigger fades out as the panel grows. Opened from a `GlassToolbar` item, the panel grows out of and covers the item's whole cluster. Tapping outside, Back and Escape dismiss it; choosing an item runs its action and dismisses it. The panel is a pane titled "Menu" for TalkBack, takes focus when it opens and returns focus to the trigger for keyboard users when it closes.
 
+The panel's glass is mixed halfway toward a solid backing, `#F5F5F7` light and `#1C1C1E` dark, after the material color and tint (the legibility backing of `spec/OPTICS.md` §3), so the labels of an untinted Regular panel keep at least 5:1 contrast over any backdrop (5.09:1 white over white in dark, 7.15:1 `#111113` over black in light; Regular glass alone gives 1.8:1 and 2.1:1 there). It still refracts and frosts the backdrop, at half strength. The fallback material folds the same backing into its fill. Only menu panels have it, and it is not an option.
+
 Inside a `GlassScene` the panel is drawn in the **outermost** scene's overlay, above every nested scene's glass, and refracts that scene. It is placed over the trigger (aligned to the trigger's top, or bottom when there is no room, and to its nearer side) and kept inside the safe drawing insets plus an 8 dp margin. Outside a scene it opens in a `Popup` with the fallback material, following the system's dark theme unless you pass `appearance`.
 
 ```kotlin
@@ -698,7 +700,7 @@ public fun GlassMenuDivider()
 | `onDismissRequest` | | Called on outside tap, Back, Escape, TalkBack "collapse" and after an item is chosen. Set `expanded = false` here. |
 | `trigger` | | The control that opens the menu, usually a `GlassButton` whose `onClick` sets `expanded = true`. The panel grows out of its bounds. |
 | `modifier` | `Modifier` | Modifier of the **panel**, not the trigger. The panel is as wide as its widest item, at least 220 dp and at most the safe area's width minus 8 dp margins (`Modifier.width(280.dp)` fixes it), with a 6 dp inset; taller than the safe area, it scrolls. To place the trigger, wrap the `GlassMenu` in a `Box(Modifier.align(…))` or put it in a `Row` / `GlassToolbar`. |
-| `material` | `GlassMaterial.Regular` | The panel's material. |
+| `material` | `GlassMaterial.Regular` | The panel's material; the legibility backing applies to either. |
 | `appearance` | null | |
 | `tint` | `Color.Unspecified` | Colors the panel's glass. |
 | `shape` | `GlassShape(28.dp)` | The panel's outline. |
