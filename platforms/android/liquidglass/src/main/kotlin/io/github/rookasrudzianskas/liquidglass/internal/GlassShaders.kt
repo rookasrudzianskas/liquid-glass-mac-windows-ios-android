@@ -69,6 +69,7 @@ uniform float4 uShape[$MAX_SURFACES];
 uniform float4 uLook[$MAX_SURFACES];
 uniform float4 uTint[$MAX_SURFACES];
 uniform float4 uGlow[$MAX_SURFACES];
+uniform float uLegibility[$MAX_SURFACES];
 
 const float3 LG_LUMA = float3(0.213, 0.715, 0.072);
 
@@ -232,6 +233,13 @@ float3 lgTintColor(float3 c, float3 tint, float material) {
   return clamp(tint * (body + (1.0 - body) * dot(c, LG_LUMA)), 0.0, 1.0);
 }
 
+// Menu panels mix their glass toward a solid backing so text always reads:
+// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+float3 lgLegibility(float3 c, float dark, float amount) {
+  float3 backing = mix(float3(0.960784, 0.960784, 0.968627), float3(0.109804, 0.109804, 0.117647), dark);
+  return mix(c, backing, amount);
+}
+
 // --- Rim light (premultiplied) -------------------------------------------------
 
 float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float tintOn) {
@@ -265,7 +273,9 @@ float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float ti
 
 // src: refracted backdrop (unpremultiplied); base: what lies beneath (premultiplied).
 // material: 0 clear, 1 regular, 2 solid. look = (dark, nested, opacity, contrast).
-float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 look, float4 tint, float pixel) {
+// legibility: the share of the legibility backing (0.5 on menu panels, 0 elsewhere).
+float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 look, float4 tint, float pixel,
+                 float legibility) {
   float dark = look.x;
   float opacity = look.z;
   bool solid = material > 1.5;
@@ -284,6 +294,7 @@ float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 l
     float body = lgTintBody(regular);
     a = body + (1.0 - body) * a;
   }
+  rgb = lgLegibility(rgb, dark, legibility);
   float ga = a * lgCoverage(field.x, pixel) * opacity;
   float4 result = float4(rgb * ga, ga) + base * (1.0 - ga);
   if (look.w > 0.5) {
@@ -338,7 +349,7 @@ half4 main(float2 fragCoord) {
     if (!own) {
       // Glass another pass draws hides, by its own alpha, what this pass drew beneath it
       // (the backdrop's alpha stands in for its sample's: equal on opaque content).
-      float hide = lgCompose(float4(0.0, 0.0, 0.0, float(raw.a)), float4(0.0), field, material, look, uTint[i], pixel).a;
+      float hide = lgCompose(float4(0.0, 0.0, 0.0, float(raw.a)), float4(0.0), field, material, look, uTint[i], pixel, uLegibility[i]).a;
       float glowAlpha = lgGlowAlpha(uGlow[i], p, field, look, pixel);
       acc *= (1.0 - hide) * (1.0 - glowAlpha);
       continue;
@@ -347,7 +358,7 @@ half4 main(float2 fragCoord) {
     float2 offset = refracts ? lgRefractionOffset(field, shape.z) : float2(0.0);
     float compression = refracts ? lgCompression(field.x, shape.z) : 1.0;
     float4 src = lgToSrgb(lgRefracted(fragCoord + offset * uDensity, field.yz, compression));
-    acc = lgCompose(src, acc, field, material, look, uTint[i], pixel);
+    acc = lgCompose(src, acc, field, material, look, uTint[i], pixel, uLegibility[i]);
     float glowAlpha = lgGlowAlpha(uGlow[i], p, field, look, pixel);
     acc = float4(glowAlpha) + acc * (1.0 - glowAlpha);
   }

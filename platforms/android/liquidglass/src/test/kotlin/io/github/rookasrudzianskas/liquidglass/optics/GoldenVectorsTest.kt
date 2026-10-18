@@ -164,6 +164,33 @@ class GoldenVectorsTest {
     }
 
     @Test
+    fun legibilityMatches() {
+        val legibility = vectors.getValue("legibility").jsonObject
+        assertEquals(legibility.f("menuAmount"), MENU_LEGIBILITY)
+        val backing = legibility.getValue("backing").jsonObject
+        close(backing.floats("light"), legibilityBacking(dark = false), "backing light")
+        close(backing.floats("dark"), legibilityBacking(dark = true), "backing dark")
+        val cases = legibility.getValue("cases").jsonArray.map { it.jsonObject }
+        for (c in cases) {
+            close(c.floats("value"), legibilityColor(c.floats("color"), c.b("dark"), c.f("amount")), "legibilityColor $c")
+        }
+        assertEquals(6, cases.size)
+        // The worst cases of untinted Regular menus: white labels over white in dark, #111113 over black in light.
+        val worst = legibility.getValue("worstCase").jsonObject
+        val white = floatArrayOf(1f, 1f, 1f)
+        val black = floatArrayOf(0f, 0f, 0f)
+        val ink = floatArrayOf(17f / 255f, 17f / 255f, 19f / 255f)
+        val darkOverWhite = contrastRatio(legibilityColor(materialColor(white, regular = true, dark = true), true, MENU_LEGIBILITY), white)
+        val lightOverBlack = contrastRatio(legibilityColor(materialColor(black, regular = true, dark = false), false, MENU_LEGIBILITY), ink)
+        close(worst.f("darkOverWhite"), darkOverWhite, "darkOverWhite", tolerance = 1e-3f)
+        close(worst.f("lightOverBlack"), lightOverBlack, "lightOverBlack", tolerance = 1e-3f)
+        assertTrue("menu labels keep 5:1 ($darkOverWhite, $lightOverBlack)", darkOverWhite >= 5f && lightOverBlack >= 5f)
+        // Without the backing, the same glass gives 1.8:1 and 2.1:1.
+        assertTrue(contrastRatio(materialColor(white, regular = true, dark = true), white) < 2f)
+        assertTrue(contrastRatio(materialColor(black, regular = true, dark = false), ink) < 2.2f)
+    }
+
+    @Test
     fun rimOverlayMatches() {
         val cases = list("rimOverlay")
         for (c in cases) {
@@ -190,12 +217,14 @@ class GoldenVectorsTest {
                 refraction = c.f("refraction"),
                 pixel = c.f("pixel"),
                 tint = c.floatsOrNull("tint"),
+                legibility = c["legibility"]?.jsonPrimitive?.float ?: 0f,
                 base = linearBackdrop(x, y),
                 sample = { dx, dy -> linearBackdrop(x + dx, y + dy) },
             )
             close(c.floats("value"), value, "glassPixel $c")
         }
-        assertEquals(57, cases.size)
+        assertEquals(63, cases.size)
+        assertEquals(6, cases.count { it.containsKey("legibility") })
     }
 
     /** The backdrop spec/vectors.json uses: rgb = (0.5 + px/400, 0.5 + py/400, 0.6), alpha 1. */

@@ -320,6 +320,7 @@ internal class GlassContentNode(scene: GlassSceneState) : Modifier.Node(), DrawM
                     glowCenter = Offset(b.width / 2f + frame.glowX * density, b.height / 2f + frame.glowY * density),
                     glow = glow(b.width / density, b.height / density, frame.dark),
                     glowAmount = frame.glowAmount,
+                    legibility = frame.legibility,
                     blurredBackdrop = frosted.takeIf { frame.regular },
                     backdropOffset = Offset(-b.left, -b.top),
                 )

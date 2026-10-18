@@ -239,6 +239,26 @@ class ShaderVectorTest {
     }
 
     @Test
+    fun legibilityMatches() {
+        val legibility = vectors.getJSONObject("legibility")
+        val backing = legibility.getJSONObject("backing")
+        val backings = evaluate(MODE_LEGIBILITY, listOf(false, true).map { dark ->
+            // Mixing all the way gives the backing itself.
+            Inputs(floatArrayOf(0.5f, 0.5f, 0.5f, if (dark) 1f else 0f), floatArrayOf(1f, 0f, 0f, 0f))
+        })
+        close(backing.floats("light"), backings[0], 3, "backing light")
+        close(backing.floats("dark"), backings[1], 3, "backing dark")
+        val cases = legibility.getJSONArray("cases").objects()
+        val results = evaluate(MODE_LEGIBILITY, cases.map { c ->
+            val rgb = c.floats("color")
+            Inputs(floatArrayOf(rgb[0], rgb[1], rgb[2], c.flag("dark")), floatArrayOf(c.f("amount"), 0f, 0f, 0f))
+        })
+        cases.forEachIndexed { i, c -> close(c.floats("value"), results[i], 3, "legibility[$i] $c") }
+        assertEquals(6, cases.size)
+        report("legibility", cases.size + backings.size)
+    }
+
+    @Test
     fun rimOverlayMatches() {
         val cases = cases("rimOverlay")
         val results = evaluate(MODE_RIM, cases.map { c ->
@@ -262,12 +282,13 @@ class ShaderVectorTest {
             Inputs(
                 floatArrayOf(c.f("x"), c.f("y"), c.f("width"), c.f("height")),
                 floatArrayOf(p.extent, p.exponent, c.regular(), c.flag("dark")),
-                floatArrayOf(c.f("refraction"), c.pixel(), 0f, 0f),
+                floatArrayOf(c.f("refraction"), c.pixel(), c.optDouble("legibility", 0.0).toFloat(), 0f),
                 c.tint(),
             )
         })
         cases.forEachIndexed { i, c -> close(c.floats("value"), results[i], 4, "glassPixel[$i] $c") }
-        assertEquals(57, cases.size)
+        assertEquals(63, cases.size)
+        assertEquals(6, cases.count { it.has("legibility") })
         report("glassPixel", cases.size)
     }
 
@@ -285,6 +306,7 @@ class ShaderVectorTest {
         const val MODE_TINT = 3
         const val MODE_RIM = 4
         const val MODE_GLASS_PIXEL = 5
+        const val MODE_LEGIBILITY = 6
 
         val ZERO = FloatArray(4)
 
@@ -339,12 +361,16 @@ float4 lgTestEvaluate() {
     // Rim light: uA = (distance, nx, ny, dark), uB = (pixel, tint rgb), uC.x = tint on.
     return lgRimOverlay(uA.xyz, uA.w, uB.x, uB.yzw, uC.x);
   }
+  if (uMode > 5.5) {
+    // Legibility backing: uA = (rgb, dark), uB.x = amount.
+    return float4(lgLegibility(uA.rgb, uA.a, uB.x), 0.0);
+  }
   // Glass pixel over the linear backdrop: uA = (x, y, width, height), uB = (extent, exponent, material, dark),
-  // uC = (refraction, pixel), uD = (tint rgb, tint on). Not nested, fully opaque, no contrast border.
+  // uC = (refraction, pixel, legibility), uD = (tint rgb, tint on). Not nested, fully opaque, no contrast border.
   float2 p = uA.xy;
   float3 field = lgShapeField(p, uA.zw, uB.xy);
   float4 src = lgTestBackdrop(p + lgRefractionOffset(field, uC.x));
-  return lgCompose(src, lgTestBackdrop(p), field, uB.z, float4(uB.w, 0.0, 1.0, 0.0), uD, uC.y);
+  return lgCompose(src, lgTestBackdrop(p), field, uB.z, float4(uB.w, 0.0, 1.0, 0.0), uD, uC.y, uC.z);
 }
 
 // A value in [-512, 512] as 24-bit fixed point: whole 1/255 steps in red and green, the rest in blue.

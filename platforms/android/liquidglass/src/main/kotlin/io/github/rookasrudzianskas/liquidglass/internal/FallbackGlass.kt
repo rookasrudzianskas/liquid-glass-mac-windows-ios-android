@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import io.github.rookasrudzianskas.liquidglass.glassPath
 import io.github.rookasrudzianskas.liquidglass.optics.GlowParams
+import io.github.rookasrudzianskas.liquidglass.optics.legibilityBacking
 import io.github.rookasrudzianskas.liquidglass.optics.luma
 import io.github.rookasrudzianskas.liquidglass.optics.shapeParams
 import io.github.rookasrudzianskas.liquidglass.optics.tintBody
@@ -24,7 +25,8 @@ import io.github.rookasrudzianskas.liquidglass.optics.tintBody
  *
  * Draws into a scope whose origin is the surface's top-left corner and whose
  * size is the surface's visual size. [blurredBackdrop], when given, is the
- * scene content already blurred, positioned by [backdropOffset].
+ * scene content already blurred, positioned by [backdropOffset]. [legibility]
+ * mixes the glass toward the legibility backing, as the shader does (menus).
  */
 internal fun DrawScope.drawFallbackGlass(
     size: Size,
@@ -37,6 +39,7 @@ internal fun DrawScope.drawFallbackGlass(
     glowCenter: Offset,
     glow: GlowParams,
     glowAmount: Float,
+    legibility: Float,
     blurredBackdrop: GraphicsLayer?,
     backdropOffset: Offset,
 ) {
@@ -51,7 +54,7 @@ internal fun DrawScope.drawFallbackGlass(
             drawLayer(blurredBackdrop)
             drawContext.transform.translate(-backdropOffset.x, -backdropOffset.y)
         }
-        drawRect(fallbackFill(material, dark, tint, blurred = blurredBackdrop != null), alpha = opacity)
+        drawRect(withLegibility(fallbackFill(material, dark, tint, blurred = blurredBackdrop != null), dark, legibility), alpha = opacity)
         val glowRadiusPx = glow.radius * density
         if (glowAmount > 0f && glowRadiusPx > 0f) {
             val alpha = glow.alpha * glowAmount * opacity
@@ -98,7 +101,7 @@ private fun DrawScope.drawFallbackRim(outline: Path, size: Size, radiusPx: Float
 }
 
 /** The translucent fill that stands in for the material. */
-private fun fallbackFill(material: Float, dark: Boolean, tint: Color, blurred: Boolean): Color {
+internal fun fallbackFill(material: Float, dark: Boolean, tint: Color, blurred: Boolean): Color {
     if (material == ShaderMaterial.SOLID) {
         val fill = if (dark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
         return if (tint.isSpecified) tinted(fill, tint, regular = true).copy(alpha = 0.94f) else fill.copy(alpha = 0.94f)
@@ -112,6 +115,21 @@ private fun fallbackFill(material: Float, dark: Boolean, tint: Color, blurred: B
     }
     if (!tint.isSpecified) return base
     return tinted(base, tint, regular).copy(alpha = tintBody(regular))
+}
+
+/**
+ * [fill] with the legibility backing (spec/OPTICS.md §3) folded in: the glass a fill
+ * makes over any backdrop, mixed toward the backing by [amount], is itself a fill
+ * over that backdrop, `(1 − amount)·fill + amount·backing` with the backdrop showing
+ * through by `(1 − amount)(1 − fill.alpha)`. So a fallback menu reads like a GPU one.
+ */
+internal fun withLegibility(fill: Color, dark: Boolean, amount: Float): Color {
+    if (amount <= 0f) return fill
+    val backing = legibilityBacking(dark)
+    val a = fill.alpha
+    val alpha = 1f - (1f - amount) * (1f - a)
+    fun channel(c: Float, b: Float) = (((1f - amount) * a * c + amount * b) / alpha).coerceIn(0f, 1f)
+    return Color(channel(fill.red, backing[0]), channel(fill.green, backing[1]), channel(fill.blue, backing[2]), alpha)
 }
 
 /** Tint transmits the luminance of what lies beneath, as in spec/OPTICS.md §3. */

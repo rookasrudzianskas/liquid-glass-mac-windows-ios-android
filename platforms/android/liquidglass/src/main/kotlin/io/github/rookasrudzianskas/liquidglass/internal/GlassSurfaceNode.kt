@@ -77,6 +77,8 @@ internal data class GlassSurfaceParams(
     val motion: GlassMotion?,
     val opacity: Float,
     val interactionSource: InteractionSource?,
+    /** Share of the legibility backing mixed into the glass ([io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY] on menu panels). */
+    val legibility: Float = 0f,
 )
 
 /**
@@ -436,6 +438,7 @@ internal class GlassSurfaceNode(
             glowY = (glowAt.y - center.y) / density,
             glowRadius = glow(widthDp, heightDp, dark).radius,
             glowAmount = glowAmount.floatValue,
+            legibility = params.legibility,
         )
     }
 
@@ -504,6 +507,7 @@ internal class GlassSurfaceNode(
                         glowCenter = glowCenter,
                         glow = glow(local.width / density, local.height / density, dark),
                         glowAmount = glowAmount.floatValue,
+                        legibility = params.legibility,
                         blurredBackdrop = null,
                         backdropOffset = Offset.Zero,
                     )

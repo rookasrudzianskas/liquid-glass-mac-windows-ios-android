@@ -37,6 +37,8 @@ internal class SurfaceFrame(
     val glowRadius: Float,
     /** Glow spring value, 0..1 (0.35 while hovered). */
     val glowAmount: Float,
+    /** Share of the legibility backing mixed into the glass: 0.5 on menu panels, 0 elsewhere. */
+    val legibility: Float = 0f,
 ) {
     val regular: Boolean get() = material == ShaderMaterial.REGULAR
 }

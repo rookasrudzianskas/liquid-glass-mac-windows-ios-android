@@ -11,8 +11,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 // Kotlin port of the parts of spec/reference.mjs the renderer runs on the CPU:
-// shape parameters and outlines, material constants, interaction response and
-// progressive blur levels. Geometry is in dp, colors are sRGB gamma-encoded.
+// shape parameters and outlines, material constants, the menus' legibility
+// backing (which the fallback material mixes into its fill), interaction
+// response and progressive blur levels. Geometry is in dp, colors are sRGB
+// gamma-encoded.
 // The per-pixel functions run in the AGSL shader (GlassShaders.kt); their CPU
 // reference lives with the tests (src/sharedTest), which check both against
 // spec/vectors.json.
@@ -126,6 +128,23 @@ internal fun darkLabelOnTint(r: Float, g: Float, b: Float, regular: Boolean): Bo
     val glass = relativeLuminance(r * pass, g * pass, b * pass)
     val dark = relativeLuminance(17f / 255f, 17f / 255f, 19f / 255f)
     return (glass + 0.05f) / (dark + 0.05f) > 1.05f / (glass + 0.05f)
+}
+
+/**
+ * How far a menu panel mixes its glass toward the [legibilityBacking], after the material color and tint
+ * (`spec/OPTICS.md` §3, "Legibility backing"): labels on it keep at least 5:1 over any backdrop. Every other
+ * surface uses 0.
+ */
+internal const val MENU_LEGIBILITY: Float = 0.5f
+
+/** The solid backing of the legibility mix, gamma-encoded sRGB: `#F5F5F7` light, `#1C1C1E` dark. */
+internal fun legibilityBacking(dark: Boolean): FloatArray =
+    if (dark) floatArrayOf(0x1C / 255f, 0x1C / 255f, 0x1E / 255f) else floatArrayOf(0xF5 / 255f, 0xF5 / 255f, 0xF7 / 255f)
+
+/** [rgb] (unpremultiplied sRGB) mixed toward the [legibilityBacking] by [amount]; 0 leaves it unchanged. */
+internal fun legibilityColor(rgb: FloatArray, dark: Boolean, amount: Float): FloatArray {
+    val backing = legibilityBacking(dark)
+    return FloatArray(3) { rgb[it] + (backing[it] - rgb[it]) * amount }
 }
 
 /** Gaussian σ of the Regular frost, in dp. */

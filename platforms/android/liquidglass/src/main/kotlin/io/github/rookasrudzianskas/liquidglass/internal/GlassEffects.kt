@@ -44,6 +44,7 @@ internal class GlassEffectBuilder {
     private val look = FloatArray(MAX_SURFACES * 4)
     private val tint = FloatArray(MAX_SURFACES * 4)
     private val glow = FloatArray(MAX_SURFACES * 4)
+    private val legibility = FloatArray(MAX_SURFACES)
 
     /** The frosted backdrop of each appearance, built for [frostDensity]. */
     private var frostedLight: RenderEffect? = null
@@ -102,6 +103,7 @@ internal class GlassEffectBuilder {
         glow[o + 1] = s.glowY
         glow[o + 2] = maxOf(s.glowRadius, 1f)
         glow[o + 3] = s.glowAmount
+        legibility[i] = s.legibility
     }
 
     private fun configure(shader: RuntimeShader, pass: Float, count: Int, size: Size, density: Float): RuntimeShader {
@@ -115,6 +117,7 @@ internal class GlassEffectBuilder {
         shader.setFloatUniform("uLook", look)
         shader.setFloatUniform("uTint", tint)
         shader.setFloatUniform("uGlow", glow)
+        shader.setFloatUniform("uLegibility", legibility)
         return shader
     }
 

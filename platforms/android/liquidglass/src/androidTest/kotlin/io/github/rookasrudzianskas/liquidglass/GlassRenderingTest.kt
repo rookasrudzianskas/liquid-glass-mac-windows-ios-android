@@ -56,8 +56,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.rookasrudzianskas.liquidglass.internal.GlassDynamics
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
+import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
+import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
 import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
+import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
+import io.github.rookasrudzianskas.liquidglass.optics.materialColor
 import io.github.rookasrudzianskas.liquidglass.optics.sat
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -67,6 +71,7 @@ import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
@@ -914,6 +919,114 @@ class GlassRenderingTest {
         }
     }
 
+    /**
+     * Opens a [GlassMenu] (two items, no motion) over the uniform [backdrop] in [appearance] and checks the
+     * glass behind its labels: every interior pixel beside them has at least [MinLabelContrast] with the label
+     * color the items get, the labels are drawn in it, and on the GPU path the glass is the reference's Regular
+     * glass with the menus' legibility backing. [extraSurfaces] small surfaces below the menu take up the GPU
+     * slots first, so with [GlassDefaults.MaxSurfacesPerScene] of them the menu draws the fallback material.
+     */
+    private fun assertMenuLegible(backdrop: FloatArray, appearance: GlassAppearance, extraSurfaces: Int = 0) {
+        val dark = appearance == GlassAppearance.Dark
+        val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
+        var sceneBounds = Rect.Zero
+        var panelBounds = Rect.Zero
+        var label = Color.Unspecified
+        val scene = @Composable {
+            GlassScene(
+                Modifier.fillMaxSize().onGloballyPositioned { sceneBounds = it.boundsInWindow() },
+                appearance = appearance,
+                motion = GlassMotion.None,
+                increaseContrast = false,
+            ) {
+                GlassContent(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(backdropColor)) }
+                for (i in 0 until extraSurfaces) {
+                    Box(
+                        Modifier
+                            .offset((8 + (i % 8) * 38).dp, (190 + (i / 8) * 34).dp)
+                            .size(28.dp, 26.dp)
+                            .liquidGlass(GlassShape(8.dp), material = GlassMaterial.Regular),
+                    )
+                }
+                Box(Modifier.offset(MenuLeft.dp, MenuTop.dp)) {
+                    GlassMenu(
+                        expanded = true,
+                        onDismissRequest = {},
+                        trigger = { Box(Modifier.size(44.dp)) },
+                        modifier = Modifier.onGloballyPositioned { panelBounds = it.boundsInWindow() },
+                    ) {
+                        label = LocalGlassContentColor.current
+                        GlassMenuItem("Legible", onClick = {})
+                        GlassMenuItem("Labels", onClick = {})
+                    }
+                }
+            }
+        }
+        assertRendered(scene) { image ->
+            val panel = panelBounds.translate(-sceneBounds.left, -sceneBounds.top)
+            if (panel.width < 200f || panel.height < 80f || panel.right > SceneWidth || panel.bottom > SceneHeight) {
+                return@assertRendered "menu panel not laid out in the scene: $panel"
+            }
+            val ink = floatArrayOf(label.red, label.green, label.blue)
+            val expected = legibilityColor(materialColor(backdrop, regular = true, dark = dark), dark, MENU_LEGIBILITY)
+            val gpu = Build.VERSION.SDK_INT >= 33 && extraSurfaces < GlassDefaults.MaxSurfacesPerScene
+            val left = panel.left.toInt()
+            val top = panel.top.toInt()
+            val right = panel.right.toInt()
+            val bottom = panel.bottom.toInt()
+            var lowest = Float.MAX_VALUE
+            var lowestAt = ""
+            var error = 0f
+            // Beside the labels (which end well before x + 120), clear of the rim light.
+            for (y in top + MenuInterior until bottom - MenuInterior step 2) {
+                for (x in left + 120 until right - MenuInterior step 2) {
+                    val c = image.color(x, y)
+                    val glass = floatArrayOf(c.red, c.green, c.blue)
+                    val contrast = contrastRatio(ink, glass)
+                    if (contrast < lowest) {
+                        lowest = contrast
+                        lowestAt = "($x, $y) ${glass.toList()}"
+                    }
+                    if (gpu) for (i in 0..2) error = max(error, abs(glass[i] - expected[i]))
+                }
+            }
+            // The first label is drawn in the label color: some pixel of it stands out from the glass.
+            val beside = image.color(right - 30, top + 28).let { floatArrayOf(it.red, it.green, it.blue) }
+            val text = (top + 10 until top + 46).maxOf { y ->
+                (left + 16 until left + 100).maxOf { x -> image.color(x, y).let { contrastRatio(floatArrayOf(it.red, it.green, it.blue), beside) } }
+            }
+            Log.i("GlassRenderingTest", "menu dark=$dark over ${backdrop.toList()} extra=$extraSurfaces gpu=$gpu: label contrast at least $lowest, text stands out $text, max error ${error * 255}/255")
+            when {
+                lowest < MinLabelContrast -> "label contrast $lowest below $MinLabelContrast at $lowestAt"
+                text < 3f -> "menu labels not drawn (best contrast with the glass $text)"
+                gpu && error > Tolerance -> "menu glass differs from the reference by ${error * 255}/255 (expected ${expected.toList()})"
+                else -> null
+            }
+        }
+    }
+
+    @Test
+    fun menuOverWhiteInDarkKeepsItsLabelsLegible() {
+        // Without the backing, white labels on dark Regular glass over white get 1.8:1.
+        assertMenuLegible(floatArrayOf(1f, 1f, 1f, 1f), GlassAppearance.Dark)
+    }
+
+    @Test
+    fun menuOverBlackInLightKeepsItsLabelsLegible() {
+        // Without the backing, #111113 labels on light Regular glass over black get 2.1:1.
+        assertMenuLegible(floatArrayOf(0f, 0f, 0f, 1f), GlassAppearance.Light)
+    }
+
+    @Test
+    fun fallbackMenuOverWhiteInDarkKeepsItsLabelsLegible() {
+        assertMenuLegible(floatArrayOf(1f, 1f, 1f, 1f), GlassAppearance.Dark, extraSurfaces = GlassDefaults.MaxSurfacesPerScene)
+    }
+
+    @Test
+    fun fallbackMenuOverBlackInLightKeepsItsLabelsLegible() {
+        assertMenuLegible(floatArrayOf(0f, 0f, 0f, 1f), GlassAppearance.Light, extraSurfaces = GlassDefaults.MaxSurfacesPerScene)
+    }
+
     @Test
     fun glassInADialogInsideASceneDrawsItsOwnFallback() {
         // The dialog is another window: its glass must not join the scene's layer (bounds across windows throw).
@@ -968,6 +1081,16 @@ class GlassRenderingTest {
         const val Width = 200
         const val Height = 120
         const val Radius = 24
+
+        /** Where a menu's trigger sits; its panel grows from there (220 dp at least, two 44 dp items). */
+        const val MenuLeft = 40
+        const val MenuTop = 30
+
+        /** How far inside a menu panel's outline its glass is sampled, clear of the rim light. */
+        const val MenuInterior = 16
+
+        /** WCAG AA for body text; the spec's backing gives 5.09:1 and 7.15:1 in the worst cases. */
+        const val MinLabelContrast = 4.5f
 
         /** A small button's capsule (120 × 34), centered on the test surface and the gradient. */
         const val SmallWidth = 120

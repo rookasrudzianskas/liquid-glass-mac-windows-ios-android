@@ -111,6 +111,7 @@ import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
 import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.OVERLAY_LEVEL
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
+import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
 import io.github.rookasrudzianskas.liquidglass.optics.SpringValue
 import io.github.rookasrudzianskas.liquidglass.optics.mix
@@ -119,7 +120,10 @@ import kotlin.math.roundToInt
 /**
  * A menu that grows out of its trigger: a Regular glass panel morphing from the
  * trigger's outline on the morph spring, covering it, and collapsing back
- * into it when dismissed. Items highlight with the foreground color at 8%.
+ * into it when dismissed. The panel's glass is mixed halfway toward a solid
+ * backing (`#F5F5F7` light, `#1C1C1E` dark), so the labels of an untinted
+ * Regular panel keep at least 5:1 contrast over any backdrop, also with the
+ * fallback material. Items highlight with the foreground color at 8%.
  * Tapping outside, Back and Escape dismiss it; choosing an item runs its
  * action and dismisses it.
  *
@@ -403,6 +407,8 @@ private fun MenuPanel(
         motion = null,
         opacity = 1f,
         interactionSource = null,
+        // Half the solid backing keeps labels at 5:1 or more over any backdrop, in the fallback material too.
+        legibility = MENU_LEGIBILITY,
     )
     // The glass morphs out of the trigger; an unset refraction follows the open panel (the node's size) throughout.
     val dynamics = remember(menu, shape) {

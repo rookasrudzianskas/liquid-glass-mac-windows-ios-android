@@ -161,7 +161,9 @@ internal fun rimOverlay(distance: Float, nx: Float, ny: Float, dark: Boolean, pi
  * [x], [y] is the pixel center relative to the surface center (y down);
  * [sample] returns the unpremultiplied backdrop r, g, b, a at the pixel offset
  * by (dx, dy) (Regular glass samples its frosted backdrop); [base] is the
- * unrefracted backdrop at the pixel, premultiplied. Returns premultiplied r, g, b, a.
+ * unrefracted backdrop at the pixel, premultiplied. [legibility] mixes the glass
+ * toward the legibility backing ([MENU_LEGIBILITY] on menu panels, 0 elsewhere).
+ * Returns premultiplied r, g, b, a.
  */
 internal fun glassPixel(
     x: Float,
@@ -175,6 +177,7 @@ internal fun glassPixel(
     pixel: Float,
     tint: FloatArray?,
     nested: Boolean = false,
+    legibility: Float = 0f,
     base: FloatArray,
     sample: (dx: Float, dy: Float) -> FloatArray,
 ): FloatArray {
@@ -190,11 +193,19 @@ internal fun glassPixel(
         val body = tintBody(regular)
         a = body + (1f - body) * a
     }
+    if (legibility > 0f) rgb = legibilityColor(rgb, dark, legibility)
     val ga = a * cover
     val glass = floatArrayOf(rgb[0] * ga, rgb[1] * ga, rgb[2] * ga, ga)
     for (i in 0..3) glass[i] += base[i] * (1f - ga)
     val rim = rimOverlay(f.distance, f.nx, f.ny, dark, pixel, tint)
     return FloatArray(4) { rim[it] + glass[it] * (1f - rim[3]) }
+}
+
+/** WCAG 2 contrast ratio of two gamma-encoded sRGB colors (r, g, b), lighter over darker. */
+internal fun contrastRatio(a: FloatArray, b: FloatArray): Float {
+    val x = relativeLuminance(a[0], a[1], a[2]) + 0.05f
+    val y = relativeLuminance(b[0], b[1], b[2]) + 0.05f
+    return max(x, y) / min(x, y)
 }
 
 /** Weight of blur level [level] at depth [u] (0 = sharp side, 1 = the edge). Weights sum to 1. */
