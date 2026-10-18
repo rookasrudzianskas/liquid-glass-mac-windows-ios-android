@@ -4,5 +4,5 @@ contact_links:
     url: https://liquid-glass-engineering.vercel.app/docs
     about: Guides for SwiftUI, Jetpack Compose and WPF, the optical model and the component contract.
   - name: Report a security vulnerability
-    url: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/SECURITY.md
-    about: Please report vulnerabilities privately, as described in the security policy.
+    url: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/security/advisories/new
+    about: Report it privately with a security advisory, as described in SECURITY.md; please do not open a public issue.
