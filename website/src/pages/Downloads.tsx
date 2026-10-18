@@ -110,9 +110,9 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        JitPack is a secondary route that works only once the {packages.version} release tag is on GitHub; until then use the Maven repository above. With the tag published, add{" "}
-        <code>maven(&quot;https://jitpack.io&quot;)</code> and depend on <code>com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{packages.version}</code>. JitPack builds from
-        tags, so the first request after the tag is slow.
+        JitPack also serves the library, built from the {packages.version} release tag: add <code>maven(&quot;https://jitpack.io&quot;)</code> and depend on{" "}
+        <code>com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{packages.version}</code>. JitPack builds each version on its first request, which can take a few
+        minutes.
       </>
     ),
   },

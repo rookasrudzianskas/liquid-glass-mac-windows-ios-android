@@ -37,7 +37,7 @@
   },
   "verify": {
     "lang": "shellscript",
-    "code": "# In the folder with your downloads\ncurl -LO {{SITE_URL}}/downloads/SHA256SUMS\n\n# macOS\nshasum -a 256 -c SHA256SUMS --ignore-missing\n# Linux\nsha256sum -c SHA256SUMS --ignore-missing\n# Windows PowerShell (SHA-256 by default)\nGet-FileHash .\\LiquidGlassStudio-win-x64.zip"
+    "code": "# In the folder with your downloads\ncurl -LO {{SITE_URL}}/downloads/SHA256SUMS\n\n# macOS\nshasum -a 256 -c SHA256SUMS --ignore-missing\n# Linux\nsha256sum -c SHA256SUMS --ignore-missing\n# Windows PowerShell (SHA-256 by default)\nGet-FileHash LiquidGlassStudio-win-x64.zip"
   },
   "fallbackApple": {
     "lang": "swift",
