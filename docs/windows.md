@@ -152,7 +152,7 @@ it. The copy is aligned to the surface's exact position (including while it move
 and under rotation, skew or a right-to-left boundary between the scene and the glass) and extends past it as far as
 refraction and frost reach. The glass pixel shader (HLSL, pixel shader 3.0, a
 line-by-line translation of [`spec/shaders/liquid-glass.glsl`](../spec/shaders/liquid-glass.glsl)) then refracts the
-copy through the 20-unit bevel, tones it (a menu panel's glass then mixes halfway toward a solid backing), adds the
+copy through the 20-unit bevel, tones it (an open menu panel's glass then mixes 60% toward a solid backing), adds the
 rim light and the pointer glow, and WPF composites the result over the real backdrop. Regular glass reads a copy
 frosted by WPF's `BlurEffect` (σ 7.33); the shader adds the wide σ 23 fill blur from that frost on a sparse grid.
 
@@ -339,19 +339,30 @@ it; Down or Enter on the button opens it with the first item focused, and arrow 
 floats in the enclosing scene (it cannot leave the window); outside a scene it opens in a popup with the opaque
 material.
 
-The panel's glass mixes halfway toward a solid backing, `#F5F5F7` in light appearance and `#1C1C1E` in dark
+The open panel's glass mixes 60% toward a solid backing, `#F5F5F7` in light appearance and `#1C1C1E` in dark
 ([OPTICS §3](../spec/OPTICS.md#legibility-backing-menus)), after its material and tint: it still refracts and frosts
-what lies behind it, at half strength. On an untinted Regular panel, the default, items keep at least 5:1 contrast
-over any backdrop: 5.09:1 for white labels over white in dark appearance, where plain Regular glass gave 1.8:1, and
-7.15:1 for `#111113` labels over black in light. The fallback material paints the backing over its veil at the
-amount that draws the same glass over those backdrops (5.07:1 and 7.17:1). A Clear panel reaches about 4.9:1 at worst
-(white labels over white in dark appearance), with the shader and in the fallback. On a tinted menu the items take
-white or `#111113`, whichever contrasts more with the tint mixed toward the backing, so a blue menu in light
-appearance gets `#111113` labels: with the Windows accent (`#0067C0`) and the usual blue, red, green, yellow and gray
-tints that keeps at least 4.9:1 over any backdrop, but very light tints in dark appearance can fall below it. The
-backing fades in as the panel grows out of the trigger and out as it collapses back. The trigger and every other
-glass surface draw without it, and the trigger keeps its tint's own foreground. The backing is part of the menu, not
-an option: `GlassOptics.MenuLegibility` (0.5) and `GlassPalette.LegibilityBacking` give its values.
+what lies behind it, at 40% strength. The backing fades in with the morph (0.6 times the panel's open progress, held at
+0.6 while the spring overshoots) and out as the panel collapses, so the glass leaves its trigger as the trigger's own
+glass. Items take `GlassPalette.MenuForeground`: `#111113` in light appearance and white in dark on an untinted menu;
+on a tinted one, white or `#111113`, whichever contrasts more with the tint mixed toward the backing, which at 0.6 is
+the appearance's foreground for every tint (a blue menu in light appearance gets `#111113` labels, where blue glass
+alone calls for white). A highlighted item (the pointer over it, keyboard focus or a press) mixes that color into the
+glass at 8% (`GlassOptics.MenuHighlight`).
+
+Untinted menus, Regular or Clear, keep at least 5.2:1 over any backdrop in both appearances, highlighted items
+included: white labels over white in dark appearance contrast least, 5.36:1 on a highlighted Regular item and 5.24:1
+on a Clear one (6.51:1 and 6.35:1 on plain items, where plain Regular glass gave 1.8:1), and `#111113` labels over
+black in light keep 7.54:1 and 6.71:1. Menus tinted with the platform's system colors keep at least 5.0:1, highlighted
+rows included (5.07:1 at worst, the Apple dark-appearance yellow `#FFD60A` on a highlighted dark Regular item over
+white); Windows accent colors stay above 5.6:1 (5.64:1 for gold, `#FFB900`). Very light tints are not covered: over a
+white backdrop in dark appearance a highlighted item on a pure yellow menu falls to 4.37:1 and on a white one to
+4.13:1, so tint menus with a deeper color, or not at all. The fallback material paints the backing over its veil or
+tint fill at the opacity that keeps the labels at least as legible as on the shader's glass where they contrast least
+(`GlassFallback.LegibilityOpacity`, 0.59 to 0.63 untinted), so its floors are the shader's or a little higher: 5.37:1
+and 5.24:1 for Regular and Clear in dark appearance, 7.56:1 and 6.75:1 in light, 5.11:1 over the system colors. The
+trigger and every other glass surface draw without the backing, and the trigger keeps its tint's own foreground. The
+backing is part of the menu, not an option: `GlassOptics.MenuLegibility` (0.6), `GlassOptics.MenuHighlight` (0.08) and
+`GlassPalette.LegibilityBacking` give its values.
 
 ```xml
 <lg:GlassMenu Header="Sort" Placement="Bottom">
@@ -455,8 +466,8 @@ the glass inside; reset it for nested controls with `lg:GlassScene.Material="Cle
 Foreground defaults to `#111113` on light glass and white on dark glass. On tinted glass, in either appearance, it is
 whichever of the two has the higher WCAG contrast with the tinted glass (white on blue, red or purple; `#111113` on
 yellow, mint, green or orange), as on the other platforms. On a menu panel that glass is the tint mixed toward the
-legibility backing, which lightens light glass and darkens dark glass (see [GlassMenu](#glassmenu)). Set `Foreground`
-to override it.
+legibility backing, which lightens light glass and darkens dark glass, so menu items take the appearance's foreground
+on any tint (see [GlassMenu](#glassmenu)). Set `Foreground` to override it.
 
 **Radius.** `GlassRadius` parses `16`, `capsule` and `circle`. Fixed radii are superellipse corners with continuous
 curvature; large radii blend into a capsule, so animating the radius never jumps.
@@ -589,8 +600,12 @@ commit), puts `LICENSE` and `NOTICE.md` into both packages and every zip, and le
 the zips.
 
 `LiquidGlass.Wpf.Tests` needs Windows (WPF, Direct3D 11): it checks the embedded shader bytecode, compiles the shader
-with D3DCompile, evaluates the HLSL library against the golden vectors on WARP within the GPU tolerance, and exercises
-the controls on .NET 10, .NET 8 and .NET Framework 4.8. The [Windows workflow](../.github/workflows/windows.yml) builds,
+with D3DCompile, evaluates the HLSL library against the golden vectors on WARP within the GPU tolerance (the 63 glass
+pixels, the six menu panels at legibility 0.6 among them), and exercises the controls on .NET 10, .NET 8 and .NET
+Framework 4.8. Its menu rendering test opens Regular and Clear menus in both appearances, untinted and tinted with the
+system blue, the system yellow in its light and dark variants and the Windows 11 accent, over white or black with a row
+pressed, and holds the plain and highlighted rows, in the shader and in the fallback material, to the reference within
+3 levels and to 5.2:1 (untinted) or 5.0:1 (tinted). The [Windows workflow](../.github/workflows/windows.yml) builds,
 tests, compiles the shader with fxc, captures Studio (also under a contrast theme), builds, runs and captures the
 [Hello Glass example](../examples/wpf/HelloGlass), publishes the x64, Arm64 and self-contained Studio builds and
 smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main and every pull request that

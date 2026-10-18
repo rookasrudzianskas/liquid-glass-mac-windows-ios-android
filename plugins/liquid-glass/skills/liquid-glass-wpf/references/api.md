@@ -427,14 +427,18 @@ a `ControlBrush` track with a `ControlText` thumb.
 
 `public class GlassMenu : HeaderedItemsControl`: a glass button (`Header` is its content) that opens a menu. The panel
 is a Regular `GlassSurface` (inset 4, min width 160, 6 units from the trigger) that grows out of the trigger on the
-morph spring and collapses back into it. Its glass mixes halfway toward a solid backing after the material and tint
-(`GlassOptics.MenuLegibility` 0.5 toward `GlassPalette.LegibilityBacking`: `#F5F5F7` light, `#1C1C1E` dark), so the
-items of an untinted Regular panel (the default) keep at least 5:1 contrast over any backdrop, in the fallback
-material too (it paints the backing over its veil at the amount that draws the shader's glass where labels contrast
-least); a Clear panel reaches about 4.9:1. On a tint the items take white or `#111113` from the tint mixed toward the
-backing (at least 4.9:1 with the Windows accent and the usual blue, red, green, yellow and gray tints; very light
-tints in dark appearance can fall lower). The backing fades in and out with the morph; the trigger and other glass
-draw without it, and it is not an option. It closes when an item is
+morph spring and collapses back into it. Open, its glass mixes 60% toward a solid backing after the material and tint
+(`GlassOptics.MenuLegibility` 0.6 toward `GlassPalette.LegibilityBacking`: `#F5F5F7` light, `#1C1C1E` dark), applied
+as 0.6 times the open progress clamped to [0, 1], so the backing fades in and out with the morph. Items take
+`GlassPalette.MenuForeground`: the appearance's foreground, or on a tint white or `#111113` from the tint mixed toward
+the backing (at 0.6, the appearance's foreground for every tint); a highlighted item mixes that color into the glass at
+8% (`GlassOptics.MenuHighlight`). Untinted panels, Regular or Clear, keep at least 5.2:1 over any backdrop,
+highlighted items included (5.24:1 at worst, white over white on a highlighted Clear item in dark appearance), and
+panels tinted with the platform's system colors at least 5.0:1 (5.07:1 at worst, the Apple dark-appearance yellow;
+Windows accent colors stay above 5.6:1); very light tints (pure yellow 4.37:1,
+white 4.13:1 in dark appearance over white) are not covered. The fallback material paints the backing over its veil
+or tint fill at `GlassFallback.LegibilityOpacity`, which keeps its labels at least as legible as the shader's where
+they contrast least. The trigger and other glass draw without the backing, and it is not an option. It closes when an item is
 chosen, on Escape, Alt+F4, a click outside and when the window deactivates; Down or Enter on the trigger opens it with
 the first item focused; arrow keys and Tab cycle through items. The panel floats in the enclosing scene's top layer,
 clamped inside the scene (it cannot leave the window), and lines up with the trigger's start edge (in right-to-left
@@ -497,7 +501,7 @@ are raised however `IsChecked` changes: a click, UI Automation or code. `InputGe
 the shortcut yourself with a `KeyBinding` in `Window.InputBindings`.
 
 `Click`, `Command`, `CommandParameter` come from `ButtonBase`; Enter clicks the focused item; hovering focuses it.
-Item style: MinHeight 32, Padding `10,6,12,6`, FontWeight Normal, highlight 0.08 on hover or focus, 0.14 pressed,
+Item style: MinHeight 32, Padding `10,6,12,6`, FontWeight Normal, highlight `GlassOptics.MenuHighlight` (0.08) on hover, focus and press,
 0.4 opacity when disabled. In a contrast theme, hover, keyboard focus and press are a solid `Highlight` fill with
 `HighlightText` (keyboard focus adds a `ControlText` border).
 
@@ -706,7 +710,8 @@ public static class GlassOptics
     public const double ContinuousExtent = 1.528;   // corner reach along each edge, relative to the radius
     public const double ContinuousExponent = 3.26;  // superellipse exponent
     public const double LumaRed = 0.213, LumaGreen = 0.715, LumaBlue = 0.072;   // declared as three constants
-    public const double MenuLegibility = 0.5;       // menu panels mix toward GlassPalette.LegibilityBacking; 0 elsewhere
+    public const double MenuLegibility = 0.6;       // open menu panels mix toward GlassPalette.LegibilityBacking (times the open progress); 0 elsewhere
+    public const double MenuHighlight = 0.08;       // a highlighted menu row mixes its label color into the glass
 }
 
 public static class GlassMaterials
@@ -890,7 +895,7 @@ public readonly struct GlassSurfaceOptics
 {
     public GlassSurfaceOptics(double width, double height, GlassRadius radius, GlassMaterial material = GlassMaterial.Clear,
         bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false,
-        double legibility = 0)   // legibility: GlassOptics.MenuLegibility for a menu panel
+        double legibility = 0)   // legibility: GlassOptics.MenuLegibility for an open menu panel
     // Width, Height, Radius, Material, Dark, Refraction, Tint, Pixel, Nested, Legibility { get; }
     // (the 1.0.0 constructor without legibility is kept, hidden from IntelliSense, for compiled callers)
 }
@@ -929,10 +934,19 @@ public static class GlassPalette
     public static Rgb Foreground(bool dark)
     public static Rgb LegibilityBacking(bool dark)
     public static Rgb ForegroundOnTint(Rgb tint, GlassMaterial material)  // white or #111113, the higher WCAG contrast with the tinted glass
+    public static Rgb MenuForeground(Rgb? tint, GlassMaterial material, bool dark, double legibility = GlassOptics.MenuLegibility)
+        // menu labels: Foreground(dark) untinted; on a tint, white or #111113 by contrast with mix(tint·pass, backing, legibility)
     public static double RelativeLuminance(Rgb color)                      // WCAG 2
 }
 public readonly struct GlassVeil { public GlassVeil(double gray, double opacity); public double Gray { get; } public double Opacity { get; } public double Apply(double v); }
-public static class GlassFallback { public static GlassVeil Veil(GlassMaterial material, bool dark) }
+public static class GlassFallback
+{
+    public const double TintFillOpacity = 0.9;
+    public static GlassVeil Veil(GlassMaterial material, bool dark)   // the veil fitted to the tone curve
+    public static Rgb TintFill(Rgb tint, GlassMaterial material)      // tint · (body + (1 − body)·0.5), at TintFillOpacity
+    public static double LegibilityOpacity(GlassMaterial material, bool dark, Rgb? tint, double legibility)
+        // the 8-bit opacity of the backing over the fill: labels keep at least the shader's contrast where they contrast least
+}
 
 public static class GlassMath
 {
