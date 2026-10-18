@@ -433,6 +433,12 @@ async function renderDoc(entry, slugByFile) {
     },
   );
 
+  // Code in a table may break where a reader expects it to (docs.css keeps names
+  // whole): after a dot, colon, comma or slash inside a name and before an
+  // argument list, so `<lg:GlassScene.Content>` and `Modifier.liquidGlass()`
+  // fit a narrow column without splitting a word.
+  html = html.replace(/<table[\s\S]*?<\/table>/g, (table) => table.replace(/<code>([^<]+)<\/code>/g, (_m, code) => `<code>${codeBreaks(code)}</code>`));
+
   html = html
     .replace(/<table( class="[^"]*")?>/g, '<div class="table-wrap"><table$1>')
     .replace(/<\/table>/g, "</table></div>")
@@ -607,6 +613,9 @@ function firstColumnIsHeader(rows) {
   const cells = firstCells(rows);
   return cells.length > 0 && !cells.every((c) => !c || ONLY_IMAGES.test(c));
 }
+
+/** Escaped code text with <wbr> after `.`, `:`, `,` or `/` between name characters, and before a non-empty `(`. */
+const codeBreaks = (code) => code.replace(/(?<=[\w)\]])([.:,/])(?=[A-Za-z_])/g, "$1<wbr>").replace(/(?<=\w)\((?!\))/g, "<wbr>(");
 
 const toRowHeaders = (rows) => rows.replace(/<tr>\s*<td([^>]*)>([\s\S]*?)<\/td>/g, '<tr><th scope="row"$1>$2</th>');
 

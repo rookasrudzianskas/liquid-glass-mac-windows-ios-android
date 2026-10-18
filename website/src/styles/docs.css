@@ -586,10 +586,26 @@ a.doc-card:hover {
   color: var(--fg);
 }
 
+/* A table wider than the column scrolls sideways, and a shadow on the side
+   with more to see says so: the shadows stay put (scroll), the page-colored
+   covers at both ends of the table move with it (local) and hide the shadow
+   once that end is reached. Doc.tsx makes a scrolling table a named tab stop. */
 .prose .table-wrap {
+  --table-edge: color-mix(in srgb, var(--fg) 26%, transparent);
   overflow-x: auto;
   border-radius: 14px;
   box-shadow: inset 0 0 0 1px var(--line);
+  background:
+    linear-gradient(to right, var(--bg) 40%, transparent) left / 56px 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 40%, transparent) right / 56px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--table-edge), transparent) left / 22px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--table-edge), transparent) right / 22px 100% no-repeat scroll;
+  background-color: var(--bg);
+  scrollbar-width: thin;
+}
+
+.prose .table-wrap:focus-visible {
+  outline-offset: 2px;
 }
 
 .prose table {
@@ -601,16 +617,28 @@ a.doc-card:hover {
 
 .prose th,
 .prose td {
-  padding: 10px 14px;
+  padding: 10px 12px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--line);
 }
 
+/* Row headings stay on one line; column headings wrap, so a long one (a
+   platform with its requirements) does not set the table's width. Code in a
+   cell wraps at its spaces and at the breaks content.mjs marks (after a dot,
+   before an argument list), never inside a name. */
 .prose th {
   font-weight: 650;
   background: color-mix(in srgb, var(--fg) 3%, transparent);
   white-space: nowrap;
+}
+
+.prose thead th {
+  white-space: normal;
+}
+
+.prose :is(td, th) > code {
+  overflow-wrap: normal;
 }
 
 .prose tr:last-child td {
