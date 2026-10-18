@@ -351,7 +351,45 @@
   }
 }
 
+/* Phones: the copy, the card with its lens, the toolbar and the wallpaper tab
+   bar fit one screen (375 x 812 and 390 x 844, down to 360 x 740). Spacing and
+   type follow the screen height, so taller phones keep more air. */
 @media (max-width: 520px) {
+  .hero__stage {
+    padding-top: calc(var(--nav-h) + clamp(6px, 1.5svh, 16px));
+    padding-bottom: clamp(10px, 2svh, 20px);
+  }
+  .hero__eyebrow {
+    font-size: 14px;
+    margin-bottom: clamp(6px, 1.2svh, 12px);
+  }
+  .hero__title {
+    font-size: clamp(36px, 5.1svh, 44px);
+  }
+  .hero__lead {
+    margin-top: clamp(10px, 1.8svh, 18px);
+    font-size: clamp(15px, 2.1svh, 17px);
+    line-height: 1.42;
+  }
+  .hero__cta {
+    margin-top: clamp(14px, 2.4svh, 24px);
+  }
+  .hero__play {
+    margin-top: clamp(10px, 2svh, 20px);
+    row-gap: clamp(10px, 1.8svh, 18px);
+  }
+  .hero-card {
+    gap: 12px;
+    margin-top: 54px;
+    padding: 16px 18px 14px;
+  }
+  .hero-lens {
+    width: 100px;
+    height: 100px;
+  }
+  .hero-tabbar-slot {
+    margin-top: 0;
+  }
   .tabbar__item {
     min-width: 0;
     flex: 1;
