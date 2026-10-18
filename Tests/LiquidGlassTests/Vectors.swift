@@ -92,3 +92,17 @@ extension SIMD4 where Scalar == Double {
 func vectorBackdrop(_ px: Double, _ py: Double) -> SIMD4<Double> {
     SIMD4(min(1, max(0, 0.5 + px / 400)), min(1, max(0, 0.5 + py / 400)), 0.6, 1)
 }
+
+/// WCAG 2 contrast ratio of two gamma-encoded sRGB colors, as
+/// `spec/generate-vectors.mjs` computes it for the legibility worst cases.
+func contrastRatio(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double {
+    func luminance(_ c: SIMD3<Double>) -> Double {
+        func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * linear(c.x) + 0.7152 * linear(c.y) + 0.0722 * linear(c.z)
+    }
+    let x = luminance(a) + 0.05, y = luminance(b) + 0.05
+    return max(x, y) / min(x, y)
+}
+
+/// `#111113`, the label color on light glass (`spec/OPTICS.md` §8).
+let lightGlassInk = SIMD3<Double>(0x11, 0x11, 0x13) / 255

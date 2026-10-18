@@ -13,6 +13,10 @@ struct GlassRenderStyle: Equatable {
     var increaseContrast: Bool
     var reduceTransparency: Bool
     var pixel: Double
+    /// How far the glass mixes toward the solid legibility backing
+    /// (`spec/OPTICS.md` §3): ``GlassOptics/menuLegibility`` on menu
+    /// panels, 0 on every other surface.
+    var legibility: Double = 0
 }
 
 /// The moving parts of a surface's outline, in its local points.
@@ -189,6 +193,14 @@ struct GlassLayer: View, Animatable {
         return ZStack(alignment: .topLeading) {
             GlassShape(radius: style.radius)
                 .fill(style.material == .regular ? Material.regular : Material.thin)
+                // The legibility backing over the material: the same mix
+                // toward it that the shader applies to the glass.
+                .overlay {
+                    if style.legibility > 0 {
+                        GlassShape(radius: style.radius)
+                            .fill(Self.legibilityBacking(dark: style.dark).opacity(min(1, style.legibility)))
+                    }
+                }
                 .frame(width: rect.width, height: rect.height)
                 .scaleEffect(x: outline.scale.width, y: outline.scale.height)
                 .offset(x: rect.minX + padding + outline.translation.width, y: rect.minY + padding + outline.translation.height)
@@ -201,6 +213,11 @@ struct GlassLayer: View, Animatable {
 
     private var outlineRect: CGRect {
         outline.rect ?? CGRect(origin: .zero, size: size)
+    }
+
+    private static func legibilityBacking(dark: Bool) -> Color {
+        let c = GlassOptics.legibilityBacking(dark: dark)
+        return Color(.sRGB, red: c.x, green: c.y, blue: c.z)
     }
 }
 
@@ -228,7 +245,8 @@ struct GlassShaderParameters {
             .float4(tint.x, tint.y, tint.z, style.tint == nil ? 0 : 1),
             .float4(Float(outline.glowPoint.x + padding), Float(outline.glowPoint.y + padding), Float(glow.radius), Float(outline.glow)),
             .float4(Float(outline.opacity), style.increaseContrast ? 1 : 0, mode, frosted ? Float(GlassRendering.fillKernelSigma(dark: style.dark)) : 0),
-            .float4(margin, margin, Float(layer.width) - margin, Float(layer.height) - margin)
+            .float4(margin, margin, Float(layer.width) - margin, Float(layer.height) - margin),
+            .float(Float(style.legibility))
         )
     }
 }

@@ -15,7 +15,10 @@ struct GlassSurfaceOptions {
 extension EnvironmentValues {
     /// Resolves glass options against this environment for a surface whose
     /// resting size (before press and stretch) is `restingSize`.
-    func glassStyle(_ options: GlassSurfaceOptions, defaultMaterial: GlassMaterial? = nil, restingSize: CGSize) -> GlassRenderStyle {
+    /// `legibility` is the mix toward the legibility backing (menu panels).
+    func glassStyle(
+        _ options: GlassSurfaceOptions, defaultMaterial: GlassMaterial? = nil, restingSize: CGSize, legibility: Double = 0
+    ) -> GlassRenderStyle {
         let increaseContrast = colorSchemeContrast == .increased
         let material = increaseContrast ? .regular : (options.material ?? defaultMaterial ?? glassMaterial)
         return GlassRenderStyle(
@@ -27,7 +30,8 @@ extension EnvironmentValues {
             nested: glassNested,
             increaseContrast: increaseContrast,
             reduceTransparency: accessibilityReduceTransparency,
-            pixel: 1 / Double(max(displayScale, 1))
+            pixel: 1 / Double(max(displayScale, 1)),
+            legibility: min(1, max(0, legibility))
         )
     }
 
@@ -120,6 +124,10 @@ struct GlassSurfaceCore<Content: View>: View {
     var restingSize: CGSize?
     /// Fades the glass (not the content) in and out.
     var opacity: Double = 1
+    /// How far the glass mixes toward the solid legibility backing
+    /// (`spec/OPTICS.md` §3): menu panels pass ``GlassOptics/menuLegibility``;
+    /// every other surface keeps 0.
+    var legibility: Double = 0
     /// Extra room around the surface for outlines that grow past its bounds.
     var extraPadding: CGFloat = 0
     /// Views the glass refracts in addition to the scene's backdrop.
@@ -158,7 +166,8 @@ struct GlassSurfaceCore<Content: View>: View {
             .background {
                 GeometryReader { proxy in
                     let shape = outline?.size ?? proxy.size
-                    let style = environment.glassStyle(options, defaultMaterial: defaultMaterial, restingSize: restingSize ?? shape)
+                    let style = environment.glassStyle(
+                        options, defaultMaterial: defaultMaterial, restingSize: restingSize ?? shape, legibility: legibility)
                     GlassLayerHost(
                         size: proxy.size, style: style, motion: motion, outline: outline, opacity: opacity,
                         padding: GlassRendering.padding(

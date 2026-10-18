@@ -129,6 +129,44 @@ final class ShaderVectorTests: XCTestCase {
         }
     }
 
+    /// `lgLegibility`, the menu panels' mix toward the solid backing: the
+    /// backing colors (the mix at amount 1), the cases, and the worst-case
+    /// label contrast of Regular menu glass over white and over black.
+    func testLegibility() throws {
+        let legibility = Vectors.object("legibility")
+        let backing = legibility["backing"] as? [String: Any] ?? [:]
+        let backings = try evaluate(mode: 7, [[0.3, 0.6, 0.9, 0, 1], [0.3, 0.6, 0.9, 1, 1]])
+        assertClose(components(backings[0], 3), backing.doubles("light"), accuracy: tolerance, "GPU light backing")
+        assertClose(components(backings[1], 3), backing.doubles("dark"), accuracy: tolerance, "GPU dark backing")
+
+        let cases = legibility["cases"] as? [[String: Any]] ?? []
+        XCTAssertEqual(cases.count, 6)
+        let results = try evaluate(mode: 7, cases.map { c in
+            c.doubles("color").map(Float.init) + [flag(c.bool("dark")), Float(c.double("amount"))]
+        })
+        for (i, (c, r)) in zip(cases, results).enumerated() {
+            assertClose(components(r, 3), c.doubles("value"), accuracy: tolerance, "GPU legibility[\(i)] \(c)")
+        }
+
+        let amount = Float(legibility.double("menuAmount"))
+        let menus = try evaluate(mode: 8, [[1, 1, 1, 1, 1, amount], [0, 0, 0, 1, 0, amount]])
+        let worst = legibility["worstCase"] as? [String: Any] ?? [:]
+        let darkOverWhite = SIMD3<Double>(Double(menus[0].x), Double(menus[0].y), Double(menus[0].z))
+        let lightOverBlack = SIMD3<Double>(Double(menus[1].x), Double(menus[1].y), Double(menus[1].z))
+        let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
+        assertClose(darkOverWhite.array, GlassOptics.legibilityColor(
+            GlassOptics.materialColor(white, material: .regular, dark: true), dark: true, amount: GlassOptics.menuLegibility).array,
+            accuracy: tolerance, "GPU dark menu glass over white")
+        assertClose(lightOverBlack.array, GlassOptics.legibilityColor(
+            GlassOptics.materialColor(black, material: .regular, dark: false), dark: false, amount: GlassOptics.menuLegibility).array,
+            accuracy: tolerance, "GPU light menu glass over black")
+        // 2e-3 in each channel moves these ratios by at most about 0.05.
+        assertClose(contrastRatio(darkOverWhite, white), worst.double("darkOverWhite"), accuracy: 0.06, "GPU white labels on dark menu glass over white")
+        assertClose(contrastRatio(lightOverBlack, lightGlassInk), worst.double("lightOverBlack"), accuracy: 0.06, "GPU #111113 labels on light menu glass over black")
+        XCTAssertGreaterThanOrEqual(contrastRatio(darkOverWhite, white), 5)
+        XCTAssertGreaterThanOrEqual(contrastRatio(lightOverBlack, lightGlassInk), 5)
+    }
+
     func testRimOverlay() throws {
         let cases = Vectors.cases("rimOverlay")
         let results = try evaluate(mode: 5, cases.map { c in
@@ -142,13 +180,14 @@ final class ShaderVectorTests: XCTestCase {
 
     func testGlassPixel() throws {
         let cases = Vectors.object("glassPixel")["cases"] as? [[String: Any]] ?? []
-        XCTAssertFalse(cases.isEmpty)
+        XCTAssertEqual(cases.count, 63)
+        XCTAssertEqual(cases.filter { $0["legibility"] != nil }.count, 6)
         let results = try evaluate(mode: 6, cases.map { c in
             let pixel = abs(c.double("pixel") - 1.0 / 3.0) < 1e-5 ? 1.0 / 3.0 : c.double("pixel")
             return [
                 Float(c.double("x")), Float(c.double("y")), Float(c.double("width")), Float(c.double("height")), radius(c),
                 c.material() == .regular ? 1 : 0, flag(c.bool("dark")), Float(c.double("refraction")), Float(pixel),
-            ] + tint(c)
+            ] + tint(c) + [c["legibility"] == nil ? 0 : Float(c.double("legibility"))]
         })
         for (i, (c, r)) in zip(cases, results).enumerated() {
             assertClose(components(r, 4), c.doubles("value"), accuracy: tolerance, "GPU glassPixel[\(i)] \(c)")

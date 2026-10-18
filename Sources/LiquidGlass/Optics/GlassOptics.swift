@@ -219,6 +219,24 @@ public enum GlassOptics {
         return opacity * blended + (1 - opacity) * frost
     }
 
+    // MARK: Legibility backing
+
+    /// How far menu panels mix their glass toward the solid legibility
+    /// backing (`spec/OPTICS.md` §3), so menu text keeps at least 5:1
+    /// contrast over any backdrop. Every other surface uses 0.
+    public static let menuLegibility = 0.5
+
+    /// The solid backing of the legibility mix: `#F5F5F7` light, `#1C1C1E` dark.
+    public static func legibilityBacking(dark: Bool) -> SIMD3<Double> {
+        dark ? SIMD3(0x1C, 0x1C, 0x1E) / 255 : SIMD3(0xF5, 0xF5, 0xF7) / 255
+    }
+
+    /// Mixes a glass color toward the legibility backing by `amount`
+    /// (0 leaves it unchanged). Applied after the material color and tint.
+    public static func legibilityColor(_ c: SIMD3<Double>, dark: Bool, amount: Double) -> SIMD3<Double> {
+        c + (legibilityBacking(dark: dark) - c) * amount
+    }
+
     // MARK: Rim light
 
     /// The rim overlay painted over the glass: a specular line along the top
@@ -262,12 +280,14 @@ public enum GlassOptics {
     ///   - y: Pixel center relative to the surface center, y down.
     ///   - sample: The backdrop color (unpremultiplied RGBA) at the pixel
     ///     offset by `(dx, dy)`. Regular glass samples its frosted backdrop.
+    ///   - legibility: How far the glass mixes toward the legibility
+    ///     backing: ``menuLegibility`` on menu panels, 0 elsewhere.
     ///   - base: The unrefracted backdrop at the pixel, premultiplied.
     /// - Returns: The premultiplied result.
     public static func glassPixel(
         x: Double, y: Double, width: Double, height: Double, radius: GlassRadius,
         material: GlassMaterial = .clear, dark: Bool = false, refraction: Double = defaultRefraction,
-        tint: SIMD3<Double>? = nil, pixel: Double = 1.0 / 3.0, nested: Bool = false,
+        tint: SIMD3<Double>? = nil, pixel: Double = 1.0 / 3.0, nested: Bool = false, legibility: Double = 0,
         sample: (_ dx: Double, _ dy: Double) -> SIMD4<Double>, base: SIMD4<Double>
     ) -> SIMD4<Double> {
         let params = shapeParameters(width: width, height: height, radius: radius)
@@ -282,6 +302,7 @@ public enum GlassOptics {
             let body = tintBody(material)
             a = body + (1 - body) * a
         }
+        if legibility > 0 { rgb = legibilityColor(rgb, dark: dark, amount: legibility) }
         let ga = a * cover
         let glass = SIMD4(rgb.x * ga, rgb.y * ga, rgb.z * ga, ga) + base * (1 - ga)
         let rim = rimOverlay(distance: f.distance, nx: f.nx, ny: f.ny, dark: dark, pixel: pixel, tint: tint)

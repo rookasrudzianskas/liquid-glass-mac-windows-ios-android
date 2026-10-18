@@ -56,9 +56,12 @@ inline float4 lgFill(SwiftUI::Layer layer, float2 q, float sigma, float4 valid) 
 // extras:   opacity, contrast border, mode (0 glass, 1 opaque fallback,
 //           2 rim only over a platform material), fill kernel sigma
 // valid:    rectangle the backdrop copy is valid in (minX, minY, maxX, maxY)
+// legibility: how far the glass mixes toward the solid legibility backing
+//           (0.5 on menu panels, 0 elsewhere; spec/OPTICS.md §3)
 [[ stitchable ]] half4 liquidGlass(float2 position, SwiftUI::Layer layer,
                                    float4 frame, float4 shape, float4 material,
-                                   float4 tint, float4 glow, float4 extras, float4 valid) {
+                                   float4 tint, float4 glow, float4 extras, float4 valid,
+                                   float legibility) {
     float2 center = frame.xy;
     float2 size = frame.zw;
     float2 scale = max(shape.zw, float2(1e-3));
@@ -97,6 +100,7 @@ inline float4 lgFill(SwiftUI::Layer layer, float2 q, float sigma, float4 valid) 
         rgb = lgTintColor(rgb, tint.rgb, material.x);
         a = body + (1.0 - body) * a;
     }
+    rgb = lgLegibility(rgb, dark, legibility);
     float cover = lgCoverage(field.x, pixel);
     float ga = a * cover * opacity;
     float4 result = float4(rgb * ga, ga);

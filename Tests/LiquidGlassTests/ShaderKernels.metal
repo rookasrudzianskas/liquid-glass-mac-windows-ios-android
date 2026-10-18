@@ -47,12 +47,20 @@ kernel void lgTestEvaluate(device const float *input [[buffer(0)]],
         output[id] = lgRimOverlay(float3(a[0], a[1], a[2]), a[3], a[4], float3(a[5], a[6], a[7]), a[8]);
         break;
     }
-    case 6: { // glass pixel: x, y, width, height, radius, material, dark, refraction, pixel, tint rgb, tint on
+    case 6: { // glass pixel: x, y, width, height, radius, material, dark, refraction, pixel, tint rgb, tint on, legibility
         float2 p = float2(a[0], a[1]);
         float2 size = float2(a[2], a[3]);
         float3 field = lgShapeField(p, size, lgShapeParams(size, a[4]));
         float4 src = lgTestBackdropColor(p + lgRefractionOffset(field, a[7]));
-        output[id] = lgCompose(src, lgTestBackdropColor(p), field, a[5], a[6], 0.0, float3(a[9], a[10], a[11]), a[12], a[8]);
+        output[id] = lgCompose(src, lgTestBackdropColor(p), field, a[5], a[6], 0.0, float3(a[9], a[10], a[11]), a[12], a[8], a[13]);
+        break;
+    }
+    case 7: { // legibility backing mix: rgb, dark, amount
+        output[id] = float4(lgLegibility(float3(a[0], a[1], a[2]), a[3], a[4]), 0.0);
+        break;
+    }
+    case 8: { // menu glass: rgb, material, dark, legibility (material color, then the backing mix)
+        output[id] = float4(lgLegibility(lgMaterialColor(float3(a[0], a[1], a[2]), a[3], a[4], 0.0), a[4], a[5]), 0.0);
         break;
     }
     default:

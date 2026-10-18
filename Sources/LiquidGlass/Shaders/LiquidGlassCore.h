@@ -117,6 +117,13 @@ inline float3 lgFrostColor(float3 frost, float3 fill, float dark) {
     return opacity * blended + (1.0 - opacity) * frost;
 }
 
+// Menu panels mix their glass toward a solid backing so text always reads:
+// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+inline float3 lgLegibility(float3 c, float dark, float amount) {
+    float3 backing = mix(float3(0.960784, 0.960784, 0.968627), float3(0.109804, 0.109804, 0.117647), dark);
+    return mix(c, backing, amount);
+}
+
 // ---------------------------------------------------------------------------
 // Rim light (premul). tintOn: 0 or 1.
 
@@ -153,7 +160,7 @@ inline float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, f
 // src: refracted backdrop at p + lgRefractionOffset (unpremul; regular glass
 // passes lgFrostColor). base: unrefracted backdrop at p (premul).
 inline float4 lgCompose(float4 src, float4 base, float3 field, float material, float dark, float nested,
-                        float3 tint, float tintOn, float pixel) {
+                        float3 tint, float tintOn, float pixel, float legibility) {
     float3 rgb = lgMaterialColor(src.rgb, material, dark, nested);
     float a = src.a;
     if (tintOn > 0.5) {
@@ -161,6 +168,7 @@ inline float4 lgCompose(float4 src, float4 base, float3 field, float material, f
         rgb = lgTintColor(rgb, tint, material);
         a = body + (1.0 - body) * a;
     }
+    rgb = lgLegibility(rgb, dark, legibility);
     float ga = a * lgCoverage(field.x, pixel);
     float4 result = float4(rgb * ga, ga) + base * (1.0 - ga);
     float4 rim = lgRimOverlay(field, dark, pixel, tint, tintOn);
