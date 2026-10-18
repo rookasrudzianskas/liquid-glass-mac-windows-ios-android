@@ -53,6 +53,41 @@ class TintLabelTest {
         }
     }
 
+    /**
+     * Menu labels (spec/OPTICS.md §3) are chosen against the tint mixed toward the legibility backing, so they
+     * follow the appearance too: the chosen label always has the higher contrast with that glass.
+     */
+    @Test
+    fun menuLabelsHaveTheHigherContrastWithTheBackedTint() {
+        val ink = floatArrayOf(17f / 255f, 17f / 255f, 19f / 255f)
+        val white = floatArrayOf(1f, 1f, 1f)
+        for (regular in listOf(false, true)) {
+            val body = tintBody(regular)
+            val pass = body + (1 - body) * 0.5f
+            for (dark in listOf(false, true)) {
+                for (step in 0..40) {
+                    val v = step / 40f
+                    for (tint in listOf(floatArrayOf(v, v, v), floatArrayOf(v, 0.4f, 1 - v), floatArrayOf(1f, v, 0f))) {
+                        val glass = legibilityColor(FloatArray(3) { tint[it] * pass }, dark, MENU_LEGIBILITY)
+                        val label = menuForeground(tint, regular, dark)
+                        val other = if (label[0] > 0.5f) ink else white
+                        assertTrue(
+                            "tint ${tint.toList()} regular=$regular dark=$dark",
+                            contrastRatio(label, glass) >= contrastRatio(other, glass),
+                        )
+                    }
+                }
+            }
+        }
+        // A light blue panel takes #111113 where the tint alone would take white; a dark yellow one white.
+        val blue = floatArrayOf(0f, 0x7A / 255f, 1f)
+        val yellow = floatArrayOf(1f, 0xCC / 255f, 0f)
+        assertFalse(dark(0x007AFFL, regular = true))
+        assertEquals(ink.toList(), menuForeground(blue, regular = true, dark = false).toList())
+        assertTrue(dark(0xFFCC00L, regular = true))
+        assertEquals(white.toList(), menuForeground(yellow, regular = true, dark = true).toList())
+    }
+
     @Test
     fun relativeLuminanceMatchesWcag() {
         assertEquals(1f, relativeLuminance(1f, 1f, 1f), 1e-6f)

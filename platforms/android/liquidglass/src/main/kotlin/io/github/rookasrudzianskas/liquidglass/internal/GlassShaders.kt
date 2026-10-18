@@ -234,7 +234,8 @@ float3 lgTintColor(float3 c, float3 tint, float material) {
 }
 
 // Menu panels mix their glass toward a solid backing so text always reads:
-// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+// #F5F5F7 light, #1C1C1E dark. amount is 0.6 on menu panels (times the open
+// progress of the menu), 0 elsewhere.
 float3 lgLegibility(float3 c, float dark, float amount) {
   float3 backing = mix(float3(0.960784, 0.960784, 0.968627), float3(0.109804, 0.109804, 0.117647), dark);
   return mix(c, backing, amount);
@@ -273,7 +274,7 @@ float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float ti
 
 // src: refracted backdrop (unpremultiplied); base: what lies beneath (premultiplied).
 // material: 0 clear, 1 regular, 2 solid. look = (dark, nested, opacity, contrast).
-// legibility: the share of the legibility backing (0.5 on menu panels, 0 elsewhere).
+// legibility: the share of the legibility backing (0.6 times the open progress on menu panels, 0 elsewhere).
 float4 lgCompose(float4 src, float4 base, float3 field, float material, float4 look, float4 tint, float pixel,
                  float legibility) {
   float dark = look.x;

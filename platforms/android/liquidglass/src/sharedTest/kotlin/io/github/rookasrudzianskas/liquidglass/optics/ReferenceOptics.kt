@@ -201,6 +201,18 @@ internal fun glassPixel(
     return FloatArray(4) { rim[it] + glass[it] * (1f - rim[3]) }
 }
 
+/**
+ * The system colors spec/generate-vectors.mjs holds tinted menus to (legibility.worstCase.systemTintsWithHighlight),
+ * gamma-encoded sRGB: blue, green, red, orange, yellow, purple, pink, indigo, teal and mint.
+ */
+internal val SYSTEM_TINTS: List<FloatArray> =
+    listOf(0x007AFF, 0x34C759, 0xFF3B30, 0xFF9500, 0xFFCC00, 0xAF52DE, 0xFF2D55, 0x5856D6, 0x5AC8FA, 0x00C7BE).map { rgb ->
+        floatArrayOf(((rgb shr 16) and 0xFF) / 255f, ((rgb shr 8) and 0xFF) / 255f, (rgb and 0xFF) / 255f)
+    }
+
+/** [glass] with the menu row highlight: [label] mixed in by [MENU_HIGHLIGHT] (spec/OPTICS.md §3). */
+internal fun highlighted(glass: FloatArray, label: FloatArray): FloatArray = FloatArray(3) { mix(glass[it], label[it], MENU_HIGHLIGHT) }
+
 /** WCAG 2 contrast ratio of two gamma-encoded sRGB colors (r, g, b), lighter over darker. */
 internal fun contrastRatio(a: FloatArray, b: FloatArray): Float {
     val x = relativeLuminance(a[0], a[1], a[2]) + 0.05f

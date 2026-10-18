@@ -131,11 +131,15 @@ internal fun darkLabelOnTint(r: Float, g: Float, b: Float, regular: Boolean): Bo
 }
 
 /**
- * How far a menu panel mixes its glass toward the [legibilityBacking], after the material color and tint
- * (`spec/OPTICS.md` §3, "Legibility backing"): labels on it keep at least 5:1 over any backdrop. Every other
- * surface uses 0.
+ * How far an open menu panel mixes its glass toward the [legibilityBacking], after the material color and tint
+ * (`spec/OPTICS.md` §3, "Legibility backing"); the panel applies it times its open progress. Labels in
+ * [menuForeground] keep at least 5.2:1 over any backdrop on untinted panels, Regular or Clear, and on panels
+ * tinted with the system colors, highlighted rows included. Every other surface uses 0.
  */
-internal const val MENU_LEGIBILITY: Float = 0.5f
+internal const val MENU_LEGIBILITY: Float = 0.6f
+
+/** A highlighted menu row (hover, keyboard focus, press) mixes its label color into the glass by this amount. */
+internal const val MENU_HIGHLIGHT: Float = 0.08f
 
 /** The solid backing of the legibility mix, gamma-encoded sRGB: `#F5F5F7` light, `#1C1C1E` dark. */
 internal fun legibilityBacking(dark: Boolean): FloatArray =
@@ -145,6 +149,23 @@ internal fun legibilityBacking(dark: Boolean): FloatArray =
 internal fun legibilityColor(rgb: FloatArray, dark: Boolean, amount: Float): FloatArray {
     val backing = legibilityBacking(dark)
     return FloatArray(3) { rgb[it] + (backing[it] - rgb[it]) * amount }
+}
+
+/**
+ * Label color of a menu (`spec/OPTICS.md` §3, `menuForeground` in the reference), gamma-encoded sRGB: the
+ * appearance foreground (`#111113` light, white dark) when [tint] is null; on a tinted menu, white or `#111113`,
+ * whichever has the higher WCAG contrast with the tint as the menu draws it over a mid-tone backdrop,
+ * `mix(tint · (body + (1 − body)·0.5), backing, legibility)`.
+ */
+internal fun menuForeground(tint: FloatArray?, regular: Boolean, dark: Boolean, legibility: Float = MENU_LEGIBILITY): FloatArray {
+    val ink = floatArrayOf(17f / 255f, 17f / 255f, 19f / 255f)
+    if (tint == null) return if (dark) floatArrayOf(1f, 1f, 1f) else ink
+    val body = tintBody(regular)
+    val pass = body + (1f - body) * 0.5f
+    val glass = legibilityColor(floatArrayOf(tint[0] * pass, tint[1] * pass, tint[2] * pass), dark, legibility)
+    val luminance = relativeLuminance(glass[0], glass[1], glass[2])
+    val darkLabel = (luminance + 0.05f) / (relativeLuminance(ink[0], ink[1], ink[2]) + 0.05f) > 1.05f / (luminance + 0.05f)
+    return if (darkLabel) ink else floatArrayOf(1f, 1f, 1f)
 }
 
 /** Gaussian σ of the Regular frost, in dp. */

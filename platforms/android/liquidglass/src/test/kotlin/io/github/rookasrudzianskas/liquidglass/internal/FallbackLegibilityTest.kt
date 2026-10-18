@@ -3,8 +3,11 @@ package io.github.rookasrudzianskas.liquidglass.internal
 import androidx.compose.ui.graphics.Color
 import io.github.rookasrudzianskas.liquidglass.GlassDefaults
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
+import io.github.rookasrudzianskas.liquidglass.optics.SYSTEM_TINTS
 import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
+import io.github.rookasrudzianskas.liquidglass.optics.highlighted
 import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
+import io.github.rookasrudzianskas.liquidglass.optics.menuForeground
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,20 +60,39 @@ class FallbackLegibilityTest {
         assertEquals(fill, withLegibility(fill, dark = false, amount = 0f))
     }
 
-    /** Untinted Regular (and Reduce Transparency) fallback menus, with and without the platform blur, keep their labels at 5:1 over white and black. */
+    /**
+     * Fallback menus keep their labels ([menuForeground]) at 5.2:1 over white and black, highlighted rows
+     * included, like the GPU glass: untinted and tinted with the system colors, in both appearances, Regular glass
+     * with and without the platform blur, Clear glass (always an unblurred fill) and the Reduce Transparency fill.
+     * A fill is affine in the backdrop, so white and black bound every backdrop.
+     */
     @Test
     fun fallbackMenusKeepTheirLabelsLegible() {
+        val drawn = listOf(ShaderMaterial.REGULAR to true, ShaderMaterial.REGULAR to false, ShaderMaterial.CLEAR to false, ShaderMaterial.SOLID to false)
         for (dark in listOf(false, true)) {
-            val label = GlassDefaults.contentColor(dark).let { floatArrayOf(it.red, it.green, it.blue) }
-            for (material in listOf(ShaderMaterial.REGULAR, ShaderMaterial.SOLID)) {
-                for (blurred in listOf(false, true)) {
-                    val fill = withLegibility(fallbackFill(material, dark, Color.Unspecified, blurred), dark, MENU_LEGIBILITY)
+            for ((material, blurred) in drawn) {
+                // The Reduce Transparency fill takes Regular's tint body, as in the shader.
+                val regular = material != ShaderMaterial.CLEAR
+                for (tint in listOf<FloatArray?>(null) + SYSTEM_TINTS) {
+                    val label = menuForeground(tint, regular, dark)
+                    val tintColor = tint?.let { Color(it[0], it[1], it[2]) } ?: Color.Unspecified
+                    val fill = withLegibility(fallbackFill(material, dark, tintColor, blurred), dark, MENU_LEGIBILITY)
                     for (backdrop in backdrops.take(2)) {
-                        val contrast = contrastRatio(label, over(fill, backdrop))
-                        assertTrue("material $material dark=$dark blurred=$blurred over ${backdrop.toList()}: $contrast", contrast >= 5f)
+                        val glass = over(fill, backdrop)
+                        val contrast = minOf(contrastRatio(label, glass), contrastRatio(label, highlighted(glass, label)))
+                        assertTrue("material $material dark=$dark blurred=$blurred tint=${tint?.toList()} over ${backdrop.toList()}: $contrast", contrast >= 5.2f)
                     }
                 }
             }
+        }
+    }
+
+    /** The untinted labels are the glass foreground. */
+    @Test
+    fun untintedMenusUseTheGlassForeground() {
+        for (dark in listOf(false, true)) {
+            val foreground = GlassDefaults.contentColor(dark).let { floatArrayOf(it.red, it.green, it.blue) }
+            for (regular in listOf(false, true)) assertEquals(foreground.toList(), menuForeground(null, regular, dark).toList())
         }
     }
 }

@@ -77,7 +77,7 @@ internal data class GlassSurfaceParams(
     val motion: GlassMotion?,
     val opacity: Float,
     val interactionSource: InteractionSource?,
-    /** Share of the legibility backing mixed into the glass ([io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY] on menu panels). */
+    /** Share of the legibility backing mixed into the glass ([io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY] on open menu panels). */
     val legibility: Float = 0f,
 )
 
@@ -98,6 +98,8 @@ internal class GlassDynamics(
     val restingSize: ((Size) -> Size)? = null,
     /** Overrides the corner radius in dp ([Dp.Unspecified] for a capsule); null keeps the shape's. */
     val radius: (() -> Dp)? = null,
+    /** Overrides the share of the legibility backing (a menu's follows its morph); null keeps the params'. */
+    val legibility: (() -> Float)? = null,
     /** When set, a container forwards pointer input through it instead of the surface observing its own. */
     val pointer: GlassPointerHandle? = null,
 )
@@ -438,7 +440,7 @@ internal class GlassSurfaceNode(
             glowY = (glowAt.y - center.y) / density,
             glowRadius = glow(widthDp, heightDp, dark).radius,
             glowAmount = glowAmount.floatValue,
-            legibility = params.legibility,
+            legibility = legibility(),
         )
     }
 
@@ -463,6 +465,8 @@ internal class GlassSurfaceNode(
         val resting = dynamics?.restingSize?.invoke(size) ?: size
         return defaultRefraction(resting.width / density, resting.height / density)
     }
+
+    private fun legibility(): Float = (dynamics?.legibility?.invoke() ?: params.legibility).coerceIn(0f, 1f)
 
     private fun radiusDp(): Float? {
         val override = dynamics?.radius?.invoke()
@@ -507,7 +511,7 @@ internal class GlassSurfaceNode(
                         glowCenter = glowCenter,
                         glow = glow(local.width / density, local.height / density, dark),
                         glowAmount = glowAmount.floatValue,
-                        legibility = params.legibility,
+                        legibility = legibility(),
                         blurredBackdrop = null,
                         backdropOffset = Offset.Zero,
                     )

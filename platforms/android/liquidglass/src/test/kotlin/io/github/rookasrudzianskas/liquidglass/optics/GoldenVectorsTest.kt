@@ -167,6 +167,7 @@ class GoldenVectorsTest {
     fun legibilityMatches() {
         val legibility = vectors.getValue("legibility").jsonObject
         assertEquals(legibility.f("menuAmount"), MENU_LEGIBILITY)
+        assertEquals(legibility.f("highlight"), MENU_HIGHLIGHT)
         val backing = legibility.getValue("backing").jsonObject
         close(backing.floats("light"), legibilityBacking(dark = false), "backing light")
         close(backing.floats("dark"), legibilityBacking(dark = true), "backing dark")
@@ -175,7 +176,13 @@ class GoldenVectorsTest {
             close(c.floats("value"), legibilityColor(c.floats("color"), c.b("dark"), c.f("amount")), "legibilityColor $c")
         }
         assertEquals(6, cases.size)
-        // The worst cases of untinted Regular menus: white labels over white in dark, #111113 over black in light.
+        val labels = legibility.getValue("menuForeground").jsonArray.map { it.jsonObject }
+        for (c in labels) {
+            val regular = c.getValue("material").jsonPrimitive.content == "regular"
+            close(c.floats("value"), menuForeground(c.floatsOrNull("tint"), regular, c.b("dark")), "menuForeground $c")
+        }
+        assertEquals(8, labels.size)
+        // The worst cases: untinted Regular menus, white labels over white in dark, #111113 over black in light.
         val worst = legibility.getValue("worstCase").jsonObject
         val white = floatArrayOf(1f, 1f, 1f)
         val black = floatArrayOf(0f, 0f, 0f)
@@ -184,10 +191,33 @@ class GoldenVectorsTest {
         val lightOverBlack = contrastRatio(legibilityColor(materialColor(black, regular = true, dark = false), false, MENU_LEGIBILITY), ink)
         close(worst.f("darkOverWhite"), darkOverWhite, "darkOverWhite", tolerance = 1e-3f)
         close(worst.f("lightOverBlack"), lightOverBlack, "lightOverBlack", tolerance = 1e-3f)
-        assertTrue("menu labels keep 5:1 ($darkOverWhite, $lightOverBlack)", darkOverWhite >= 5f && lightOverBlack >= 5f)
         // Without the backing, the same glass gives 1.8:1 and 2.1:1.
         assertTrue(contrastRatio(materialColor(white, regular = true, dark = true), white) < 2f)
         assertTrue(contrastRatio(materialColor(black, regular = true, dark = false), ink) < 2.2f)
+        // Over a 6 x 6 x 6 grid of backdrops, highlighted rows included: untinted menus, Regular or Clear, in both
+        // appearances, and menus tinted with the system colors keep 5.2:1.
+        val untinted = listOf(true, false).minOf { regular -> listOf(false, true).minOf { dark -> menuFloor(regular, dark, null) } }
+        val tinted = SYSTEM_TINTS.minOf { tint -> listOf(true, false).minOf { regular -> listOf(false, true).minOf { dark -> menuFloor(regular, dark, tint) } } }
+        close(worst.f("untintedWithHighlight"), untinted, "untintedWithHighlight", tolerance = 1e-3f)
+        close(worst.f("systemTintsWithHighlight"), tinted, "systemTintsWithHighlight", tolerance = 1e-3f)
+        assertTrue("menu labels keep 5.2:1 (untinted $untinted, system tints $tinted)", untinted >= 5.2f && tinted >= 5.2f)
+    }
+
+    /**
+     * The lowest contrast of a menu's labels ([menuForeground]) with its glass, plain and with the row highlight,
+     * over a 6 x 6 x 6 grid of backdrops, as spec/generate-vectors.mjs measures it.
+     */
+    private fun menuFloor(regular: Boolean, dark: Boolean, tint: FloatArray?): Float {
+        val label = menuForeground(tint, regular, dark)
+        val steps = List(6) { it / 5f }
+        var lowest = Float.MAX_VALUE
+        for (r in steps) for (g in steps) for (b in steps) {
+            var rgb = materialColor(floatArrayOf(r, g, b), regular, dark)
+            if (tint != null) rgb = tintColor(rgb, tint, regular)
+            rgb = legibilityColor(rgb, dark, MENU_LEGIBILITY)
+            lowest = minOf(lowest, contrastRatio(rgb, label), contrastRatio(highlighted(rgb, label), label))
+        }
+        return lowest
     }
 
     @Test
@@ -224,7 +254,9 @@ class GoldenVectorsTest {
             close(c.floats("value"), value, "glassPixel $c")
         }
         assertEquals(63, cases.size)
+        // Six cases are open menu panels, with the menus' full backing.
         assertEquals(6, cases.count { it.containsKey("legibility") })
+        assertTrue(cases.filter { it.containsKey("legibility") }.all { it.f("legibility") == MENU_LEGIBILITY })
     }
 
     /** The backdrop spec/vectors.json uses: rgb = (0.5 + px/400, 0.5 + py/400, 0.6), alpha 1. */

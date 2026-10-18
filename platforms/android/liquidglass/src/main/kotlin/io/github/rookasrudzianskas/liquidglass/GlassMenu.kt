@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,8 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -111,19 +114,28 @@ import io.github.rookasrudzianskas.liquidglass.internal.LocalGlassScene
 import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.OVERLAY_LEVEL
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
+import io.github.rookasrudzianskas.liquidglass.optics.MENU_HIGHLIGHT
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
 import io.github.rookasrudzianskas.liquidglass.optics.SpringValue
+import io.github.rookasrudzianskas.liquidglass.optics.menuForeground
 import io.github.rookasrudzianskas.liquidglass.optics.mix
 import kotlin.math.roundToInt
 
 /**
  * A menu that grows out of its trigger: a Regular glass panel morphing from the
  * trigger's outline on the morph spring, covering it, and collapsing back
- * into it when dismissed. The panel's glass is mixed halfway toward a solid
- * backing (`#F5F5F7` light, `#1C1C1E` dark), so the labels of an untinted
- * Regular panel keep at least 5:1 contrast over any backdrop, also with the
- * fallback material. Items highlight with the foreground color at 8%.
+ * into it when dismissed. The open panel's glass is mixed 60% toward a solid
+ * backing (`#F5F5F7` light, `#1C1C1E` dark), fading in with the morph, so it
+ * leaves the trigger as the trigger's own glass. Items are drawn in the
+ * appearance foreground, or on a tinted panel in white or `#111113`, whichever
+ * contrasts more with the tint mixed toward the backing; a highlighted row
+ * (hover, focus, press) mixes that color into the glass at 8%. Untinted
+ * panels, Regular or Clear, and panels tinted with the system colors keep
+ * their labels at 5.2:1 or more over any backdrop, highlighted rows included,
+ * also with the fallback material. Very light tints (pure yellow, lime,
+ * white) can fall below 4.5:1 over white in dark appearance: use a deeper
+ * tint, or none.
  * Tapping outside, Back and Escape dismiss it; choosing an item runs its
  * action and dismisses it.
  *
@@ -149,7 +161,8 @@ import kotlin.math.roundToInt
  * @param modifier modifier for the panel.
  * @param material the panel's material; Regular by default.
  * @param appearance light or dark; null inherits the scene's.
- * @param tint colors the panel's glass.
+ * @param tint colors the panel's glass, before the backing; the labels take white or `#111113`,
+ *   whichever contrasts more with the tint mixed toward the backing. Avoid very light tints.
  * @param shape the panel's outline; 28 dp continuous corners by default.
  * @param motion overrides the scene's motion.
  * @param content the menu items: [GlassMenuItem], [GlassMenuDivider] or any composable.
@@ -260,7 +273,8 @@ public fun GlassMenu(
 
 /**
  * A menu row: an optional icon and a label, 44 dp tall (more with large fonts).
- * Choosing it runs [onClick] and closes the menu. With a keyboard, the focused
+ * Choosing it runs [onClick] and closes the menu. A pressed or hovered row is
+ * highlighted with the menu's label color at 8%; with a keyboard, the focused
  * row is highlighted and ringed.
  *
  * @param text the label.
@@ -286,13 +300,16 @@ public fun GlassMenuItem(
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val focused by source.collectIsFocusedAsState()
+    val hovered by source.collectIsHoveredAsState()
     val foreground = LocalGlassContentColor.current
     val color = if (destructive) DestructiveColor else foreground
+    // Drawn over the glass, the menu's label color at 8% mixes into it by that much (spec/OPTICS.md §3).
+    val highlighted = enabled && (pressed || focused || hovered)
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .background(if (pressed || focused) foreground.copy(alpha = 0.08f) else Color.Transparent, ItemShape)
+            .background(if (highlighted) foreground.copy(alpha = MENU_HIGHLIGHT) else Color.Transparent, ItemShape)
             .then(if (focused) Modifier.border(2.dp, FocusRingColor, ItemShape) else Modifier)
             .semantics { if (checked != null) toggleableState = ToggleableState(checked) }
             .clickable(source, indication = null, enabled = enabled, role = if (checked != null) Role.Checkbox else Role.Button) {
@@ -407,22 +424,24 @@ private fun MenuPanel(
         motion = null,
         opacity = 1f,
         interactionSource = null,
-        // Half the solid backing keeps labels at 5:1 or more over any backdrop, in the fallback material too.
+        // The open panel's backing (dynamics.legibility scales it with the morph), in the fallback material too.
         legibility = MENU_LEGIBILITY,
     )
     // The glass morphs out of the trigger; an unset refraction follows the open panel (the node's size) throughout.
+    // The backing fades in with the morph, so the glass leaves the trigger as the trigger's glass and returns to it.
     val dynamics = remember(menu, shape) {
         GlassDynamics(
             opacity = { (menu.morph / 0.15f).coerceIn(0f, 1f) },
             bounds = { size -> menu.morphRect(size) },
             radius = { menu.morphRadius(shape) },
+            legibility = { menuLegibility(menu.morph) },
         )
     }
     val focus = remember { FocusRequester() }
     val menuTitle = stringResource(R.string.liquidglass_menu)
     if (expanded && LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
-    ProvideGlassContentColor(appearance, tint, material) {
+    ProvideMenuContentColor(appearance, tint, material) {
         // The panel sees its call site's locals; it is not part of a toolbar even when its trigger is.
         CompositionLocalProvider(LocalMenuDismiss provides onDismiss, LocalGlassToolbarItem provides false, LocalGlassToolbarClusters provides null) {
             Column(
@@ -455,6 +474,26 @@ private fun MenuPanel(
             )
         }
     }
+}
+
+/**
+ * Provides the menu's label color ([menuForeground]): the appearance foreground, or on a tint white or `#111113`,
+ * whichever contrasts more with the tint mixed toward the legibility backing. The tint body is the glass's as
+ * drawn: Regular's for Regular glass and for the opaque Reduce Transparency fill, Clear's otherwise.
+ */
+@Composable
+private fun ProvideMenuContentColor(appearance: GlassAppearance?, tint: Color, material: GlassMaterial, content: @Composable () -> Unit) {
+    val style = currentGlassStyle()
+    val dark = style.isDark(appearance)
+    val color = if (tint.isSpecified) {
+        val srgb = tint.convert(ColorSpaces.Srgb)
+        val regular = style.reduceTransparency || style.material(material) == GlassMaterial.Regular
+        val label = menuForeground(floatArrayOf(srgb.red, srgb.green, srgb.blue), regular, dark)
+        if (label[0] < 0.5f) GlassDefaults.LightContentColor else GlassDefaults.DarkContentColor
+    } else {
+        GlassDefaults.contentColor(dark)
+    }
+    CompositionLocalProvider(LocalGlassContentColor provides color, content = content)
 }
 
 /** The clip of the menu items: the morphing glass outline. */
@@ -593,6 +632,12 @@ private class MenuState {
         return Rect(topLeft, anchor.size)
     }
 }
+
+/**
+ * The share of the legibility backing a menu panel has at [morph] (0 = the trigger's outline, 1 = open):
+ * none at the trigger, [MENU_LEGIBILITY] open, and never more while the spring overshoots.
+ */
+internal fun menuLegibility(morph: Float): Float = MENU_LEGIBILITY * morph.coerceIn(0f, 1f)
 
 /** A check mark drawn as a 24-unit vector, so the library needs no icon dependency. */
 private val CheckMark: ImageVector = ImageVector.Builder("CheckMark", 24.dp, 24.dp, 24f, 24f).apply {

@@ -9,6 +9,8 @@ import android.os.SystemClock
 import android.util.Log
 import android.graphics.RuntimeShader
 import android.view.Choreographer
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.PixelCopy
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +44,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -60,9 +63,12 @@ import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
 import io.github.rookasrudzianskas.liquidglass.optics.defaultRefraction
 import io.github.rookasrudzianskas.liquidglass.optics.glassPixel
+import io.github.rookasrudzianskas.liquidglass.optics.highlighted
 import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
 import io.github.rookasrudzianskas.liquidglass.optics.materialColor
+import io.github.rookasrudzianskas.liquidglass.optics.menuForeground
 import io.github.rookasrudzianskas.liquidglass.optics.sat
+import io.github.rookasrudzianskas.liquidglass.optics.tintColor
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
@@ -92,13 +98,14 @@ class GlassRenderingTest {
     private val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
 
     /**
-     * Composes [content] in a SceneWidth × SceneHeight box at density 1 and copies
-     * its pixels from the window until [check] passes (returns null). A slow GPU
+     * Composes [content] in a SceneWidth × SceneHeight box at density 1, runs
+     * [interact] on the main thread once it has settled, and copies its pixels
+     * from the window until [check] passes (returns null). A slow GPU
      * (a software-rendered CI emulator compiling the shader) may show a few frames
      * without the effect, or time out a copy, so the copy is retried for up to
      * [Patience] ms before the test fails with the last message.
      */
-    private fun assertRendered(content: @Composable () -> Unit, check: (Bitmap) -> String?) {
+    private fun assertRendered(content: @Composable () -> Unit, interact: ((ComponentActivity) -> Unit)? = null, check: (Bitmap) -> String?) {
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             var bounds = Rect.Zero
             scenario.onActivity { activity ->
@@ -109,6 +116,11 @@ class GlassRenderingTest {
                 }
             }
             awaitFrames(scenario, SettleFrames)
+            if (interact != null) {
+                // Input once the scene is laid out and drawn, then let it settle again.
+                scenario.onActivity(interact)
+                awaitFrames(scenario, SettleFrames)
+            }
             val deadline = SystemClock.uptimeMillis() + Patience
             var failure: String?
             do {
@@ -920,15 +932,27 @@ class GlassRenderingTest {
     }
 
     /**
-     * Opens a [GlassMenu] (two items, no motion) over the uniform [backdrop] in [appearance] and checks the
-     * glass behind its labels: every interior pixel beside them has at least [MinLabelContrast] with the label
-     * color the items get, the labels are drawn in it, and on the GPU path the glass is the reference's Regular
-     * glass with the menus' legibility backing. [extraSurfaces] small surfaces below the menu take up the GPU
-     * slots first, so with [GlassDefaults.MaxSurfacesPerScene] of them the menu draws the fallback material.
+     * Opens a [GlassMenu] of [material] (three items, no motion) over the uniform [backdrop] in [appearance],
+     * tinted with [tint] when it is specified, holds a finger down on its second row so the row is highlighted,
+     * and checks the glass behind the labels. The items take the label color of [menuForeground]; every interior
+     * pixel beside the labels, on the plain rows and the highlighted one, has at least [MenuFloor] with it; the
+     * labels are drawn in it; the highlighted row is the plain glass with the label color mixed in at
+     * [MENU_HIGHLIGHT]; and on the GPU path the plain glass is the reference's glass (tinted) with the menus'
+     * legibility backing. [extraSurfaces] small surfaces below the menu take up the GPU slots first, so with
+     * [GlassDefaults.MaxSurfacesPerScene] of them the menu draws the fallback material.
      */
-    private fun assertMenuLegible(backdrop: FloatArray, appearance: GlassAppearance, extraSurfaces: Int = 0) {
+    private fun assertMenuLegible(
+        backdrop: FloatArray,
+        appearance: GlassAppearance,
+        material: GlassMaterial = GlassMaterial.Regular,
+        tint: Color = Color.Unspecified,
+        extraSurfaces: Int = 0,
+    ) {
         val dark = appearance == GlassAppearance.Dark
+        val regular = material == GlassMaterial.Regular
         val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
+        val tintRgb = if (tint.isSpecified) floatArrayOf(tint.red, tint.green, tint.blue) else null
+        val case = "$material menu dark=$dark tint=${tintRgb?.toList()} over ${backdrop.take(3)} extra=$extraSurfaces"
         var sceneBounds = Rect.Zero
         var panelBounds = Rect.Zero
         var label = Color.Unspecified
@@ -954,77 +978,140 @@ class GlassRenderingTest {
                         onDismissRequest = {},
                         trigger = { Box(Modifier.size(44.dp)) },
                         modifier = Modifier.onGloballyPositioned { panelBounds = it.boundsInWindow() },
+                        material = material,
+                        tint = tint,
                     ) {
                         label = LocalGlassContentColor.current
                         GlassMenuItem("Legible", onClick = {})
                         GlassMenuItem("Labels", onClick = {})
+                        GlassMenuItem("Here", onClick = {})
                     }
                 }
             }
         }
-        assertRendered(scene) { image ->
+        // A finger held on the second row (no release, so it is never chosen): the row is pressed.
+        val press: (ComponentActivity) -> Unit = { activity ->
+            val now = SystemClock.uptimeMillis()
+            val x = panelBounds.left + 60f
+            val y = panelBounds.top + MenuInset + MenuRow * 1.5f
+            val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+            activity.window.decorView.dispatchTouchEvent(down)
+            down.recycle()
+        }
+        assertRendered(scene, press) { image ->
             val panel = panelBounds.translate(-sceneBounds.left, -sceneBounds.top)
-            if (panel.width < 200f || panel.height < 80f || panel.right > SceneWidth || panel.bottom > SceneHeight) {
-                return@assertRendered "menu panel not laid out in the scene: $panel"
+            if (panel.width < 200f || panel.height < 120f || panel.right > SceneWidth || panel.bottom > SceneHeight) {
+                return@assertRendered "$case: menu panel not laid out in the scene: $panel"
             }
             val ink = floatArrayOf(label.red, label.green, label.blue)
-            val expected = legibilityColor(materialColor(backdrop, regular = true, dark = dark), dark, MENU_LEGIBILITY)
+            val expectedInk = menuForeground(tintRgb, regular, dark)
+            if ((0..2).any { abs(ink[it] - expectedInk[it]) > 1f / 255f }) {
+                return@assertRendered "$case: labels drawn in ${ink.toList()}, not the menu foreground ${expectedInk.toList()}"
+            }
+            val materialRgb = materialColor(backdrop, regular, dark)
+            val expected = legibilityColor(if (tintRgb != null) tintColor(materialRgb, tintRgb, regular) else materialRgb, dark, MENU_LEGIBILITY)
             val gpu = Build.VERSION.SDK_INT >= 33 && extraSurfaces < GlassDefaults.MaxSurfacesPerScene
             val left = panel.left.toInt()
             val top = panel.top.toInt()
             val right = panel.right.toInt()
             val bottom = panel.bottom.toInt()
+            fun rgb(x: Int, y: Int): FloatArray = image.color(x, y).let { floatArrayOf(it.red, it.green, it.blue) }
+            // Beside the labels (which end well before x + 120), clear of the rim light: plain and highlighted rows.
             var lowest = Float.MAX_VALUE
             var lowestAt = ""
-            var error = 0f
-            // Beside the labels (which end well before x + 120), clear of the rim light.
             for (y in top + MenuInterior until bottom - MenuInterior step 2) {
                 for (x in left + 120 until right - MenuInterior step 2) {
-                    val c = image.color(x, y)
-                    val glass = floatArrayOf(c.red, c.green, c.blue)
+                    val glass = rgb(x, y)
                     val contrast = contrastRatio(ink, glass)
                     if (contrast < lowest) {
                         lowest = contrast
                         lowestAt = "($x, $y) ${glass.toList()}"
                     }
-                    if (gpu) for (i in 0..2) error = max(error, abs(glass[i] - expected[i]))
                 }
             }
-            // The first label is drawn in the label color: some pixel of it stands out from the glass.
-            val beside = image.color(right - 30, top + 28).let { floatArrayOf(it.red, it.green, it.blue) }
-            val text = (top + 10 until top + 46).maxOf { y ->
-                (left + 16 until left + 100).maxOf { x -> image.color(x, y).let { contrastRatio(floatArrayOf(it.red, it.green, it.blue), beside) } }
+            // The first row's glass, and the second row's inside its rounded ends, away from the row edges.
+            val plainRows = (top + MenuInterior..top + MenuInset + MenuRow - 8)
+            val highlightRows = (top + MenuInset + MenuRow + 8..top + MenuInset + 2 * MenuRow - 8)
+            val columns = (left + 120..right - MenuInset - 30)
+            val plain = FloatArray(3)
+            var count = 0
+            for (y in plainRows step 2) {
+                for (x in columns step 2) {
+                    val c = rgb(x, y)
+                    for (i in 0..2) plain[i] += c[i]
+                    count++
+                }
             }
-            Log.i("GlassRenderingTest", "menu dark=$dark over ${backdrop.toList()} extra=$extraSurfaces gpu=$gpu: label contrast at least $lowest, text stands out $text, max error ${error * 255}/255")
+            for (i in 0..2) plain[i] /= count
+            // The GPU glass is the reference's; the fallback's is whatever it draws, uniform over a uniform backdrop.
+            val reference = if (gpu) expected else plain
+            fun error(rows: IntRange, target: FloatArray): Float = rows.step(2).maxOf { y ->
+                columns.step(2).maxOf { x -> rgb(x, y).let { c -> (0..2).maxOf { i -> abs(c[i] - target[i]) } } }
+            }
+            val plainError = error(plainRows, reference)
+            val lit = highlighted(reference, ink)
+            val highlightError = error(highlightRows, lit)
+            // The first label is drawn in the label color: some pixel of it stands out from the glass.
+            val beside = rgb(right - 30, top + 28)
+            val text = (top + 10 until top + 46).maxOf { y -> (left + 16 until left + 100).maxOf { x -> contrastRatio(rgb(x, y), beside) } }
+            Log.i(
+                "GlassRenderingTest",
+                "$case gpu=$gpu: label contrast at least $lowest (model ${contrastRatio(ink, expected)} plain, " +
+                    "${contrastRatio(ink, highlighted(expected, ink))} highlighted), text stands out $text, " +
+                    "glass error ${plainError * 255}/255, highlight error ${highlightError * 255}/255",
+            )
             when {
-                lowest < MinLabelContrast -> "label contrast $lowest below $MinLabelContrast at $lowestAt"
-                text < 3f -> "menu labels not drawn (best contrast with the glass $text)"
-                gpu && error > Tolerance -> "menu glass differs from the reference by ${error * 255}/255 (expected ${expected.toList()})"
+                lowest < MenuFloor -> "$case: label contrast $lowest below $MenuFloor at $lowestAt"
+                text < 3f -> "$case: menu labels not drawn (best contrast with the glass $text)"
+                gpu && plainError > Tolerance -> "$case: menu glass differs from the reference by ${plainError * 255}/255 (expected ${expected.toList()})"
+                highlightError > Tolerance -> "$case: the pressed row is not the glass with its label color mixed in at 8% (off by ${highlightError * 255}/255, expected ${lit.toList()})"
                 else -> null
             }
         }
     }
 
-    @Test
-    fun menuOverWhiteInDarkKeepsItsLabelsLegible() {
-        // Without the backing, white labels on dark Regular glass over white get 1.8:1.
-        assertMenuLegible(floatArrayOf(1f, 1f, 1f, 1f), GlassAppearance.Dark)
+    private val white = floatArrayOf(1f, 1f, 1f, 1f)
+    private val black = floatArrayOf(0f, 0f, 0f, 1f)
+
+    /** Untinted menus in both appearances over white and black: without the backing, white labels on dark Regular glass over white get 1.8:1, #111113 on light Regular glass over black 2.1:1. */
+    private fun assertUntintedMenusLegible(material: GlassMaterial) {
+        for (appearance in listOf(GlassAppearance.Light, GlassAppearance.Dark)) {
+            for (backdrop in listOf(white, black)) assertMenuLegible(backdrop, appearance, material)
+        }
     }
 
     @Test
-    fun menuOverBlackInLightKeepsItsLabelsLegible() {
-        // Without the backing, #111113 labels on light Regular glass over black get 2.1:1.
-        assertMenuLegible(floatArrayOf(0f, 0f, 0f, 1f), GlassAppearance.Light)
+    fun untintedRegularMenusKeepTheirLabelsLegible() = assertUntintedMenusLegible(GlassMaterial.Regular)
+
+    @Test
+    fun untintedClearMenusKeepTheirLabelsLegible() = assertUntintedMenusLegible(GlassMaterial.Clear)
+
+    /*
+     * Tinted menus: the labels take white or #111113 by contrast with the tint mixed toward the backing, so the
+     * system colors keep the floor too. Yellow in dark appearance over white is the spec's worst system tint
+     * (5.26:1 with a highlighted row); blue in light appearance takes #111113 where the tint alone would take white.
+     */
+
+    private fun assertTintedMenusLegible(tint: Color) {
+        for (appearance in listOf(GlassAppearance.Light, GlassAppearance.Dark)) {
+            for (backdrop in listOf(white, black)) assertMenuLegible(backdrop, appearance, tint = tint)
+        }
     }
 
     @Test
-    fun fallbackMenuOverWhiteInDarkKeepsItsLabelsLegible() {
-        assertMenuLegible(floatArrayOf(1f, 1f, 1f, 1f), GlassAppearance.Dark, extraSurfaces = GlassDefaults.MaxSurfacesPerScene)
-    }
+    fun menusTintedSystemBlueKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFF007AFF))
 
     @Test
-    fun fallbackMenuOverBlackInLightKeepsItsLabelsLegible() {
-        assertMenuLegible(floatArrayOf(0f, 0f, 0f, 1f), GlassAppearance.Light, extraSurfaces = GlassDefaults.MaxSurfacesPerScene)
+    fun menusTintedSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFFFFCC00))
+
+    @Test
+    fun fallbackMenusKeepTheirLabelsLegible() {
+        // Beyond the GPU limit the menu draws the fallback material, which folds in the same backing.
+        val extra = GlassDefaults.MaxSurfacesPerScene
+        for (material in listOf(GlassMaterial.Regular, GlassMaterial.Clear)) {
+            assertMenuLegible(white, GlassAppearance.Dark, material, extraSurfaces = extra)
+            assertMenuLegible(black, GlassAppearance.Light, material, extraSurfaces = extra)
+        }
     }
 
     @Test
@@ -1089,8 +1176,15 @@ class GlassRenderingTest {
         /** How far inside a menu panel's outline its glass is sampled, clear of the rim light. */
         const val MenuInterior = 16
 
-        /** WCAG AA for body text; the spec's backing gives 5.09:1 and 7.15:1 in the worst cases. */
-        const val MinLabelContrast = 4.5f
+        /**
+         * The menus' contrast floor (spec/OPTICS.md §3): untinted menus and the system tints keep 5.2:1 over any
+         * backdrop, highlighted rows included (5.24:1 and 5.26:1 at worst in the reference).
+         */
+        const val MenuFloor = 5.2f
+
+        /** A menu's inset around its items, and the height of one item at density 1. */
+        const val MenuInset = 6
+        const val MenuRow = 44
 
         /** A small button's capsule (120 × 34), centered on the test surface and the gradient. */
         const val SmallWidth = 120
