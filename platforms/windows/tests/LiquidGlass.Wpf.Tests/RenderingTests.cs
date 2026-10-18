@@ -301,19 +301,23 @@ public class RenderingTests
                 var p = Sample(row);
                 return ((int)(p.X * fallbackScale), (int)(p.Y * fallbackScale));
             }
-            bool FallbackDrawn(ScreenPixels s)
+            // The shader's last frame can stay on screen for a moment after the switch, a few levels from the fallback's
+            // glass: wait for the fallback's own on both rows.
+            Func<ScreenPixels, bool> Shows(FrameworkElement row, Rgb expected) => s =>
             {
-                var (x, y) = At(rows[0]);
+                var (x, y) = At(row);
                 var c = s.Rgb(x, y);
-                return Math.Abs(c.R - fallback.R * 255) < 24 && Math.Abs(c.G - fallback.G * 255) < 24 && Math.Abs(c.B - fallback.B * 255) < 24;
-            }
-            var fallbackCapture = ScreenPixels.CaptureWhen(window, rows[0], FallbackDrawn, 30);
+                return Math.Abs(c.R - expected.R * 255) <= 3.5 && Math.Abs(c.G - expected.G * 255) <= 3.5 && Math.Abs(c.B - expected.B * 255) <= 3.5;
+            };
+            Sta.Wait(0.3);
+            var fallbackCapture = ScreenPixels.CaptureWhen(window, rows[0], Shows(rows[0], fallback), 20);
+            var pressedCapture = ScreenPixels.CaptureWhen(window, rows[1], Shows(rows[1], fallbackHighlighted), 10);
             var plainAtFallback = At(rows[0]);
             var fallbackPlain = (fallbackCapture ?? ScreenPixels.Capture(window, rows[0])).Rgb(plainAtFallback.Item1, plainAtFallback.Item2);
             var pressedAtFallback = At(rows[1]);
-            var fallbackPressed = ScreenPixels.Capture(window, rows[1]).Rgb(pressedAtFallback.Item1, pressedAtFallback.Item2);
+            var fallbackPressed = (pressedCapture ?? ScreenPixels.Capture(window, rows[1])).Rgb(pressedAtFallback.Item1, pressedAtFallback.Item2);
             Report(what, "fallback", fallback, fallbackPlain, fallbackHighlighted, fallbackPressed, label);
-            Assert.True(fallbackCapture is not null, $"{what}: the fallback menu never reached the screen");
+            Assert.True(fallbackCapture is not null && pressedCapture is not null, $"{what}: the fallback menu never reached the screen as expected");
             AssertColor(fallback, fallbackPlain, 3, $"{what}: menu glass (fallback)");
             AssertColor(fallbackHighlighted, fallbackPressed, 3, $"{what}: highlighted row (fallback)");
             AssertFloor(fallbackPlain, label, floor, $"{what}: plain row (fallback)");
