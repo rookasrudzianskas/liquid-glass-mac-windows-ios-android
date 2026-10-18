@@ -340,6 +340,43 @@ public class ControlTests
     }
 
     [Fact]
+    public void MenuPanelGlassTakesTheLegibilityBacking()
+    {
+        Sta.Run(() =>
+        {
+            var menu = new GlassMenu
+            {
+                Header = "Sort",
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Items = { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" } },
+            };
+            var surface = new GlassSurface { Width = 120, Height = 60, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom };
+            var window = Sta.Show(Scene(new Grid { Children = { menu, surface } }));
+            menu.IsOpen = true;
+            Sta.Pump();
+
+            // The open panel mixes its glass halfway toward the backing (OPTICS §3); the trigger and other glass do not.
+            var panel = menu.Panel!;
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
+            var triggerLenses = Visuals<GlassLens>(menu.Trigger!).ToList();
+            Assert.NotEmpty(triggerLenses);
+            Assert.All(triggerLenses, lens => Assert.Equal(0, lens.Legibility));
+            Assert.Equal(0, surface.Lens!.Legibility);
+
+            // A Clear panel keeps the backing too, and the panel keeps it across opening and closing.
+            menu.IsOpen = false;
+            Sta.Pump();
+            menu.PanelMaterial = GlassMaterial.Clear;
+            menu.IsOpen = true;
+            Sta.Pump();
+            Assert.Equal(GlassMaterial.Clear, panel.Material);
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
+            window.Close();
+        });
+    }
+
+    [Fact]
     public void MenuItemLabelFollowsItsHeader()
     {
         Sta.Run(() =>

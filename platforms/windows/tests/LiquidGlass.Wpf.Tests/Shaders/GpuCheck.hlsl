@@ -6,7 +6,7 @@ struct GlassCase
     float4 geometry;   // x, y (from the center), width, height
     float4 optics;     // radius (< 0: capsule), material, dark, refraction
     float4 tint;       // rgb, on
-    float4 pixel;      // device pixel in layout units, unused...
+    float4 pixel;      // device pixel in layout units, legibility backing amount, unused, unused
 };
 
 StructuredBuffer<GlassCase> Cases : register(t0);
@@ -33,6 +33,6 @@ void main(uint3 id : SV_DispatchThreadID)
     float2 size = c.geometry.zw;
     float3 field = lgShapeField(p, size, lgShapeParams(size, c.optics.x));
     float4 src = Backdrop(p + lgRefractionOffset(field, c.optics.w));
-    Results[id.x * 2] = lgCompose(src, Backdrop(p), field, c.optics.y, c.optics.z, 0.0, c.tint.rgb, c.tint.a, c.pixel.x);
+    Results[id.x * 2] = lgCompose(src, Backdrop(p), field, c.optics.y, c.optics.z, 0.0, c.tint.rgb, c.tint.a, c.pixel.x, c.pixel.y);
     Results[id.x * 2 + 1] = float4(field, 0.0);
 }

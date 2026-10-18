@@ -39,6 +39,9 @@ internal static class StudioCapture
             new("hero-fallback-light", "--page hero --appearance light --render-mode fallback"),
             new("controls-fallback-dark", "--page controls --appearance dark --render-mode fallback"),
             new("controls-menu-light", "--page controls --appearance light", (_, root) => OpenFromFocusedTrigger(root, "Sort by name")),
+            // Menus mix their glass toward the legibility backing: in dark appearance too, and in the fallback material.
+            new("controls-menu-dark", "--page controls --appearance dark", (_, root) => OpenFromFocusedTrigger(root, "Sort by name")),
+            new("controls-menu-fallback-dark", "--page controls --appearance dark --render-mode fallback", (_, root) => OpenFromFocusedTrigger(root, "Sort by name")),
             new("hero-press-light", "--page hero --appearance light", (_, root) => Press(root, "Liquid Glass card")),
             new("materials-contrast-light", "--page materials --appearance light", (_, root) => Toggle(root, "Increase contrast")),
             new("hero-focus-dark", "--page hero --appearance dark", (_, root) => FocusByKeyboard(root, "Back", VirtualKeyRight)),

@@ -7,8 +7,8 @@ namespace LiquidGlass.Wpf.Rendering;
 
 /// <summary>
 /// Draws what a <see cref="GlassLens"/> paints over its copy of the backdrop when the pixel shader is not drawing it:
-/// the veil or opaque fill, the increased-contrast border, the rim light (rasterized exactly as the shader computes
-/// it), the pointer glow (in the shader's order) and the keyboard focus ring.
+/// the veil or opaque fill, a menu panel's legibility backing, the increased-contrast border, the rim light (rasterized
+/// exactly as the shader computes it), the pointer glow (in the shader's order) and the keyboard focus ring.
 /// </summary>
 internal sealed class LensOverlay : FrameworkElement
 {
@@ -81,6 +81,10 @@ internal sealed class LensOverlay : FrameworkElement
             }
             case GlassLensMode.Fallback:
                 dc.DrawGeometry(FallbackFill(dark), null, _outline);
+                // The legibility backing over the veil (or tint) at the lens's amount: backing·L + glass·(1 − L) is
+                // the shader's mix(glass, backing, L).
+                if (_lens.Legibility > 0)
+                    dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), _lens.Legibility)), null, _outline);
                 DrawLight(dc, shape, dark);
                 break;
             case GlassLensMode.Opaque:

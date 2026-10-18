@@ -8,7 +8,7 @@ namespace LiquidGlass.Wpf.Rendering;
 /// <summary>
 /// The glass pixel shader (<c>Shaders/GlassSurface.fx</c>) as a WPF effect. Each property maps to one float4
 /// constant register; WPF supplies the derivatives of the texture coordinates in c7, from which the shader measures
-/// one device pixel in layout units.
+/// one device pixel in layout units, and c8 carries the legibility backing amount.
 /// </summary>
 internal sealed class GlassShaderEffect : ShaderEffect
 {
@@ -36,6 +36,9 @@ internal sealed class GlassShaderEffect : ShaderEffect
     /// <summary>Regular fill: weight of the taps at offset 4 and the tap spacing.</summary>
     public static readonly DependencyProperty FillOpticsProperty = Constant(nameof(FillOptics), 6);
 
+    /// <summary>How far the glass mixes toward the legibility backing: 0.5 on menu panels, 0 elsewhere (x).</summary>
+    public static readonly DependencyProperty LegibilityOpticsProperty = Constant(nameof(LegibilityOptics), 8);
+
     public GlassShaderEffect(PixelShader shader)
     {
         PixelShader = shader;
@@ -48,6 +51,7 @@ internal sealed class GlassShaderEffect : ShaderEffect
         UpdateShaderValue(GlowOpticsProperty);
         UpdateShaderValue(FillWeightsProperty);
         UpdateShaderValue(FillOpticsProperty);
+        UpdateShaderValue(LegibilityOpticsProperty);
     }
 
     public Brush Input
@@ -96,6 +100,12 @@ internal sealed class GlassShaderEffect : ShaderEffect
     {
         get => (Point4D)GetValue(FillOpticsProperty);
         set => SetIfChanged(FillOpticsProperty, value);
+    }
+
+    public Point4D LegibilityOptics
+    {
+        get => (Point4D)GetValue(LegibilityOpticsProperty);
+        set => SetIfChanged(LegibilityOpticsProperty, value);
     }
 
     /// <summary>

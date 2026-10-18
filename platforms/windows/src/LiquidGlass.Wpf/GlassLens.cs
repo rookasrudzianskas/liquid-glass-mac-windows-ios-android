@@ -73,6 +73,7 @@ public sealed class GlassLens : FrameworkElement
     private double _glowAmount;
     private bool _sourcesDirty = true;
     private bool _nested;
+    private double _legibility;
     private Rect _lensRect;
 
     static GlassLens()
@@ -151,6 +152,25 @@ public sealed class GlassLens : FrameworkElement
 
     /// <summary>The surface sits inside other glass.</summary>
     internal bool IsNested => _nested;
+
+    /// <summary>
+    /// How far the glass mixes toward the solid legibility backing after its material color and tint
+    /// (<see cref="GlassMaterialOptics.LegibilityColor"/>): <see cref="GlassOptics.MenuLegibility"/> (0.5) on menu
+    /// panels, 0 (the default) elsewhere. The shader mixes it in; the fallback material paints the backing over its
+    /// veil at this opacity, which is the same mix.
+    /// </summary>
+    internal double Legibility
+    {
+        get => _legibility;
+        set
+        {
+            var amount = GlassMath.Sat(value);
+            if (_legibility.Equals(amount)) return;
+            _legibility = amount;
+            UpdateShaderConstants(ShapeBounds);
+            _overlay.InvalidateVisual();
+        }
+    }
 
     internal double GlowAmount => _glowAmount;
 
@@ -433,6 +453,7 @@ public sealed class GlassLens : FrameworkElement
         var kernel = FrostFillKernel.For(IsDark);
         _shader.FillWeights = new Point4D(kernel.Weights[0], kernel.Weights[1], kernel.Weights[2], kernel.Weights[3]);
         _shader.FillOptics = new Point4D(kernel.Weights[4], kernel.Spacing, 0, 0);
+        _shader.LegibilityOptics = new Point4D(_legibility, 0, 0, 0);
         UpdateGlow();
     }
 

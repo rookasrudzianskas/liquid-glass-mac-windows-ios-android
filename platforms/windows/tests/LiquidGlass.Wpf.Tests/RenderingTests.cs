@@ -90,6 +90,100 @@ public class RenderingTests
         });
     }
 
+    /// <summary>
+    /// Menu glass mixes halfway toward the legibility backing (OPTICS §3), in the shader and in the fallback material:
+    /// dark Regular glass over white, where white labels had 1.8:1 before. The shader draws the reference's value; the
+    /// fallback paints the backing over its veil at the same amount.
+    /// </summary>
+    [Fact]
+    public void MenuGlassMixesTowardTheLegibilityBacking()
+    {
+        Sta.Run(() =>
+        {
+            const int width = 480, height = 200;
+            GlassSurface Surface(HorizontalAlignment side) => new()
+            {
+                Width = 200,
+                Height = 120,
+                Radius = 28,
+                Material = GlassMaterial.Regular,
+                Appearance = GlassAppearance.Dark,
+                HorizontalAlignment = side,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(20, 0, 20, 0),
+            };
+            var menu = Surface(HorizontalAlignment.Left);
+            var plain = Surface(HorizontalAlignment.Right);
+            var scene = new GlassScene { Content = new Border { Background = Brushes.White } };
+            scene.Children.Add(menu);
+            scene.Children.Add(plain);
+            var root = new Border { Child = scene };
+            var window = Sta.Show(root, width, height);
+            menu.Lens!.Legibility = GlassOptics.MenuLegibility;
+            Sta.Pump();
+            var white = new Rgb(1, 1, 1);
+            var dark = GlassPalette.ForegroundDark;
+
+            if (menu.RenderedMode == GlassLensMode.Shader)
+            {
+                // On screen: the frost of a white backdrop is white, so the glass at the center is the material color of
+                // white mixed toward #1C1C1E.
+                var scale = GlassResolve.Scale(menu);
+                var center = ((int)(100 * scale), (int)(60 * scale));
+                bool Drawn(ScreenPixels s) => s.Rgb(center.Item1, center.Item2).R < 240 && s.Rgb(center.Item1, center.Item2).R > 40;
+                var withBacking = ScreenPixels.CaptureWhen(window, menu, Drawn, 30);
+                var without = ScreenPixels.CaptureWhen(window, plain, Drawn, 30);
+                Assert.True(withBacking is not null && without is not null, "the glass never reached the screen");
+                var expected = GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.MaterialColor(white, GlassMaterial.Regular, true), true, GlassOptics.MenuLegibility);
+                var unmixed = GlassMaterialOptics.MaterialColor(white, GlassMaterial.Regular, true);
+                AssertColor(expected, withBacking!.Rgb(center.Item1, center.Item2), 3, "menu glass (shader)");
+                AssertColor(unmixed, without!.Rgb(center.Item1, center.Item2), 3, "other glass (shader)");
+                var shown = withBacking.Rgb(center.Item1, center.Item2);
+                var contrast = Contrast(new Rgb(shown.R / 255.0, shown.G / 255.0, shown.B / 255.0), dark);
+                Assert.True(contrast >= 4.95, $"white labels on menu glass over white: {contrast:F2}:1 on screen");
+            }
+
+            // The fallback material (software rendering, so RenderTargetBitmap shows it): the veil over the frosted white,
+            // then the backing at the menu amount.
+            GlassScene.SetRenderMode(scene, GlassRenderMode.Fallback);
+            Sta.Pump();
+            Assert.Equal(GlassLensMode.Fallback, menu.RenderedMode);
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(root);
+            var pixels = new byte[width * height * 4];
+            bitmap.CopyPixels(pixels, width * 4, 0);
+            (byte R, byte G, byte B) At(UIElement element)
+            {
+                var p = element.TransformToAncestor(root).Transform(new Point(100, 60));
+                var i = ((int)p.Y * width + (int)p.X) * 4;
+                return (pixels[i + 2], pixels[i + 1], pixels[i]);
+            }
+            var veil = GlassFallback.Veil(GlassMaterial.Regular, true).Apply(1);
+            var veiled = new Rgb(veil, veil, veil);
+            AssertColor(GlassMaterialOptics.LegibilityColor(veiled, true, GlassOptics.MenuLegibility), At(menu), 3, "menu glass (fallback)");
+            AssertColor(veiled, At(plain), 3, "other glass (fallback)");
+            var fallback = At(menu);
+            var fallbackContrast = Contrast(new Rgb(fallback.R / 255.0, fallback.G / 255.0, fallback.B / 255.0), dark);
+            // The veil only approximates the tone curve, so the fallback's worst case is a little under the shader's 5.09:1.
+            Assert.True(fallbackContrast >= 4.5, $"white labels on fallback menu glass over white: {fallbackContrast:F2}:1");
+            window.Close();
+        });
+    }
+
+    private static void AssertColor(Rgb expected, (byte R, byte G, byte B) actual, int tolerance, string what)
+    {
+        var e = (R: (int)Math.Round(expected.R * 255), G: (int)Math.Round(expected.G * 255), B: (int)Math.Round(expected.B * 255));
+        Assert.True(Math.Abs(e.R - actual.R) <= tolerance && Math.Abs(e.G - actual.G) <= tolerance && Math.Abs(e.B - actual.B) <= tolerance,
+            $"{what}: expected rgb({e.R}, {e.G}, {e.B}), drawn rgb({actual.R}, {actual.G}, {actual.B})");
+    }
+
+    private static double Contrast(Rgb a, Rgb b)
+    {
+        var x = GlassPalette.RelativeLuminance(a) + 0.05;
+        var y = GlassPalette.RelativeLuminance(b) + 0.05;
+        return x > y ? x / y : y / x;
+    }
+
     [Fact]
     public void RimLightFollowsADpiChange()
     {

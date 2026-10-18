@@ -15,10 +15,11 @@ namespace LiquidGlass.Wpf;
 
 /// <summary>
 /// A glass button (<see cref="HeaderedItemsControl.Header"/> is its content) that opens a menu: a Regular glass panel
-/// that grows out of the button with the morph spring and collapses back into it. Items highlight in the foreground
-/// color at 8%; the menu closes when an item is chosen, on Escape and on a click outside it. The panel floats in the
-/// enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a scene it opens in a popup with the opaque
-/// material.
+/// that grows out of the button with the morph spring and collapses back into it. The panel's glass mixes halfway
+/// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), so its items keep at least 5:1 contrast over any
+/// backdrop. Items highlight in the foreground color at 8%; the menu closes when an item is chosen, on Escape and on a
+/// click outside it. The panel floats in the enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a
+/// scene it opens in a popup with the opaque material.
 /// </summary>
 /// <remarks>
 /// Items are <see cref="GlassMenuItem"/>s and <see cref="Separator"/>s, written out or generated from
@@ -832,6 +833,16 @@ internal sealed class GlassMenuPanel : GlassSurface
 
     /// <summary>The menu the panel belongs to.</summary>
     public GlassMenu Menu { get; }
+
+    /// <summary>
+    /// Menu glass mixes halfway toward the solid legibility backing (OPTICS §3), so the items keep at least 5:1 contrast
+    /// over any backdrop; the panel still refracts and frosts what is behind it, at half strength.
+    /// </summary>
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (Lens is not null) Lens.Legibility = GlassOptics.MenuLegibility;
+    }
 
     protected override AutomationPeer OnCreateAutomationPeer() => new PanelPeer(this);
 

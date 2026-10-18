@@ -127,6 +127,14 @@ float3 lgFrostColor(float3 frost, float3 fill, float dark)
     return opacity * blended + (1.0 - opacity) * frost;
 }
 
+// Menu panels mix their glass toward a solid backing so text always reads:
+// #F5F5F7 light, #1C1C1E dark. amount is 0.5 on menu panels, 0 elsewhere.
+float3 lgLegibility(float3 c, float dark, float amount)
+{
+    float3 backing = lerp(float3(0.960784, 0.960784, 0.968627), float3(0.109804, 0.109804, 0.117647), dark);
+    return lerp(c, backing, amount);
+}
+
 // ---------------------------------------------------------------------------
 // Rim light (premul). tintOn: 0 or 1.
 
@@ -167,7 +175,7 @@ float4 lgRimOverlay(float3 field, float dark, float pixel, float3 tint, float ti
 // canonical GLSL, where lgCompose is a single function; lgCompose below is
 // exactly lgComposeBody followed by the rim.
 float4 lgComposeBody(float4 src, float4 base, float3 field, float material, float dark, float nested,
-                     float3 tint, float tintOn, float pixel)
+                     float3 tint, float tintOn, float pixel, float legibility)
 {
     float3 rgb = lgMaterialColor(src.rgb, material, dark, nested);
     float a = src.a;
@@ -177,6 +185,7 @@ float4 lgComposeBody(float4 src, float4 base, float3 field, float material, floa
         rgb = lgTintColor(rgb, tint, material);
         a = body + (1.0 - body) * a;
     }
+    rgb = lgLegibility(rgb, dark, legibility);
     float ga = a * lgCoverage(field.x, pixel);
     return float4(rgb * ga, ga) + base * (1.0 - ga);
 }
@@ -184,9 +193,9 @@ float4 lgComposeBody(float4 src, float4 base, float3 field, float material, floa
 // src: refracted backdrop at p + lgRefractionOffset (unpremul; regular glass
 // passes lgFrostColor). base: unrefracted backdrop at p (premul).
 float4 lgCompose(float4 src, float4 base, float3 field, float material, float dark, float nested,
-                 float3 tint, float tintOn, float pixel)
+                 float3 tint, float tintOn, float pixel, float legibility)
 {
-    float4 result = lgComposeBody(src, base, field, material, dark, nested, tint, tintOn, pixel);
+    float4 result = lgComposeBody(src, base, field, material, dark, nested, tint, tintOn, pixel, legibility);
     float4 rim = lgRimOverlay(field, dark, pixel, tint, tintOn);
     return rim + result * (1.0 - rim.a);
 }

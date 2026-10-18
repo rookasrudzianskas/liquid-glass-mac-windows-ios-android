@@ -3,8 +3,9 @@
 // Applied by GlassShaderEffect to a surface's lens: a live copy of the scene's
 // backdrop (and of any glass beneath) laid out `margin` beyond the surface on
 // every side, frosted by WPF's BlurEffect for Regular glass. The shader
-// refracts and tones it, adds the increased-contrast border, the rim light
-// and the pointer glow (in that order, as on every port), and returns
+// refracts and tones it (mixing a menu panel's glass toward the legibility
+// backing), adds the increased-contrast border, the rim light and the
+// pointer glow (in that order, as on every port), and returns
 // premultiplied glass that WPF composites over the real backdrop (the
 // composite of spec/OPTICS.md with `base` drawn by WPF).
 
@@ -20,6 +21,7 @@ float4 GlowOptics : register(c4);        // glow center (xy, from the surface ce
 float4 FillWeights : register(c5);       // Regular fill: 1-D tap weights for offsets 0..3
 float4 FillOptics : register(c6);        // Regular fill: weight for offset 4, tap spacing (layout units), unused, unused
 float4 DdxUvDdyUv : register(c7);        // supplied by WPF: d(uv)/dx (xy) and d(uv)/dy (zw) per device pixel
+float4 LegibilityOptics : register(c8);  // legibility backing amount (0.5 menu panels, 0 elsewhere), unused, unused, unused
 
 float4 Unpremultiply(float4 c)
 {
@@ -66,7 +68,7 @@ float4 main(float2 uv : TEXCOORD) : COLOR
         src.rgb = lgFrostColor(src.rgb, fill.rgb, dark);
     }
 
-    float4 glass = lgComposeBody(src, 0, field, regular, dark, MaterialOptics.z, TintOptics.rgb, TintOptics.a, pixel);
+    float4 glass = lgComposeBody(src, 0, field, regular, dark, MaterialOptics.z, TintOptics.rgb, TintOptics.a, pixel, LegibilityOptics.x);
     float cover = lgCoverage(field.x, pixel);
 
     // Increased contrast: a 1-unit inner border (black 0.18 light, white 0.28

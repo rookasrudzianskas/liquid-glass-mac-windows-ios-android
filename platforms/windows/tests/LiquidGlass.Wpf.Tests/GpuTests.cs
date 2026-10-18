@@ -17,20 +17,24 @@ public class GpuTests
     [Fact]
     public void ShaderLibraryMatchesTheVectorsOnTheGpu()
     {
-        // Every glass pixel case of spec/vectors.json, evaluated by the HLSL library on Direct3D 11 (WARP), within the
-        // GPU tolerance of OPTICS.md; the same run checks the shape field the shader computes in float32.
+        // Every glass pixel case of spec/vectors.json (menu panels with their legibility backing among them), evaluated
+        // by the HLSL library on Direct3D 11 (WARP), within the GPU tolerance of OPTICS.md; the same run checks the
+        // shape field the shader computes in float32.
         var pixelCases = Vectors.Root.GetProperty("glassPixel").GetProperty("cases").EnumerateArray().ToArray();
+        Assert.Contains(pixelCases, c => c.TryGetProperty("legibility", out var amount) && amount.GetDouble() > 0 && c.Flag("dark"));
+        Assert.Contains(pixelCases, c => c.TryGetProperty("legibility", out var amount) && amount.GetDouble() > 0 && !c.Flag("dark"));
         var fieldCases = Vectors.Root.GetProperty("shapeField").EnumerateArray().ToArray();
         var input = new List<float>();
         foreach (var c in pixelCases)
         {
             var tint = c.TryGetProperty("tint", out var t) ? t.EnumerateArray().Select(v => (float)v.GetDouble()).ToArray() : null;
+            var legibility = c.TryGetProperty("legibility", out var l) ? (float)l.GetDouble() : 0f;
             input.AddRange(new[]
             {
                 (float)c.Number("x"), (float)c.Number("y"), (float)c.Number("width"), (float)c.Number("height"),
                 (float)c.ShaderRadius(), c.GetProperty("material").GetString() == "regular" ? 1f : 0f, c.Flag("dark") ? 1f : 0f, (float)c.Number("refraction"),
                 tint?[0] ?? 0, tint?[1] ?? 0, tint?[2] ?? 0, tint is null ? 0 : 1,
-                1f / 3, 0, 0, 0,
+                1f / 3, legibility, 0, 0,
             });
         }
         foreach (var c in fieldCases)
