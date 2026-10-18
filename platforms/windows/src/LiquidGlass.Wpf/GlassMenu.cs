@@ -19,10 +19,10 @@ namespace LiquidGlass.Wpf;
 /// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), fading in with the morph; its items take
 /// <see cref="GlassPalette.MenuForeground"/> (the appearance's foreground, or on a tint white or <c>#111113</c> as the
 /// backed glass calls for) and a highlighted item mixes that color into the glass at 8%
-/// (<see cref="GlassOptics.MenuHighlight"/>), so the items of an untinted panel (Regular or Clear) and of a panel
-/// tinted with a system color keep at least 5.2:1 contrast over any backdrop, highlighted or not. The menu closes when
-/// an item is chosen, on Escape and on a click outside it. The panel floats in the enclosing <see cref="GlassScene"/>,
-/// refracting its backdrop; outside a scene it opens in a popup with the opaque material.
+/// (<see cref="GlassOptics.MenuHighlight"/>), so the items of an untinted panel (Regular or Clear) keep at least 5.2:1
+/// contrast over any backdrop, and those of a panel tinted with a system color 5.0:1, highlighted or not. The menu
+/// closes when an item is chosen, on Escape and on a click outside it. The panel floats in the enclosing
+/// <see cref="GlassScene"/>, refracting its backdrop; outside a scene it opens in a popup with the opaque material.
 /// </summary>
 /// <remarks>
 /// Items are <see cref="GlassMenuItem"/>s and <see cref="Separator"/>s, written out or generated from
@@ -866,8 +866,8 @@ internal sealed class GlassMenuPanel : GlassSurface
     /// <summary>
     /// How far the panel's glass mixes toward the solid legibility backing now (OPTICS §3):
     /// <see cref="GlassOptics.MenuLegibility"/> when open, so the items keep at least 5.2:1 contrast over any backdrop
-    /// while the panel still refracts and frosts what is behind it, at 40% strength. It follows the morph (clamped to
-    /// [0, 1]) as the panel grows out of the trigger and collapses back into it.
+    /// (5.0:1 on a system-color tint) while the panel still refracts and frosts what is behind it, at 40% strength. It
+    /// follows the morph (clamped to [0, 1]) as the panel grows out of the trigger and collapses back into it.
     /// </summary>
     public double Legibility
     {

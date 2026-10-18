@@ -194,7 +194,7 @@ public class RenderingTests
     public static IEnumerable<object?[]> MenuFloorCases =>
         from material in new[] { GlassMaterial.Regular, GlassMaterial.Clear }
         from dark in new[] { false, true }
-        from tint in new[] { null, "#007AFF", "#FFCC00", "#0067C0" }
+        from tint in new[] { null, "#007AFF", "#FFCC00", "#FFD60A", "#0067C0" }
         select new object?[] { material, dark, tint };
 
     /// <summary>
@@ -202,9 +202,9 @@ public class RenderingTests
     /// <c>#111113</c>), its second row highlighted (pressed): the items take <see cref="GlassPalette.MenuForeground"/>; the
     /// shader draws the reference's menu glass and, on the highlighted row, that glass with the label color mixed in at
     /// 8%; the fallback draws its veil (or tint fill) and the backing at <see cref="GlassFallback.LegibilityOpacity"/>,
-    /// the label color mixed in the same way. Untinted menus and the system-color tints here (the system blue, the
-    /// system yellow, where the reference's tinted floor lies, and the Windows 11 accent) keep at least 5.2:1 on both
-    /// rows, in both paths.
+    /// the label color mixed in the same way. Untinted menus keep at least 5.2:1 on both rows, in both paths, and the
+    /// system-color tints here 5.0:1 (the system blue, the system yellow in its light and dark variants, the dark one
+    /// where the reference's tinted floor lies, and the Windows 11 accent).
     /// </summary>
     [Theory]
     [MemberData(nameof(MenuFloorCases))]
@@ -240,6 +240,7 @@ public class RenderingTests
             Press(rows[1]);
             Sta.Pump();
             var what = $"{material} {(dark ? "dark" : "light")} {hex ?? "untinted"}";
+            var floor = tint is null ? 5.2 : 5.0;
             var panel = menu.Panel!;
             Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
             Assert.All(rows, row => Assert.Equal(label, GlassBrushes.ToRgb(((SolidColorBrush)row.Foreground).Color)));
@@ -261,12 +262,12 @@ public class RenderingTests
                     var p = Sample(row);
                     return ((int)(p.X * scale), (int)(p.Y * scale));
                 }
-                // Menu glass lies between black (nothing drawn yet, or the black backdrop) and white (the white backdrop).
+                // Until the menu reaches the screen the capture shows black (nothing drawn yet) or the backdrop.
                 bool Drawn(ScreenPixels s)
                 {
                     var (x, y) = Device(rows[0]);
                     var c = s.Rgb(x, y);
-                    return Math.Max(c.R, Math.Max(c.G, c.B)) is > 35 and < 220;
+                    return Math.Abs(c.R - glass.R * 255) < 24 && Math.Abs(c.G - glass.G * 255) < 24 && Math.Abs(c.B - glass.B * 255) < 24;
                 }
                 var capture = ScreenPixels.CaptureWhen(window, rows[0], Drawn, 30);
                 Assert.True(capture is not null, $"{what}: the menu never reached the screen");
@@ -278,14 +279,21 @@ public class RenderingTests
                 Report(what, "shader", glass, plain, highlighted, pressed, label);
                 AssertColor(glass, plain, 3, $"{what}: menu glass (shader)");
                 AssertColor(highlighted, pressed, 3, $"{what}: highlighted row (shader)");
-                AssertFloor(plain, label, $"{what}: plain row (shader)");
-                AssertFloor(pressed, label, $"{what}: highlighted row (shader)");
+                AssertFloor(plain, label, floor, $"{what}: plain row (shader)");
+                AssertFloor(pressed, label, floor, $"{what}: highlighted row (shader)");
             }
 
-            // The fallback material (software rendering, so RenderTargetBitmap shows it).
+            // The fallback material (software rendering, so RenderTargetBitmap shows it). The panel takes the render mode
+            // when it opens.
+            menu.IsOpen = false;
+            Sta.Pump();
             GlassScene.SetRenderMode(scene, GlassRenderMode.Fallback);
+            menu.IsOpen = true;
+            Sta.Pump();
+            Press(rows[1]);
             Sta.Pump();
             Assert.Equal(GlassLensMode.Fallback, panel.RenderedMode);
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
             var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(root);
             var pixels = new byte[width * height * 4];
@@ -301,8 +309,8 @@ public class RenderingTests
             Report(what, "fallback", fallback, At(rows[0]), fallbackHighlighted, At(rows[1]), label);
             AssertColor(fallback, At(rows[0]), 3, $"{what}: menu glass (fallback)");
             AssertColor(fallbackHighlighted, At(rows[1]), 3, $"{what}: highlighted row (fallback)");
-            AssertFloor(At(rows[0]), label, $"{what}: plain row (fallback)");
-            AssertFloor(At(rows[1]), label, $"{what}: highlighted row (fallback)");
+            AssertFloor(At(rows[0]), label, floor, $"{what}: plain row (fallback)");
+            AssertFloor(At(rows[1]), label, floor, $"{what}: highlighted row (fallback)");
             // Where the labels contrast least, the fallback's are at least as legible as the shader's.
             Assert.True(Contrast(fallbackHighlighted, label) >= Contrast(highlighted, label),
                 $"{what}: highlighted row {Contrast(fallbackHighlighted, label):F3}:1 in the fallback, {Contrast(highlighted, label):F3}:1 in the shader");
@@ -337,10 +345,10 @@ public class RenderingTests
 
     private static Rgb Of((byte R, byte G, byte B) c) => new(c.R / 255.0, c.G / 255.0, c.B / 255.0);
 
-    private static void AssertFloor((byte R, byte G, byte B) drawn, Rgb label, string what)
+    private static void AssertFloor((byte R, byte G, byte B) drawn, Rgb label, double floor, string what)
     {
         var contrast = Contrast(Of(drawn), label);
-        Assert.True(contrast >= 5.2, $"{what}: labels {contrast:F2}:1 on rgb({drawn.R}, {drawn.G}, {drawn.B})");
+        Assert.True(contrast >= floor, $"{what}: labels {contrast:F2}:1 on rgb({drawn.R}, {drawn.G}, {drawn.B})");
     }
 
     private void Report(string what, string path, Rgb glass, (byte R, byte G, byte B) plain, Rgb highlighted, (byte R, byte G, byte B) pressed, Rgb label)

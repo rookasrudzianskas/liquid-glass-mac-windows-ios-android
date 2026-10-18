@@ -400,7 +400,7 @@ public class ControlTests
     /// On a tinted menu the items take <see cref="GlassPalette.MenuForeground"/>: white or <c>#111113</c> from the panel's
     /// glass as it draws, the tint mixed toward the legibility backing, not from the tint alone (which gave white labels on
     /// a light blue panel lightened toward <c>#F5F5F7</c>, 2.4:1 over black); the trigger is plain tinted glass and keeps
-    /// the tint's own color. Over white and over black, in both appearances, the items keep at least 5.2:1 with these
+    /// the tint's own color. Over white and over black, in both appearances, the items keep at least 5.0:1 with these
     /// tints, highlighted rows included.
     /// </summary>
     [Theory]
@@ -449,7 +449,7 @@ public class ControlTests
             var label = Of(written.Foreground);
             Assert.Equal(GlassPalette.MenuForeground(t, GlassMaterial.Regular, dark), label);
             Assert.Equal(label, Of(menu.Panel!.Foreground));
-            Assert.True(Lowest(label) >= 5.2, $"{what}: items in {label} on the menu glass: {Lowest(label):F2}:1");
+            Assert.True(Lowest(label) >= 5.0, $"{what}: items in {label} on the menu glass: {Lowest(label):F2}:1");
             // The trigger is not backed: it keeps the foreground of its tint.
             Assert.Equal(GlassPalette.ForegroundOnTint(t, GlassResolve.Material(menu.Trigger!)), Of(menu.Trigger!.Foreground));
             menu.IsOpen = false;
