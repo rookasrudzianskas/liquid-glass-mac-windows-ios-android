@@ -425,17 +425,20 @@ a `ControlBrush` track with a `ControlText` thumb.
 
 ## GlassMenu and GlassMenuItem
 
-`public class GlassMenu : HeaderedItemsControl`: a glass button (`Header` is its content) that opens a menu. The
-panel is a Regular `GlassSurface` (inset 4, min width 160, 6 units from the trigger) that grows out of the trigger on
-the morph spring and collapses back into it. It closes when an item is chosen, on Escape, Alt+F4, a click outside and
-when the window deactivates; Down or Enter on the trigger opens it with the first item focused; arrow keys and Tab
-cycle through items. The panel floats in the enclosing scene's top layer, clamped inside the scene (it cannot leave
-the window), and lines up with the trigger's start edge (in right-to-left layouts too); outside a scene, or when the
-menu sits in the scene's `Content`, it opens in a `Popup` with the opaque material. `IsOpen="True"` set before the
-menu is loaded (in XAML, or from a binding whose source starts true) opens it once it is loaded. Template part:
-`PART_Trigger` (`GlassButton`). Not focusable itself (the trigger is). The menu and its panel are focus scopes, as
-WPF's menus are: a routed command on an item (`ApplicationCommands.Copy`) that nothing in the menu handles goes on to
-the element that has focus in the window (the text box whose selection it copies).
+`public class GlassMenu : HeaderedItemsControl`: a glass button (`Header` is its content) that opens a menu. The panel
+is a Regular `GlassSurface` (inset 4, min width 160, 6 units from the trigger) that grows out of the trigger on the
+morph spring and collapses back into it. Its glass mixes halfway toward a solid backing after the material and tint
+(`GlassOptics.MenuLegibility` 0.5 toward `GlassPalette.LegibilityBacking`: `#F5F5F7` light, `#1C1C1E` dark), so items
+keep at least 5:1 contrast over any backdrop (about 4.8:1 at worst in the fallback material, whose veil approximates
+the tone curve); the trigger and other glass draw without it, and it is not an option. It closes when an item is
+chosen, on Escape, Alt+F4, a click outside and when the window deactivates; Down or Enter on the trigger opens it with
+the first item focused; arrow keys and Tab cycle through items. The panel floats in the enclosing scene's top layer,
+clamped inside the scene (it cannot leave the window), and lines up with the trigger's start edge (in right-to-left
+layouts too); outside a scene, or when the menu sits in the scene's `Content`, it opens in a `Popup` with the opaque
+material. `IsOpen="True"` set before the menu is loaded (in XAML, or from a binding whose source starts true) opens it
+once it is loaded. Template part: `PART_Trigger` (`GlassButton`). Not focusable itself (the trigger is). The menu and
+its panel are focus scopes, as WPF's menus are: a routed command on an item (`ApplicationCommands.Copy`) that nothing
+in the menu handles goes on to the element that has focus in the window (the text box whose selection it copies).
 
 ```csharp
 public GlassMenu()
@@ -698,6 +701,7 @@ public static class GlassOptics
     public const double ContinuousExtent = 1.528;   // corner reach along each edge, relative to the radius
     public const double ContinuousExponent = 3.26;  // superellipse exponent
     public const double LumaRed = 0.213, LumaGreen = 0.715, LumaBlue = 0.072;   // declared as three constants
+    public const double MenuLegibility = 0.5;       // menu panels mix toward GlassPalette.LegibilityBacking; 0 elsewhere
 }
 
 public static class GlassMaterials
@@ -874,13 +878,16 @@ public static class GlassMaterialOptics
     public static Rgb TintColor(Rgb color, Rgb tint, GlassMaterial material)
     public static double TintAlpha(double alpha, GlassMaterial material)
     public static Rgb FrostColor(Rgb frost, Rgb fill, bool dark)
+    public static Rgb LegibilityColor(Rgb color, bool dark, double amount)   // mix(color, LegibilityBacking(dark), amount)
 }
 
 public readonly struct GlassSurfaceOptics
 {
     public GlassSurfaceOptics(double width, double height, GlassRadius radius, GlassMaterial material = GlassMaterial.Clear,
-        bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false)
-    // Width, Height, Radius, Material, Dark, Refraction, Tint, Pixel, Nested { get; }
+        bool dark = false, double refraction = GlassOptics.DefaultRefraction, Rgb? tint = null, double pixel = 1.0 / 3, bool nested = false,
+        double legibility = 0)   // legibility: GlassOptics.MenuLegibility for a menu panel
+    // Width, Height, Radius, Material, Dark, Refraction, Tint, Pixel, Nested, Legibility { get; }
+    // (the 1.0.0 constructor without legibility is kept, hidden from IntelliSense, for compiled callers)
 }
 public static class GlassPixel
 {
@@ -910,9 +917,12 @@ public static class GlassPalette
     public static Rgba ContrastBorderDark { get; }         // white at 0.28
     public static Rgb ForegroundLight { get; }             // #111113
     public static Rgb ForegroundDark { get; }              // #FFFFFF
+    public static Rgb LegibilityBackingLight { get; }      // #F5F5F7, the menu panel backing
+    public static Rgb LegibilityBackingDark { get; }       // #1C1C1E
     public static Rgba ReducedTransparency(bool dark)
     public static Rgba ContrastBorder(bool dark)
     public static Rgb Foreground(bool dark)
+    public static Rgb LegibilityBacking(bool dark)
     public static Rgb ForegroundOnTint(Rgb tint, GlassMaterial material)  // white or #111113, the higher WCAG contrast with the tinted glass
     public static double RelativeLuminance(Rgb color)                      // WCAG 2
 }

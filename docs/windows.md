@@ -152,9 +152,9 @@ it. The copy is aligned to the surface's exact position (including while it move
 and under rotation, skew or a right-to-left boundary between the scene and the glass) and extends past it as far as
 refraction and frost reach. The glass pixel shader (HLSL, pixel shader 3.0, a
 line-by-line translation of [`spec/shaders/liquid-glass.glsl`](../spec/shaders/liquid-glass.glsl)) then refracts the
-copy through the 20-unit bevel, tones it, adds the rim light and the pointer glow, and WPF composites the result over
-the real backdrop. Regular glass reads a copy frosted by WPF's `BlurEffect` (σ 7.33); the shader adds the wide
-σ 23 fill blur from that frost on a sparse grid.
+copy through the 20-unit bevel, tones it (a menu panel's glass then mixes halfway toward a solid backing), adds the
+rim light and the pointer glow, and WPF composites the result over the real backdrop. Regular glass reads a copy
+frosted by WPF's `BlurEffect` (σ 7.33); the shader adds the wide σ 23 fill blur from that frost on a sparse grid.
 
 The shader ships precompiled by fxc; if the embedded bytecode does not match the embedded HLSL, the library compiles
 the HLSL at run time with `D3DCompile` from `d3dcompiler_47.dll`. `GlassDiagnostics.Describe()` reports which path
@@ -339,6 +339,14 @@ it; Down or Enter on the button opens it with the first item focused, and arrow 
 floats in the enclosing scene (it cannot leave the window); outside a scene it opens in a popup with the opaque
 material.
 
+The panel's glass mixes halfway toward a solid backing, `#F5F5F7` in light appearance and `#1C1C1E` in dark
+([OPTICS §3](../spec/OPTICS.md#legibility-backing-menus)), after its material and tint: it still refracts and frosts
+what lies behind it, at half strength, and its items keep at least 5:1 contrast over any backdrop (5.09:1 for white
+labels over white in dark appearance, where plain Regular glass gave 1.8:1). The trigger and every other glass
+surface draw without the backing. In the fallback material the panel paints the same backing over its veil; the veil
+only approximates the tone curve, so the worst case there is about 4.8:1. The backing is part of the menu, not an
+option: `GlassOptics.MenuLegibility` (0.5) and `GlassPalette.LegibilityBacking` give its values.
+
 ```xml
 <lg:GlassMenu Header="Sort" Placement="Bottom">
   <lg:GlassMenuItem Header="Name" IsCheckable="True" IsChecked="True" />
@@ -390,6 +398,8 @@ the open panel is a Menu named after the menu's current header (raising MenuOpen
 MenuItems with Invoke and, when checkable, Toggle; both choose the item exactly as a click does.
 
 ![A menu grown out of its trigger on the Controls page](images/windows/controls-menu-light.png)
+
+![The same menu in dark appearance, its glass mixed toward #1C1C1E](images/windows/controls-menu-dark.png)
 
 ### GlassProgressiveBlur
 
@@ -503,7 +513,7 @@ Glass never draws nothing and never crashes.
 | Situation | What glass draws |
 | --- | --- |
 | Pixel shader 3.0 in hardware (normal) | The glass shader. |
-| No pixel shader 3.0, a render tier below 2, software rendering (`RenderOptions.ProcessRenderMode = SoftwareOnly`), a window in software mode, a Remote Desktop session that renders in software, fewer than 1024 shader instruction slots | The fallback material: the frosted copy for Regular, a veil fitted to the material's tone curve, the rim light rasterized from the same model as the shader, the pointer glow and focus ring. |
+| No pixel shader 3.0, a render tier below 2, software rendering (`RenderOptions.ProcessRenderMode = SoftwareOnly`), a window in software mode, a Remote Desktop session that renders in software, fewer than 1024 shader instruction slots | The fallback material: the frosted copy for Regular, a veil fitted to the material's tone curve (on a menu panel, the legibility backing over it), the rim light rasterized from the same model as the shader, the pointer glow and focus ring. |
 | `RenderMode="Fallback"` | The fallback material, always. Set it on what you snapshot with `RenderTargetBitmap`: WPF renders snapshots in software, where the shader cannot run, so glass in `Automatic` mode would be missing from the image. |
 | Transparency effects off, `ReduceTransparency`, glass outside a `GlassScene`, glass inside the scene's `Content` | The opaque material with the rim light. |
 | Contrast theme | System colors. |

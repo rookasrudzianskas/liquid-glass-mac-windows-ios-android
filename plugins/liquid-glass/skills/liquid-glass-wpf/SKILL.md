@@ -194,7 +194,7 @@ Full signatures, every default and template part: [references/api.md](references
 | `GlassTabBar` (`ListBox`) / `GlassTabBarItem` (`ListBoxItem`) | Capsule tab bar with a sliding, draggable selection lens in the bar's material | `SelectedIndex` (-1: always set it; once an item is selected one always is), `ItemsSource`, `SelectionChanged`, `Radius` (`capsule`), `Refraction` (NaN: `min(60, 0.75 × shorter side)`), `Tint` (null), `IsInteractive` (true), `Material`, `Appearance`, `Motion`; items 28 tall |
 | `GlassSlider` (`Slider`) | 6-unit track, accent fill, white thumb lifting into glass while dragged | All `Slider` members; `Tint` (null = Windows accent); `IsMoveToPointEnabled` (true) |
 | `GlassSwitch` (`ToggleButton`) | 54 × 24 switch, thumb lifts into glass while pressed; `Content` is the label | `IsChecked`, `Checked`/`Unchecked`; `Tint` (null = Windows accent) |
-| `GlassMenu` (`HeaderedItemsControl`) | Glass trigger button whose Regular panel grows out of it | `Header`, `IsOpen` (false, two-way), `Placement` (`Bottom`), `PanelMaterial` (`Regular`), `PanelRadius` (28, a `GlassRadius`), `Size` (`Regular`), `IsIconOnly` (false), `Tint` (null), `Motion` (inherited), `Opened`/`Closed`, `Close()`; items are `GlassMenuItem` and `Separator` elements, or data from `ItemsSource` (with `ItemTemplate`, `ItemContainerStyle`) |
+| `GlassMenu` (`HeaderedItemsControl`) | Glass trigger button whose Regular panel grows out of it, mixed halfway toward a solid backing so items stay legible | `Header`, `IsOpen` (false, two-way), `Placement` (`Bottom`), `PanelMaterial` (`Regular`), `PanelRadius` (28, a `GlassRadius`), `Size` (`Regular`), `IsIconOnly` (false), `Tint` (null), `Motion` (inherited), `Opened`/`Closed`, `Close()`; items are `GlassMenuItem` and `Separator` elements, or data from `ItemsSource` (with `ItemTemplate`, `ItemContainerStyle`) |
 | `GlassMenuItem` (`ButtonBase`) | A menu command | `Header` (the label, kept current), `Content`, `Icon` (glyph string ok), `InputGestureText` (""), `IsCheckable` (false), `IsChecked` (false), `StaysOpenOnClick` (false), `Click`, `Command`, `Checked`/`Unchecked`; `Separator` between items |
 | `GlassProgressiveBlur` (`FrameworkElement`) | Edge blur band over the backdrop for scrolling content | `Edge` (`Top`), `Size` (80), `Blur` (σ 20, max 33), `Source` (null = scene backdrop) |
 | `GlassGeometry` (static) | Exact continuous-corner outlines as frozen `Geometry` | `Create(Size, GlassRadius)`, `Create(Rect, GlassRadius)`, `Inflate(Rect, GlassRadius, double)`, `InflateRadius(GlassRadius, double)` |
@@ -361,6 +361,9 @@ buttons; the glass re-aligns by itself.
 
 - Clear over imagery; Regular for menus, sheets, compact cards with a few lines of text, and anything large or over
   busy content. Menu panels default to Regular. Long text, settings pages and tables get a solid surface, not glass.
+- Menu panels mix their glass halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E` dark) on their own, so menu
+  text keeps at least 5:1 over any backdrop, even white under dark glass. Don't add a background to the panel or its
+  items to make them readable; the trigger and other glass stay plain glass.
 - `Material` is inherited: a Regular card makes every glass control inside it Regular too. Reset nested controls with
   `lg:GlassScene.Material="Clear"` on the card's inner panel (the demo app does this on every card).
 - `Appearance="Automatic"` follows the Windows app mode live. Over a backdrop that is clearly light or dark, set
