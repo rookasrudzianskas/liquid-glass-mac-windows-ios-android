@@ -62,9 +62,4 @@ targets: [
 ]
 ```
 
-The version requirement resolves once the `1.0.0` release tag is published on GitHub (Swift Package Manager reads
-versions from tags, so `from: "1.0.0"` finds nothing before that). Until then, depend on the `main` branch: in Xcode
-choose **Branch** `main` as the dependency rule, and in `Package.swift` write `branch: "main"` in place of
-`from: "1.0.0"`.
-
 The code doesn't change: it imports `LiquidGlass` either way. The full guide is [`docs/apple.md`](../../../docs/apple.md).

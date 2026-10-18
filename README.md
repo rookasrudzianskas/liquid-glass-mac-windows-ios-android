@@ -102,7 +102,7 @@ dependencies {
 }
 ```
 
-JitPack (`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:<tag>`) and a plain AAR from the downloads page work too; see [Install](docs/android.md#install) in the Android guide.
+JitPack (`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0`, a secondary route whose first build of a version can take a few minutes) and a plain AAR from the downloads page work too; see [Install](docs/android.md#install) in the Android guide.
 
 ### NuGet (Windows)
 

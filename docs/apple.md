@@ -40,7 +40,7 @@ targets: [
 ]
 ```
 
-The version requirement resolves once the `1.0.0` release tag is published on GitHub (Swift Package Manager reads versions from tags, so `from: "1.0.0"` finds nothing before that). Until then, depend on the `main` branch: in Xcode choose **Branch** `main` as the dependency rule, and in `Package.swift` write `branch: "main"` in place of `from: "1.0.0"`.
+In Xcode, the dependency rule **Up to Next Major Version** from `1.0.0` is the same requirement as `from: "1.0.0"`. To follow unreleased changes instead, choose the **Branch** rule with `main` (`branch: "main"` in `Package.swift`).
 
 Requirements: iOS 17 or macOS 14 deployment targets, built with Xcode 16 or later (iOS 18 / macOS 15 SDK). Xcode 16 is required: the manifest uses Swift tools 6.0, so Xcode 15 cannot resolve the package (the iOS code also uses the iOS 18 SDK behind an availability check). There are no third-party dependencies.
 

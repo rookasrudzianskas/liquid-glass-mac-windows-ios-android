@@ -59,7 +59,7 @@ The repository carries the AAR, sources, javadoc and Gradle module metadata.
 
 ### From JitPack
 
-This route works once the `1.0.0` release tag is published on GitHub (JitPack builds from tags, so the coordinate does not resolve before that); until then use the Maven repository above.
+JitPack is a secondary route; the project's Maven repository above stays the primary one. The first request for a version starts its build there, which can take a few minutes; if Gradle gives up while that build runs, run it again.
 
 ```kotlin
 // settings.gradle.kts

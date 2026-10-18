@@ -41,7 +41,7 @@ dependencies {
 }
 ```
 
-Alternative, JitPack (builds `platforms/android` from a release tag; the coordinate resolves only once the `1.0.0` tag is published, so prefer the Maven repository above):
+Alternative, JitPack (a secondary route: it builds `platforms/android` from the release tag the first time a version is requested, which can take a few minutes, so prefer the Maven repository above):
 
 ```kotlin
 // settings.gradle.kts: repositories { maven("https://jitpack.io") }
