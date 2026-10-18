@@ -136,7 +136,7 @@ fun HelloGlass() {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 // TalkBack reads the switch's own label, so the visible one is hidden from it.
                                 GlassText("Frosted", Modifier.weight(1f).clearAndSetSemantics {})
-                                GlassSwitch(checked = frosted, onCheckedChange = { frosted = it }, label = "Frosted")
+                                GlassSwitch(checked = frosted, onCheckedChange = { frosted = it }, tint = Color(0xFF0A84FF), label = "Frosted")
                             }
                         }
                     }
