@@ -237,6 +237,29 @@ public class LegibilityTests
         Assert.True(system >= Materials.SelectMany(m => Appearances.SelectMany(d => SystemTints.Select(t => Floor(m, d, t, 10)))).Min());
     }
 
+    /// <summary>
+    /// The opaque material (transparency effects off, or a menu outside a scene or in its content) paints the backing
+    /// over its fill at the fallback's opacity. Its tint fill is the fallback's, so tinted menus keep the fallback's
+    /// floor (5.11:1 over the system colors, 5.64:1 over the Windows accents); over the reduced-transparency fill
+    /// (<c>#F2F2F7</c> or <c>#1C1C1E</c> at 0.94) untinted menus keep 12.6:1. Without the backing, the tint fill alone left
+    /// the labels chosen for the backed glass at 1.64:1 (white on the dark-appearance yellow over white).
+    /// </summary>
+    [Fact]
+    public void OpaqueMenusKeepTheFloor()
+    {
+        var untinted = Materials.SelectMany(m => Appearances.Select(d =>
+            OpaqueFloor(m, d, null, GlassFallback.LegibilityOpacity(m, d, null, GlassOptics.MenuLegibility), 10))).Min();
+        Assert.Equal(12.63, untinted, 2);
+        var system = Materials.SelectMany(m => Appearances.SelectMany(d => SystemTints.Select(t =>
+            OpaqueFloor(m, d, t, GlassFallback.LegibilityOpacity(m, d, t, GlassOptics.MenuLegibility), 10)))).Min();
+        Assert.Equal(5.11, system, 2);
+        var accents = Materials.SelectMany(m => Appearances.SelectMany(d => WindowsAccents.Select(t =>
+            OpaqueFloor(m, d, t, GlassFallback.LegibilityOpacity(m, d, t, GlassOptics.MenuLegibility), 10)))).Min();
+        Assert.Equal(5.64, accents, 2);
+        var bare = OpaqueFloor(GlassMaterial.Regular, true, Hex("FFD60A"), 0, 10);
+        Assert.True(bare < 2, $"the tint fill alone {bare:F3}:1");
+    }
+
     [Fact]
     public void FallbackBackingFollowsTheAmount()
     {
@@ -301,12 +324,23 @@ public class LegibilityTests
     /// </summary>
     private static double FallbackFloor(GlassMaterial material, bool dark, Rgb? tint, double opacity, int steps)
     {
+        var veil = GlassFallback.Veil(material, dark);
+        return FillFloor(material, dark, tint, new Rgba(new Rgb(veil.Gray, veil.Gray, veil.Gray), veil.Opacity), opacity, steps);
+    }
+
+    /// <summary>
+    /// <see cref="FallbackFloor"/> for the opaque material: the reduced-transparency fill (or the tint fill) as its 8-bit
+    /// brush paints it over the backdrop, then the backing at <paramref name="opacity"/>.
+    /// </summary>
+    private static double OpaqueFloor(GlassMaterial material, bool dark, Rgb? tint, double opacity, int steps)
+        => FillFloor(material, dark, tint, GlassPalette.ReducedTransparency(dark), opacity, steps);
+
+    private static double FillFloor(GlassMaterial material, bool dark, Rgb? tint, Rgba untinted, double opacity, int steps)
+    {
         static double Byte(double v) => Math.Round(v * 255) / 255;
         var foreground = GlassPalette.MenuForeground(tint, material, dark);
-        var backing = GlassPalette.LegibilityBacking(dark);
-        var veil = GlassFallback.Veil(material, dark);
-        var fill = tint is { } t ? GlassFallback.TintFill(t, material).Map(Byte) : new Rgb(Byte(veil.Gray), Byte(veil.Gray), Byte(veil.Gray));
-        var fillOpacity = Byte(tint is null ? veil.Opacity : GlassFallback.TintFillOpacity);
+        var fill = tint is { } t ? GlassFallback.TintFill(t, material).Map(Byte) : untinted.Rgb.Map(Byte);
+        var fillOpacity = Byte(tint is null ? untinted.A : GlassFallback.TintFillOpacity);
         var lowest = double.MaxValue;
         for (var r = 0; r <= steps; r++)
             for (var g = 0; g <= steps; g++)

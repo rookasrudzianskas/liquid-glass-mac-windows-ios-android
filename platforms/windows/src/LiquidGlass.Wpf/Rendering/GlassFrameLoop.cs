@@ -22,6 +22,12 @@ internal static class GlassFrameLoop
     /// <summary>Raised after every animation has advanced in a frame, before layout and rendering.</summary>
     [ThreadStatic] private static Action? _afterTick;
 
+    /// <summary>
+    /// For tests: when set, every frame advances the animations on this thread by this many seconds instead of the
+    /// time since the last frame, so a stalled frame cannot carry a spring past what a test samples.
+    /// </summary>
+    [ThreadStatic] internal static double? FixedStep;
+
     /// <summary>Starts animating <paramref name="animation"/> (no effect if it already is).</summary>
     public static void Start(IGlassAnimation animation)
     {
@@ -53,7 +59,7 @@ internal static class GlassFrameLoop
         // Several Rendering events can arrive for one frame; only a new frame time advances the springs.
         var time = e is RenderingEventArgs rendering ? rendering.RenderingTime : TimeSpan.FromTicks(DateTime.UtcNow.Ticks);
         if (state.Last == time) return;
-        var dt = state.Last is { } last ? (time - last).TotalSeconds : 1.0 / 60;
+        var dt = FixedStep ?? (state.Last is { } last ? (time - last).TotalSeconds : 1.0 / 60);
         state.Last = time;
         if (dt <= 0) return;
         state.Ticking.Clear();

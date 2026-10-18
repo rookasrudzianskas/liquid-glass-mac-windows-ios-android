@@ -453,7 +453,8 @@
                                 TextElement.FontFamily="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=IconFont}}" />
               <ContentPresenter Grid.Column="2" RecognizesAccessKey="True" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
-              <TextBlock Grid.Column="3" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0" Opacity="0.55" VerticalAlignment="Center" />
+              <!-- The shortcut in the label's own color: the menu's contrast floors hold for it as for the label. -->
+              <TextBlock x:Name="Shortcut" Grid.Column="3" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0" VerticalAlignment="Center" />
             </Grid>
           </Grid>
           <ControlTemplate.Triggers>

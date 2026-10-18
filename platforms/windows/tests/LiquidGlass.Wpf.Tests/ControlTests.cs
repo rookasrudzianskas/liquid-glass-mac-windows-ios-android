@@ -393,6 +393,97 @@ public class ControlTests
         });
     }
 
+    /// <summary>
+    /// While the panel grows out of its trigger the backing follows the morph, stepped here one frame of spring time at
+    /// a time: 0.6 times the open progress clamped to [0, 1], so 0 at the trigger, never above 0.6 while the Full-motion
+    /// morph spring (bounce 0.18) overshoots, and back to 0 (not below) as the panel collapses past its trigger.
+    /// </summary>
+    [Fact]
+    public void MenuBackingFollowsTheClampedMorph()
+    {
+        Sta.Run(() =>
+        {
+            GlassSystemSettings.AnimationsOverride = true;
+            try
+            {
+                var menu = new GlassMenu
+                {
+                    Header = "Sort",
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Items = { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" } },
+                };
+                var window = Sta.Show(Scene(menu));
+                var animation = (IGlassAnimation)menu;
+                menu.IsOpen = true;
+                GlassFrameLoop.Stop(menu);
+                Sta.Pump();
+                Assert.False(GlassFrameLoop.IsRunning(menu));
+                var lens = menu.Panel!.Lens!;
+                List<double> Run(string phase)
+                {
+                    var progress = new List<double>();
+                    void Check()
+                    {
+                        Assert.Equal(GlassOptics.MenuLegibility * GlassMath.Sat(menu.MorphProgress), lens.Legibility, 12);
+                        Assert.InRange(lens.Legibility, 0, GlassOptics.MenuLegibility);
+                    }
+                    Check();
+                    for (var step = 0; step < 600 && animation.Tick(1.0 / 60); step++)
+                    {
+                        progress.Add(menu.MorphProgress);
+                        Check();
+                    }
+                    Check();
+                    Assert.True(progress.Count is > 10 and < 600, $"{phase}: the morph took {progress.Count} steps");
+                    return progress;
+                }
+
+                Assert.Equal(0, menu.MorphProgress);
+                Assert.Equal(0, lens.Legibility);
+                var opening = Run("opening");
+                Assert.True(opening.Max() > 1.005, $"the Full-motion morph should overshoot: {opening.Max():F4}");
+                Assert.True(opening.Count(p => p > 1) >= 5, "the morph should stay past open for several frames");
+                Assert.Equal(GlassOptics.MenuLegibility, lens.Legibility);
+
+                menu.IsOpen = false;
+                GlassFrameLoop.Stop(menu);
+                var closing = Run("closing");
+                Assert.True(closing.Min() < -0.005, $"the morph should overshoot past the trigger: {closing.Min():F4}");
+                Assert.Equal(0, lens.Legibility);
+                window.Close();
+            }
+            finally
+            {
+                GlassSystemSettings.AnimationsOverride = null;
+            }
+        });
+    }
+
+    /// <summary>
+    /// A menu item's shortcut text (<see cref="GlassMenuItem.InputGestureText"/>) is drawn in the label's own color, at
+    /// full strength, so the menu's contrast floors hold for it too (at 55%, as before, it fell to about 2.8:1).
+    /// </summary>
+    [Fact]
+    public void MenuShortcutTextTakesTheLabelColor()
+    {
+        Sta.Run(() =>
+        {
+            var copy = new GlassMenuItem { Header = "Copy", InputGestureText = "Ctrl+C" };
+            var menu = new GlassMenu { Header = "Edit", Motion = GlassMotion.None, Tint = Color.FromRgb(0, 0x67, 0xC0), Items = { copy } };
+            var window = Sta.Show(Scene(menu));
+            menu.IsOpen = true;
+            Sta.Pump();
+            var shortcut = (TextBlock)copy.Template.FindName("Shortcut", copy);
+            Assert.Equal("Ctrl+C", shortcut.Text);
+            Assert.Equal(1, shortcut.Opacity);
+            Assert.Equal(((SolidColorBrush)copy.Foreground).Color, ((SolidColorBrush)shortcut.Foreground).Color);
+            Assert.True(Ancestors(shortcut).TakeWhile(e => !ReferenceEquals(e, copy)).All(e => e is not UIElement u || u.Opacity.Equals(1)),
+                "nothing between the item and its shortcut text fades it");
+            window.Close();
+        });
+    }
+
     public static IEnumerable<object[]> MenuTints => new[] { "#0067C0", "#007AFF", "#FF3B30", "#34C759", "#FFCC00", "#8E8E93" }
         .SelectMany(tint => new[] { new object[] { tint, false }, new object[] { tint, true } });
 
@@ -1033,6 +1124,11 @@ public class ControlTests
             yield return child;
             foreach (var descendant in Descendants(child)) yield return descendant;
         }
+    }
+
+    private static IEnumerable<DependencyObject> Ancestors(DependencyObject element)
+    {
+        for (var parent = VisualTreeHelper.GetParent(element); parent is not null; parent = VisualTreeHelper.GetParent(parent)) yield return parent;
     }
 
     private static IEnumerable<T> Visuals<T>(DependencyObject root) where T : DependencyObject

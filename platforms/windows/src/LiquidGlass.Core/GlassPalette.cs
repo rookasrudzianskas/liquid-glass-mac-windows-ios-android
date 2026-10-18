@@ -156,7 +156,8 @@ public static class GlassFallback
 
     /// <summary>
     /// The opacity at which the fallback paints the legibility backing (<see cref="GlassPalette.LegibilityBacking"/>)
-    /// over its veil or tint fill, on glass that mixes toward it by <paramref name="legibility"/> (a menu panel: up to
+    /// over its veil or tint fill (and the opaque material over its fill, the same tint fill when tinted), on glass
+    /// that mixes toward it by <paramref name="legibility"/> (a menu panel: up to
     /// <see cref="GlassOptics.MenuLegibility"/>, following its open progress). Painted over the fill, the backing at the
     /// amount itself would be the shader's mix, but the fill only approximates the material: where the labels
     /// (<see cref="GlassPalette.MenuForeground"/>) contrast least, on a highlighted row over a white backdrop under white

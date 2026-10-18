@@ -157,8 +157,9 @@ public sealed class GlassLens : FrameworkElement
     /// How far the glass mixes toward the solid legibility backing after its material color and tint
     /// (<see cref="GlassMaterialOptics.LegibilityColor"/>): <see cref="GlassOptics.MenuLegibility"/> (0.6) on an open
     /// menu panel, times its open progress while it grows out of its trigger, and 0 (the default) elsewhere. The shader
-    /// mixes it in; the fallback material paints the backing over its veil or tint fill at the opacity that keeps the
-    /// labels at least as legible (<see cref="GlassFallback.LegibilityOpacity"/>).
+    /// mixes it in; the fallback material paints the backing over its veil or tint fill, and the opaque material over
+    /// its fill, at the opacity that keeps the labels at least as legible
+    /// (<see cref="GlassFallback.LegibilityOpacity"/>).
     /// </summary>
     internal double Legibility
     {

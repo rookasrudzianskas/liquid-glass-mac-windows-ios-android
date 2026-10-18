@@ -20,9 +20,11 @@ namespace LiquidGlass.Wpf;
 /// <see cref="GlassPalette.MenuForeground"/> (the appearance's foreground, or on a tint white or <c>#111113</c> as the
 /// backed glass calls for) and a highlighted item mixes that color into the glass at 8%
 /// (<see cref="GlassOptics.MenuHighlight"/>), so the items of an untinted panel (Regular or Clear) keep at least 5.2:1
-/// contrast over any backdrop, and those of a panel tinted with a system color 5.0:1, highlighted or not. The menu
-/// closes when an item is chosen, on Escape and on a click outside it. The panel floats in the enclosing
-/// <see cref="GlassScene"/>, refracting its backdrop; outside a scene it opens in a popup with the opaque material.
+/// contrast over any backdrop, and those of a panel tinted with a system color 5.0:1, highlighted or not, their
+/// shortcut text included, in the shader, the fallback material and the opaque material alike (both paint the backing
+/// over their fill). The menu closes when an item is chosen, on Escape and on a click outside it. The panel floats in
+/// the enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a scene it opens in a popup with the opaque
+/// material.
 /// </summary>
 /// <remarks>
 /// Items are <see cref="GlassMenuItem"/>s and <see cref="Separator"/>s, written out or generated from
@@ -204,6 +206,9 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
 
     /// <summary>The panel, once the menu has opened.</summary>
     internal GlassSurface? Panel => _panel;
+
+    /// <summary>The morph spring's value: 0 at the trigger, 1 open, past 1 while the spring overshoots.</summary>
+    internal double MorphProgress => _morph.Value;
 
     /// <inheritdoc />
     public override void OnApplyTemplate()
@@ -599,7 +604,10 @@ public class GlassMenuItem : ButtonBase
     public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
         nameof(Icon), typeof(object), typeof(GlassMenuItem), new FrameworkPropertyMetadata(null));
 
-    /// <summary>Shortcut text drawn after the label, for example <c>Ctrl+C</c>.</summary>
+    /// <summary>
+    /// Shortcut text drawn after the label, for example <c>Ctrl+C</c>, in the label's color so it keeps the menu's
+    /// contrast floors too. It only displays the shortcut: register it with a <see cref="KeyBinding"/>.
+    /// </summary>
     public static readonly DependencyProperty InputGestureTextProperty = DependencyProperty.Register(
         nameof(InputGestureText), typeof(string), typeof(GlassMenuItem), new FrameworkPropertyMetadata(string.Empty));
 
@@ -668,7 +676,7 @@ public class GlassMenuItem : ButtonBase
         set => SetValue(IconProperty, value);
     }
 
-    /// <summary>Shortcut text drawn after the label.</summary>
+    /// <summary>Shortcut text drawn after the label, in the label's color (display only).</summary>
     public string InputGestureText
     {
         get => (string)GetValue(InputGestureTextProperty);

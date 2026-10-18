@@ -13,15 +13,26 @@ using Xunit;
 
 namespace LiquidGlass.Wpf.Tests;
 
-/// <summary>The press response in a live window: springs driven by the frame loop, applied as transforms.</summary>
+/// <summary>
+/// The press response in a live window: springs driven by the frame loop, applied as transforms. Tests that follow a
+/// spring through its frames advance it by one fixed step per frame (<see cref="GlassFrameLoop.FixedStep"/>) and sample
+/// it after each step (<see cref="GlassFrameLoop.AfterTick"/>), so a loaded runner that delays or drops frames cannot
+/// carry a spring past what they check; they wait for the animation to come to rest, not for a set time.
+/// </summary>
 public class InteractionTests
 {
+    private const double Step = 1.0 / 60;
+
     [Fact]
     public void PressGrowsAndReleaseSettlesWithOvershoot()
     {
         Sta.Run(() =>
         {
             GlassSystemSettings.AnimationsOverride = true;
+            GlassFrameLoop.FixedStep = Step;
+            var presses = new List<double>();
+            var areas = new List<double>();
+            Action? sample = null;
             try
             {
                 var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -30,36 +41,45 @@ public class InteractionTests
                 var window = Sta.Show(scene, 400, 200);
                 var surface = (GlassSurface)button.Template.FindName("PART_Surface", button);
                 var root = (FrameworkElement)surface.Template.FindName("PART_Root", surface);
-                // Area scale: the press grows both axes by (1 + grow); any stretch toward the (real) cursor only adds
-                // to it, because stretch preserves volume (sx · sy = (1 + grow)² · √((1 + ex)(1 + ey))).
-                var scales = new List<double>();
-                EventHandler sample = (_, _) =>
+                var interaction = surface.Interaction!;
+                // The press spring itself, and the area scale it gives: the press grows both axes by (1 + grow); any
+                // stretch toward the (real) cursor only adds to the area, because stretch preserves volume
+                // (sx · sy = (1 + grow)² · √((1 + ex)(1 + ey))).
+                sample = () =>
                 {
+                    presses.Add(interaction.PressAmount);
                     var scale = ((TransformGroup)root.RenderTransform).Children.OfType<ScaleTransform>().Single();
-                    scales.Add(scale.ScaleX * scale.ScaleY);
+                    areas.Add(scale.ScaleX * scale.ScaleY);
                 };
-                CompositionTarget.Rendering += sample;
+                GlassFrameLoop.AfterTick(sample);
 
+                presses.Clear();
+                areas.Clear();
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
-                Wait(0.45);
+                // 0.45 s of spring time: the press spring (0.24 s) has reached full.
+                Assert.True(Sta.WaitUntil(() => presses.Count >= 27), $"the press advanced {presses.Count} frames");
                 Assert.True(surface.IsPressed);
                 // grow = min(0.16, 8 / 120) = 0.0667 at full press (OPTICS §6), so the area grows by at least 1.138.
-                Assert.True(scales.Last() > 1.13, $"area scale {scales.Last()}");
+                Assert.True(areas.Last() > 1.13, $"area scale {areas.Last()}");
 
-                scales.Clear();
+                presses.Clear();
+                areas.Clear();
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
-                // The release spring decays as exp(−7.3 t); it is within its settle threshold and snaps to rest by 1.4 s.
-                Wait(2.0);
+                Assert.True(Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(interaction)), "the release should settle and stop the frame loop");
                 Assert.False(surface.IsPressed);
-                // Without overshoot the area never drops below 1 (grow and stretch are never negative); the release
-                // spring (bounce 0.42) carries the press about 11% past rest, shrinking the area by about 1.4%.
-                Assert.True(scales.Min() < 0.998, $"no overshoot: min {scales.Min()}");
-                Assert.Equal(1, scales.Last(), 6);
-                CompositionTarget.Rendering -= sample;
+                // The release spring (0.5 s, bounce 0.42) carries the press about 10% past rest over several frames
+                // (shrinking the area by about 1.4%, less any stretch), then settles exactly at rest: about 1.4 s.
+                Assert.True(presses.Min() < -0.08, $"no overshoot: the press reached {presses.Min():F4}");
+                Assert.True(presses.Count(p => p < -0.02) >= 5, $"the overshoot lasted {presses.Count(p => p < -0.02)} frames");
+                Assert.InRange(presses.Count, 40, 240);
+                Assert.Equal(0, presses.Last());
+                Assert.Equal(1, areas.Last(), 6);
                 window.Close();
             }
             finally
             {
+                if (sample is not null) GlassFrameLoop.RemoveAfterTick(sample);
+                GlassFrameLoop.FixedStep = null;
                 GlassSystemSettings.AnimationsOverride = null;
             }
         });
@@ -72,6 +92,9 @@ public class InteractionTests
         Sta.Run(() =>
         {
             GlassSystemSettings.AnimationsOverride = true;
+            GlassFrameLoop.FixedStep = Step;
+            var glow = new List<double>();
+            Action? sample = null;
             try
             {
                 var button = new GlassButton { Content = "Press", Width = 120, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -79,12 +102,12 @@ public class InteractionTests
                 scene.Children.Add(button);
                 var window = Sta.Show(scene, 400, 200);
                 var lens = ((GlassSurface)button.Template.FindName("PART_Surface", button)).Lens!;
-                var glow = new List<double>();
-                EventHandler sample = (_, _) => glow.Add(lens.GlowAmount);
-                CompositionTarget.Rendering += sample;
+                sample = () => glow.Add(lens.GlowAmount);
+                GlassFrameLoop.AfterTick(sample);
+                glow.Clear();
                 button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent });
-                Wait(1.2);
-                CompositionTarget.Rendering -= sample;
+                // 1.2 s of spring time, held down.
+                Assert.True(Sta.WaitUntil(() => glow.Count >= 72), $"the light advanced {glow.Count} frames");
                 Assert.True(glow.Count(g => g > 0.05 && g < 0.95) >= 2, "the light should rise over several frames");
                 Assert.True(glow.Max() <= 1 + 1e-9, $"the light overshot: {glow.Max():F4}");
                 Assert.True(glow.Last() > 0.99, $"the light should reach full: {glow.Last():F4}");
@@ -93,6 +116,8 @@ public class InteractionTests
             }
             finally
             {
+                if (sample is not null) GlassFrameLoop.RemoveAfterTick(sample);
+                GlassFrameLoop.FixedStep = null;
                 GlassSystemSettings.AnimationsOverride = null;
             }
         });
@@ -133,25 +158,34 @@ public class InteractionTests
         Sta.Run(() =>
         {
             GlassSystemSettings.AnimationsOverride = true;
+            GlassFrameLoop.FixedStep = Step;
+            var lefts = new List<double>();
+            Action? sample = null;
             try
             {
                 var tabs = new GlassTabBar { Items = { new GlassTabBarItem { Content = "One" }, new GlassTabBarItem { Content = "Two" }, new GlassTabBarItem { Content = "Three" } }, SelectedIndex = 0 };
                 var window = Sta.Show(new GlassScene { Content = new Border { Background = Brushes.Teal }, Children = { tabs } }, 420, 200);
                 Wait(0.3);
+                Assert.True(Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(tabs)), "the tab lens should come to rest on the first item");
                 var lens = (GlassSurface)tabs.Template.FindName("PART_Lens", tabs);
-                var third = (GlassTabBarItem)tabs.ItemContainerGenerator.ContainerFromIndex(2);
-                tabs.SelectedIndex = 2;
-                Wait(0.05);
                 var host = (Canvas)tabs.Template.FindName("PART_LensHost", tabs);
+                var third = (GlassTabBarItem)tabs.ItemContainerGenerator.ContainerFromIndex(2);
+                sample = () => lefts.Add(Canvas.GetLeft(lens));
+                GlassFrameLoop.AfterTick(sample);
+                tabs.SelectedIndex = 2;
+                Assert.True(Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(tabs)), "the tab lens should come to rest on the selection");
                 var target = third.TransformToVisual(host).Transform(default).X;
-                Assert.True(Canvas.GetLeft(lens) < target - 1, "the lens should still be travelling");
-                Wait(0.6);
+                // Three frames (0.05 s) into the slide the lens is still on its way; then it lands on the selection.
+                Assert.True(lefts.Count >= 3, $"the slide took {lefts.Count} frames");
+                Assert.True(lefts[2] < target - 1, $"the lens should still be travelling: {lefts[2]:F2} of {target:F2}");
                 Assert.Equal(target, Canvas.GetLeft(lens), 1);
                 Assert.Equal(third.ActualWidth, lens.Width, 1);
                 window.Close();
             }
             finally
             {
+                if (sample is not null) GlassFrameLoop.RemoveAfterTick(sample);
+                GlassFrameLoop.FixedStep = null;
                 GlassSystemSettings.AnimationsOverride = null;
             }
         });
@@ -167,6 +201,7 @@ public class InteractionTests
         Sta.Run(() =>
         {
             GlassSystemSettings.AnimationsOverride = true;
+            GlassFrameLoop.FixedStep = Step;
             try
             {
                 var tabs = new GlassTabBar
@@ -182,6 +217,7 @@ public class InteractionTests
                 var scene = new GlassScene { Content = new Border { Background = Brushes.Teal }, Children = { new StackPanel { Children = { tabs, toggle, menu } } } };
                 var window = Sta.Show(scene, 420, 360);
                 Wait(0.3);
+                Assert.True(Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(tabs) && !GlassFrameLoop.IsRunning(toggle)), "the controls should come to rest");
 
                 var lens = (GlassSurface)tabs.Template.FindName("PART_Lens", tabs);
                 var host = (Canvas)tabs.Template.FindName("PART_LensHost", tabs);
@@ -193,22 +229,27 @@ public class InteractionTests
                 var stretches = new List<double>();
                 var offsets = new List<double>();
                 var widths = new List<double>();
-                // Each transition is watched on its own, so the first-time work of one (the menu's panel) cannot
-                // stall the frames another is sampled on.
-                void Watch(Action change, EventHandler sample)
+                // Each transition is watched on its own, after every step of its spring until it comes to rest.
+                void Watch(IGlassAnimation animation, Action change, Action sample)
                 {
-                    CompositionTarget.Rendering += sample;
-                    change();
-                    Wait(1.2);
-                    CompositionTarget.Rendering -= sample;
+                    GlassFrameLoop.AfterTick(sample);
+                    try
+                    {
+                        change();
+                        Assert.True(Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(animation)), $"{animation.GetType().Name} should come to rest");
+                    }
+                    finally
+                    {
+                        GlassFrameLoop.RemoveAfterTick(sample);
+                    }
                 }
-                Watch(() => tabs.SelectedIndex = 2, (_, _) =>
+                Watch(tabs, () => tabs.SelectedIndex = 2, () =>
                 {
                     lefts.Add(Canvas.GetLeft(lens));
                     stretches.Add(((ScaleTransform)lens.RenderTransform).ScaleX);
                 });
-                Watch(() => toggle.IsChecked = true, (_, _) => offsets.Add(((TranslateTransform)thumb.RenderTransform).X));
-                Watch(() => menu.IsOpen = true, (_, _) =>
+                Watch(toggle, () => toggle.IsChecked = true, () => offsets.Add(((TranslateTransform)thumb.RenderTransform).X));
+                Watch(menu, () => menu.IsOpen = true, () =>
                 {
                     if (menu.Panel?.Lens is { } panelLens) widths.Add(panelLens.ShapeBounds.Width);
                 });
@@ -223,13 +264,15 @@ public class InteractionTests
                 Assert.True(offsets.Count(o => o > 0.5 && o < travel - 0.5) >= 2, "the switch thumb should move over several frames");
                 Assert.True(offsets.Max() <= travel + 0.05, $"the switch thumb overshot: {offsets.Max():F2} past {travel:F2}");
 
+                // The reduced morph (0.42 s, critically damped) takes about 27 steps to come within a unit of the panel.
                 var panelWidth = menu.Panel!.ActualWidth;
-                Assert.True(widths.Count(w => w < panelWidth - 1) >= 2, "the menu panel should grow out of its trigger over several frames");
+                Assert.True(widths.Count(w => w < panelWidth - 1) >= 10, $"the menu panel should grow out of its trigger over several frames: {widths.Count(w => w < panelWidth - 1)}");
                 Assert.True(widths.Max() <= panelWidth + 0.05, $"the menu panel overshot: {widths.Max():F2} past {panelWidth:F2}");
                 window.Close();
             }
             finally
             {
+                GlassFrameLoop.FixedStep = null;
                 GlassSystemSettings.AnimationsOverride = null;
             }
         });
@@ -259,7 +302,7 @@ public class InteractionTests
 
                 // The capture goes (the window was deactivated, another element took the mouse) and no button-up follows.
                 button.ReleaseMouseCapture();
-                Wait(2.0);
+                Sta.WaitUntil(() => !GlassFrameLoop.IsRunning(interaction!));
                 Assert.False(surface.IsPressed);
                 Assert.False(GlassFrameLoop.IsRunning(interaction!), "the press should settle and stop the frame loop");
                 window.Close();

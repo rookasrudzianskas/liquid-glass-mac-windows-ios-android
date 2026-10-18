@@ -54,6 +54,21 @@ internal static class Sta
         timer.Stop();
     }
 
+    /// <summary>
+    /// Runs the dispatcher until <paramref name="done"/> holds, checking every 20 ms for up to <paramref name="seconds"/>
+    /// (a loaded runner can stall frames for seconds); false if it never does.
+    /// </summary>
+    public static bool WaitUntil(Func<bool> done, double seconds = 15)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (!done())
+        {
+            if (clock.Elapsed.TotalSeconds > seconds) return false;
+            Wait(0.02);
+        }
+        return true;
+    }
+
     /// <summary>Shows <paramref name="content"/> in a borderless window and waits until it is loaded.</summary>
     public static Window Show(UIElement content, double width = 640, double height = 420)
     {

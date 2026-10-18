@@ -59,6 +59,9 @@ internal sealed class GlassInteraction : IGlassAnimation
     /// <summary>A pointer or key is holding the surface down.</summary>
     public bool IsHeld => _pointer || _keyboard;
 
+    /// <summary>The press spring's value: 0 at rest, 1 held, below 0 while the release overshoots.</summary>
+    internal double PressAmount => _press.Value;
+
     public void Detach()
     {
         _input.RemoveHandler(UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler(OnDown));

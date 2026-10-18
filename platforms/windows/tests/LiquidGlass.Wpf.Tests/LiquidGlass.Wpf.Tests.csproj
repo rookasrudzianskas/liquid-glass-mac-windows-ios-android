@@ -8,6 +8,9 @@
     <RootNamespace>LiquidGlass.Wpf.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- One framework's test host at a time: they share the desktop and the CPU, and the rendering and animation tests
+         watch windows on screen frame by frame. -->
+    <TestTfmsInParallel>false</TestTfmsInParallel>
   </PropertyGroup>
 
   <ItemGroup>

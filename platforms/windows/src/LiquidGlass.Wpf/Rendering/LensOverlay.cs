@@ -7,8 +7,9 @@ namespace LiquidGlass.Wpf.Rendering;
 
 /// <summary>
 /// Draws what a <see cref="GlassLens"/> paints over its copy of the backdrop when the pixel shader is not drawing it:
-/// the veil or opaque fill, a menu panel's legibility backing, the increased-contrast border, the rim light (rasterized
-/// exactly as the shader computes it), the pointer glow (in the shader's order) and the keyboard focus ring.
+/// the veil or opaque fill, a menu panel's legibility backing (over either), the increased-contrast border, the rim
+/// light (rasterized exactly as the shader computes it), the pointer glow (in the shader's order) and the keyboard focus
+/// ring.
 /// </summary>
 internal sealed class LensOverlay : FrameworkElement
 {
@@ -81,18 +82,14 @@ internal sealed class LensOverlay : FrameworkElement
             }
             case GlassLensMode.Fallback:
                 dc.DrawGeometry(FallbackFill(dark), null, _outline);
-                // The legibility backing over the veil (or tint fill): backing·a + glass·(1 − a) is the shader's
-                // mix(glass, backing, a), at the opacity that keeps the labels at least as legible as on the shader's
-                // glass where they contrast least.
-                if (_lens.Legibility > 0)
-                {
-                    var amount = BackingOpacity(_lens.Material, dark, _lens.Legibility, _lens.EffectiveTint);
-                    dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), amount)), null, _outline);
-                }
+                DrawBacking(dc, dark);
                 DrawLight(dc, shape, dark);
                 break;
             case GlassLensMode.Opaque:
                 dc.DrawGeometry(OpaqueFill(dark), null, _outline);
+                // A menu's labels are chosen for the backed glass in the opaque material too: over the tint fill (the
+                // fallback's own) the backing keeps the fallback's floors, over the reduced-transparency fill more.
+                DrawBacking(dc, dark);
                 DrawLight(dc, shape, dark);
                 break;
         }
@@ -101,6 +98,18 @@ internal sealed class LensOverlay : FrameworkElement
             var color = _lens.Mode == GlassLensMode.HighContrast ? SystemColors.HighlightColor : dark ? Colors.White : GlassBrushes.ToColor(GlassPalette.ForegroundLight);
             dc.DrawGeometry(null, new Pen(new SolidColorBrush(color), 2), GlassGeometry.Inflate(shape, _lens.Radius, 2));
         }
+    }
+
+    /// <summary>
+    /// The legibility backing over the veil, tint fill or opaque fill: backing·a + glass·(1 − a) is the shader's
+    /// mix(glass, backing, a), at the opacity that keeps the labels at least as legible as on the shader's glass where
+    /// they contrast least. Nothing on glass that does not mix toward it.
+    /// </summary>
+    private void DrawBacking(DrawingContext dc, bool dark)
+    {
+        if (_lens.Legibility <= 0) return;
+        var amount = BackingOpacity(_lens.Material, dark, _lens.Legibility, _lens.EffectiveTint);
+        dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), amount)), null, _outline);
     }
 
     private void DrawLight(DrawingContext dc, Rect shape, bool dark)
@@ -136,9 +145,10 @@ internal sealed class LensOverlay : FrameworkElement
     }
 
     /// <summary>
-    /// The opacity of the legibility backing over the fallback's fill, for glass that mixes toward it by
-    /// <paramref name="legibility"/> (<see cref="GlassFallback.LegibilityOpacity"/>): an 8-bit level at which menu labels
-    /// on a highlighted row keep at least the contrast of the shader's menu glass where they contrast least.
+    /// The opacity of the legibility backing over the fallback's fill (and the opaque material's), for glass that mixes
+    /// toward it by <paramref name="legibility"/> (<see cref="GlassFallback.LegibilityOpacity"/>): an 8-bit level at
+    /// which menu labels on a highlighted row keep at least the contrast of the shader's menu glass where they contrast
+    /// least.
     /// </summary>
     internal static double BackingOpacity(GlassMaterial material, bool dark, double legibility, Color? tint)
         => GlassFallback.LegibilityOpacity(material, dark, tint is { } t ? (Rgb?)GlassBrushes.ToRgb(t) : null, legibility);

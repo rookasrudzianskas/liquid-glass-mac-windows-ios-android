@@ -329,6 +329,114 @@ public class RenderingTests
         });
     }
 
+    public static IEnumerable<object?[]> OpaqueMenuCases =>
+        from place in new[] { "reduce transparency", "outside a scene" }
+        from menu in new (GlassMaterial Material, bool Dark, string? Tint)[]
+        {
+            (GlassMaterial.Regular, false, null), (GlassMaterial.Regular, true, null),
+            (GlassMaterial.Regular, true, "#FFD60A"), (GlassMaterial.Clear, true, "#FFD60A"), (GlassMaterial.Regular, true, "#FFCC00"),
+            (GlassMaterial.Regular, false, "#0067C0"), (GlassMaterial.Clear, false, "#0067C0"), (GlassMaterial.Regular, false, "#007AFF"),
+        }
+        select new object?[] { place, menu.Material, menu.Dark, menu.Tint };
+
+    /// <summary>
+    /// An open menu in the opaque material over the backdrop where its labels contrast least, its second row pressed:
+    /// with transparency reduced in a scene (the panel in the scene's top layer) and outside any scene (the panel in a
+    /// popup over the window). The panel paints the legibility backing over its fill as the fallback does
+    /// (<see cref="GlassFallback.LegibilityOpacity"/>), so the items, in <see cref="GlassPalette.MenuForeground"/>, keep
+    /// at least 5.2:1 untinted and 5.0:1 on the system colors and the Windows 11 accent (5.11:1 at worst, the
+    /// dark-appearance yellow over white), where the tint fill alone left them at 1.6:1.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OpaqueMenuCases))]
+    public void OpaqueMenuRowsKeepTheFloor(string where, GlassMaterial material, bool dark, string? hex)
+    {
+        Sta.Run(() =>
+        {
+            var tint = hex is null ? (Color?)null : (Color)ColorConverter.ConvertFromString(hex);
+            var tintRgb = tint is { } t ? GlassBrushes.ToRgb(t) : (Rgb?)null;
+            var label = GlassPalette.MenuForeground(tintRgb, material, dark);
+            var level = label == GlassPalette.ForegroundDark ? 1.0 : 0.0;
+            var backdrop = new Rgb(level, level, level);
+            var background = level > 0.5 ? Brushes.White : Brushes.Black;
+            var rows = new[] { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" }, new GlassMenuItem { Header = "Kind" } };
+            var menu = new GlassMenu
+            {
+                Header = "Sort",
+                PanelMaterial = material,
+                Tint = tint,
+                Motion = GlassMotion.None,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(20),
+            };
+            foreach (var row in rows) menu.Items.Add(row);
+            FrameworkElement root;
+            if (where == "reduce transparency")
+            {
+                var scene = new GlassScene { Content = new Border { Background = background } };
+                GlassScene.SetReduceTransparency(scene, true);
+                scene.Children.Add(menu);
+                root = new Border { Child = scene };
+            }
+            else
+            {
+                root = new Border { Background = background, Child = menu };
+            }
+            GlassScene.SetAppearance(root, dark ? GlassAppearance.Dark : GlassAppearance.Light);
+            var window = Sta.Show(root, 480, 320);
+            menu.IsOpen = true;
+            Sta.Pump();
+            Press(rows[1]);
+            Sta.Pump();
+            var what = $"{where}: {material} {(dark ? "dark" : "light")} {hex ?? "untinted"}";
+            var panel = menu.Panel!;
+            Assert.Equal(GlassLensMode.Opaque, panel.RenderedMode);
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
+            Assert.All(rows, row => Assert.Equal(label, GlassBrushes.ToRgb(((SolidColorBrush)row.Foreground).Color)));
+
+            // The opaque fill as its 8-bit brush paints it over the backdrop (the tint fill on a tinted menu), then the
+            // backing at the fallback's opacity, and on the highlighted row the label color at 8%.
+            static double Byte(double v) => Math.Round(GlassMath.Sat(v) * 255) / 255;
+            var reduced = GlassPalette.ReducedTransparency(dark);
+            var fill = tintRgb is { } tinted ? GlassFallback.TintFill(tinted, material).Map(Byte) : reduced.Rgb.Map(Byte);
+            var fillOpacity = Byte(tintRgb is null ? reduced.A : GlassFallback.TintFillOpacity);
+            var filled = new Rgb(GlassMath.Mix(backdrop.R, fill.R, fillOpacity), GlassMath.Mix(backdrop.G, fill.G, fillOpacity), GlassMath.Mix(backdrop.B, fill.B, fillOpacity));
+            var glass = GlassMaterialOptics.LegibilityColor(filled, dark, LensOverlay.BackingOpacity(material, dark, GlassOptics.MenuLegibility, tint));
+            var highlighted = Highlight(glass, label);
+
+            // The opaque material draws no effect, so the panel renders in software as on screen: from the root of its
+            // visual tree (the window, or the popup), composed over the backdrop beneath (premultiplied).
+            Visual top = panel;
+            while (VisualTreeHelper.GetParent(top) is Visual parent) top = parent;
+            var size = ((FrameworkElement)top).RenderSize;
+            int width = (int)Math.Ceiling(size.Width), height = (int)Math.Ceiling(size.Height);
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(top);
+            var pixels = new byte[width * height * 4];
+            bitmap.CopyPixels(pixels, width * 4, 0);
+            (byte R, byte G, byte B) At(FrameworkElement row)
+            {
+                var p = row.TransformToAncestor(top).Transform(new Point(row.ActualWidth - 16, row.ActualHeight / 2));
+                var i = ((int)p.Y * width + (int)p.X) * 4;
+                var beneath = 1 - pixels[i + 3] / 255.0;
+                byte Over(byte color, double under) => (byte)Math.Round(Math.Min(255, color + under * 255 * beneath));
+                return (Over(pixels[i + 2], backdrop.R), Over(pixels[i + 1], backdrop.G), Over(pixels[i], backdrop.B));
+            }
+            var plain = At(rows[0]);
+            var pressed = At(rows[1]);
+            Report(what, "opaque", glass, plain, highlighted, pressed, label);
+            AssertColor(glass, plain, 3, $"{what}: menu glass (opaque)");
+            AssertColor(highlighted, pressed, 3, $"{what}: highlighted row (opaque)");
+            var floor = tint is null ? 5.2 : 5.0;
+            AssertFloor(plain, label, floor, $"{what}: plain row (opaque)");
+            AssertFloor(pressed, label, floor, $"{what}: highlighted row (opaque)");
+            menu.IsOpen = false;
+            Sta.Pump();
+            window.Close();
+        });
+    }
+
     /// <summary>Presses a menu row as a pointer held down on it does (WPF sets IsPressed only from input).</summary>
     private static void Press(ButtonBase row)
     {
