@@ -109,6 +109,25 @@ internal fun luma(r: Float, g: Float, b: Float): Float = LUMA_R * r + LUMA_G * g
 /** How much of the pigment colored glass shows regardless of the light behind it. */
 internal fun tintBody(regular: Boolean): Float = if (regular) 0.78f else 0.68f
 
+/** WCAG 2 relative luminance of a gamma-encoded sRGB color. */
+internal fun relativeLuminance(r: Float, g: Float, b: Float): Float {
+    fun linear(c: Float): Float = if (c <= 0.04045f) c / 12.92f else Math.pow((c + 0.055) / 1.055, 2.4).toFloat()
+    return 0.2126f * linear(r) + 0.7152f * linear(g) + 0.0722f * linear(b)
+}
+
+/**
+ * Whether labels on glass tinted with the gamma-encoded sRGB color ([r], [g], [b]) take the dark foreground
+ * (`#111113`) rather than white, in either appearance: whichever of the two has the higher WCAG contrast with the
+ * tint as the glass draws it over a mid-tone backdrop, `tint · (body + (1 − body)·0.5)` (`spec/OPTICS.md` §8).
+ */
+internal fun darkLabelOnTint(r: Float, g: Float, b: Float, regular: Boolean): Boolean {
+    val body = tintBody(regular)
+    val pass = body + (1f - body) * 0.5f
+    val glass = relativeLuminance(r * pass, g * pass, b * pass)
+    val dark = relativeLuminance(17f / 255f, 17f / 255f, 19f / 255f)
+    return (glass + 0.05f) / (dark + 0.05f) > 1.05f / (glass + 0.05f)
+}
+
 /** Gaussian σ of the Regular frost, in dp. */
 internal const val FROST_SIGMA: Float = 7.33f
 

@@ -81,7 +81,8 @@ public class GlassTab(public val label: String, public val icon: ImageVector? = 
 /**
  * A Liquid Glass tab bar: a 62 dp capsule of icon-and-label tabs with a glass
  * lens marking the selection. The lens slides to a newly selected tab on the
- * track spring, lifting into Clear glass and stretching with its speed; drag
+ * track spring, lifting into glass of the bar's own material (so a Regular bar
+ * stays frosted under the selection) and stretching with its speed; drag
  * it across the bar to choose a tab. Arrow keys move the selection, and the
  * focused tab shows a focus ring. Unless the scene sets a refraction, the bar
  * and the lens each follow their resting size ([GlassDefaults.refraction]):
@@ -142,9 +143,10 @@ public fun GlassTabBar(
         lens.select(selectedIndex.coerceIn(0, tabs.lastIndex))
     }
 
+    // The lens takes the bar's material (null: the scene's, as the bar), so a Regular bar stays frosted under it.
     val lensParams = GlassSurfaceParams(
         shape = GlassShape.Capsule,
-        material = GlassMaterial.Clear,
+        material = material,
         appearance = appearance,
         tint = Color.Unspecified,
         refraction = Dp.Unspecified,
@@ -153,7 +155,7 @@ public fun GlassTabBar(
         opacity = 1f,
         interactionSource = null,
     )
-    ProvideGlassContentColor(appearance, tint) {
+    ProvideGlassContentColor(appearance, tint, material) {
         val contentColor = LocalGlassContentColor.current
         val selectedColor = if (selectedContentColor.isSpecified) selectedContentColor else contentColor
         val unselectedColor = if (unselectedContentColor.isSpecified) unselectedContentColor else contentColor.copy(alpha = UnselectedAlpha)

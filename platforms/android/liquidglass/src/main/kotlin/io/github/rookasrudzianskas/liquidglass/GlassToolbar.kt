@@ -78,7 +78,7 @@ public fun GlassToolbar(
         opacity = 1f,
         interactionSource = null,
     )
-    ProvideGlassContentColor(appearance, tint) {
+    ProvideGlassContentColor(appearance, tint, material) {
         SubcomposeLayout(
             modifier
                 .pointerInput(state) { forwardPointers(state) }

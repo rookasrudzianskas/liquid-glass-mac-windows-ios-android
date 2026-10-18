@@ -139,7 +139,7 @@ public val LocalGlassContentColor: ProvidableCompositionLocal<Color> =
     compositionLocalOf { GlassDefaults.LightContentColor }
 ```
 
-The foreground for text and icons on glass: `#111113` on light glass, white on dark glass. `GlassScene` provides it for the scene's appearance (to everything inside the scene, the content layer included). `GlassSurface`, a standalone `GlassButton`, `GlassToolbar`, `GlassTabBar` and the `GlassMenu` panel provide it again for their own appearance and tint: with a tint, the color is `#111113` when the tint's luminance is above 0.6 and white otherwise. A `GlassButton` inside a `GlassToolbar` does not: it keeps the toolbar's color. `GlassText` and `GlassIcon` read it. Material `Text` and `Icon` do not (they read Material's `LocalContentColor`): pass the color, or provide `LocalContentColor provides LocalGlassContentColor.current` inside the surface.
+The foreground for text and icons on glass: `#111113` on light glass, white on dark glass. `GlassScene` provides it for the scene's appearance (to everything inside the scene, the content layer included). `GlassSurface`, a standalone `GlassButton`, `GlassToolbar`, `GlassTabBar` and the `GlassMenu` panel provide it again for their own appearance and tint: with a tint, in either appearance, the color is whichever of `#111113` and white has the higher WCAG contrast with the tinted glass, `tint × (body + (1 − body)·0.5)` with body 0.78 Regular and 0.68 Clear (white on blue, red or purple; `#111113` on yellow, mint, green or orange), as on the other platforms. A `GlassButton` inside a `GlassToolbar` does not: it keeps the toolbar's color. `GlassText` and `GlassIcon` read it. Material `Text` and `Icon` do not (they read Material's `LocalContentColor`): pass the color, or provide `LocalContentColor provides LocalGlassContentColor.current` inside the surface.
 
 ```kotlin
 GlassSurface(material = GlassMaterial.Regular) {
@@ -201,7 +201,7 @@ public fun GlassContent(modifier: Modifier = Modifier, content: @Composable BoxS
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `modifier` | `Modifier` | Usually `Modifier.fillMaxSize()`. The glass is drawn inside this layer, so glass beyond its bounds is cut off, and glass entirely outside it draws nothing. |
+| `modifier` | `Modifier` | Usually `Modifier.fillMaxSize()`. The glass is drawn inside this layer, so glass beyond its bounds is cut off, and glass entirely outside it draws the fallback material. |
 | `content` | | The backdrop. It must paint opaque pixels wherever glass sits: ancestors' backgrounds are not part of the layer, and over transparent pixels untinted glass draws only its rim. |
 
 One per scene, first in the scene's content. Glass placed inside the content cannot refract the layer it belongs to and draws the fallback material; nest a `GlassScene` there instead.
@@ -287,7 +287,7 @@ public fun GlassSurface(
 | `modifier` | `Modifier` | Give it a size or let the content size it; place it with `align`, `padding`, `offset`. |
 | `shape` | `GlassShape(16.dp)` | Outline. |
 | `material`, `appearance` | null (scene's) | |
-| `tint` | `Color.Unspecified` | Colors the glass; content turns `#111113` or white to stay legible. |
+| `tint` | `Color.Unspecified` | Colors the glass; content turns `#111113` or white, whichever has the higher contrast with the tinted glass. |
 | `refraction` | `Dp.Unspecified` | The scene's, else `min(60 dp, 0.75 × the shorter side)`. |
 | `interactive` | false | Press grow, drag stretch, glow. |
 | `motion` | null | Overrides the scene's motion. |
@@ -426,6 +426,9 @@ public fun GlassButton(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     interactionSource: MutableInteractionSource? = null,
+    refraction: Dp = Dp.Unspecified,
+    interactive: Boolean = true,
+    motion: GlassMotion? = null,
 )
 ```
 
@@ -444,6 +447,9 @@ public fun GlassButton(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     interactionSource: MutableInteractionSource? = null,
+    refraction: Dp = Dp.Unspecified,
+    interactive: Boolean = true,
+    motion: GlassMotion? = null,
 )
 ```
 
@@ -454,10 +460,10 @@ public fun GlassButton(
 | `size` | `GlassButtonSize.Regular` | 34 / 44 / 52 dp. |
 | `shape` (content overload) | `GlassShape.Capsule` | The icon overload always uses `GlassShape.Circle`. |
 | `material`, `appearance` | null (scene's) | |
-| `tint` | `Color.Unspecified` | Makes a prominent button: the glass takes the color, the label turns white or `#111113`, whichever reads better. |
-| `refraction` (content overload) | `Dp.Unspecified` | The scene's, else the button's size: 25.5 / 33 / 39 dp for the 34 / 44 / 52 dp heights. |
-| `interactive` (content overload) | true | Grow, stretch and glow under the finger. `false` gives a static glass button that still clicks. |
-| `motion` (content overload) | null | |
+| `tint` | `Color.Unspecified` | Makes a prominent button: the glass takes the color, and the label turns white or `#111113`, whichever has the higher WCAG contrast with the tinted glass (white on blue, red or purple; dark on yellow, mint, green or orange). |
+| `refraction` | `Dp.Unspecified` | The scene's, else the button's size: 25.5 / 33 / 39 dp for the 34 / 44 / 52 dp heights. |
+| `interactive` | true | Grow, stretch and glow under the finger. `false` gives a static glass button that still clicks: `GlassButton("Static", onClick = {}, interactive = false)`. |
+| `motion` | null | |
 | `interactionSource` | null | Source of the button's interactions; its press drives the glass. |
 | `icon` (text overload) | null | Leading icon, drawn at `size.iconSize` with no content description. |
 | `contentDescription` (icon overload) | required | What the button does, for TalkBack. |
@@ -515,7 +521,7 @@ GlassToolbar(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(hor
 
 ## GlassTab and GlassTabBar
 
-A 62 dp glass capsule of equal-width tabs with a glass lens marking the selection. The lens slides to a newly selected tab on the track spring, lifting into Clear glass and stretching with its speed; dragging across the bar moves the lens and selects on release (haptic tick per tab crossed). At rest the lens is a soft fill (foreground at 9% light / 14% dark). Arrow keys move the selection; the focused tab shows a 2 dp focus ring. The bar is a selectable group of `Role.Tab` items.
+A 62 dp glass capsule of equal-width tabs with a glass lens marking the selection. The lens slides to a newly selected tab on the track spring, lifting into glass of the bar's own material (a Regular bar stays frosted under the selection) and stretching with its speed; dragging across the bar moves the lens and selects on release (haptic tick per tab crossed). At rest the lens is a soft fill (foreground at 9% light / 14% dark). Arrow keys move the selection; the focused tab shows a 2 dp focus ring. The bar is a selectable group of `Role.Tab` items.
 
 ```kotlin
 @Immutable
@@ -800,4 +806,4 @@ The library ships two strings; override them in your app's `res/values*/strings.
 | `GlassTabBar(tabs, …)` | `tabs` is empty |
 | `GlassSlider(…)` | `steps < 0`, or `valueRange.endInclusive <= valueRange.start` |
 
-Glass itself never throws: wherever the GPU path cannot run, the fallback material draws. Glass placed entirely outside its scene's `GlassContent` bounds is not drawn.
+Glass itself never throws: wherever the GPU path cannot run, the fallback material draws, also for glass placed entirely outside its scene's `GlassContent` bounds.

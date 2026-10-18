@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.isSpecified
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import io.github.rookasrudzianskas.liquidglass.internal.GlassSurfaceParams
 import io.github.rookasrudzianskas.liquidglass.internal.currentGlassStyle
 import io.github.rookasrudzianskas.liquidglass.internal.glassSurface
+import io.github.rookasrudzianskas.liquidglass.optics.darkLabelOnTint
 
 /**
  * Makes this element a Liquid Glass surface.
@@ -119,7 +120,7 @@ public fun GlassSurface(
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    ProvideGlassContentColor(appearance, tint) {
+    ProvideGlassContentColor(appearance, tint, material) {
         Box(
             modifier = modifier.liquidGlass(shape, material, appearance, tint, refraction, interactive, motion),
             contentAlignment = contentAlignment,
@@ -206,13 +207,25 @@ public fun GlassIcon(
     )
 }
 
-/** Provides the foreground color for glass of this appearance and tint. */
+/**
+ * Provides the foreground color for glass of this appearance, material and tint: on a tint, white or `#111113`,
+ * whichever has the higher contrast with the tinted glass ([darkLabelOnTint]), as on the other platforms.
+ */
 @Composable
-internal fun ProvideGlassContentColor(appearance: GlassAppearance?, tint: Color, content: @Composable () -> Unit) {
-    val dark = currentGlassStyle().isDark(appearance)
+internal fun ProvideGlassContentColor(
+    appearance: GlassAppearance?,
+    tint: Color,
+    material: GlassMaterial?,
+    content: @Composable () -> Unit,
+) {
+    val style = currentGlassStyle()
     val color = when {
-        tint.isSpecified -> if (tint.luminance() > 0.6f) GlassDefaults.LightContentColor else GlassDefaults.DarkContentColor
-        else -> GlassDefaults.contentColor(dark)
+        tint.isSpecified -> {
+            val srgb = tint.convert(ColorSpaces.Srgb)
+            val regular = style.material(material) == GlassMaterial.Regular
+            if (darkLabelOnTint(srgb.red, srgb.green, srgb.blue, regular)) GlassDefaults.LightContentColor else GlassDefaults.DarkContentColor
+        }
+        else -> GlassDefaults.contentColor(style.isDark(appearance))
     }
     CompositionLocalProvider(LocalGlassContentColor provides color, content = content)
 }

@@ -4,7 +4,7 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 
 <p align="center">
   <img src="images/android/hero-dark.png" width="24%" alt="Hero: a frosted glass card over the Aurora wallpaper, with a floating toolbar and tab bar">
-  <img src="images/android/controls-light.png" width="24%" alt="Controls: glass buttons, sliders, switches, a tab bar and a menu">
+  <img src="images/android/controls-light.png" width="24%" alt="Controls, scrolled to the end: glass icon buttons, sliders and switches on a frosted card, a segmented tab bar and a menu trigger above the floating tab bar">
   <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button">
   <img src="images/android/blur-light.png" width="24%" alt="A scrolling journal under progressive edge blur and a glass toolbar">
 </p>
@@ -212,7 +212,7 @@ GlassButton(Icons.Default.Share, contentDescription = "Share", onClick = {})    
 GlassButton("Delete", onClick = {}, enabled = false)                                 // dimmed to 45%, glass and label
 ```
 
-A tint makes a prominent button: the glass takes the color, and the label turns white or `#111113`, whichever reads better.
+A tint makes a prominent button: the glass takes the color, and the label turns white or `#111113`, whichever has the higher WCAG contrast with the tinted glass (white on blue, red or purple; dark on yellow, mint, green or orange), as on the other platforms.
 
 ### `GlassText` and `GlassIcon`
 
@@ -235,7 +235,7 @@ With `interactive = true` (the default) the cluster under the finger grows and l
 
 ### `GlassTabBar`
 
-A 62 dp capsule of tabs with a glass lens on the selection. The lens slides to a new tab on the track spring, lifting into Clear glass and stretching with its speed. Drag it across the bar to choose a tab; arrow keys move the selection.
+A 62 dp capsule of tabs with a glass lens on the selection. The lens slides to a new tab on the track spring, lifting into glass of the bar's own material (so a Regular bar stays frosted under the selection) and stretching with its speed. Drag it across the bar to choose a tab; arrow keys move the selection.
 
 ```kotlin
 var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -343,7 +343,7 @@ Interactive glass uses the spec's damped springs, solved in closed form and adva
 | morph | 0.42 s | 0.18 | menus growing out of their trigger |
 | track | 0.18 s (+0.0005·size while dragging) | 0 | the tab bar lens, drag follow |
 
-A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed stretches it toward the finger on a rubber band, preserving volume, and a radial glow (alpha 0.30 light, 0.16 dark) blooms under the finger. Mouse hover lights it to 35%. Glass only observes pointer input; your `clickable`, `draggable` and `pointerInput` modifiers keep working. With `interactive = false` glass stays still: it neither grows, stretches nor lights up, also when an `interactionSource` is passed (clicks on the element still work), so `GlassButton(interactive = false)` is a static glass button.
+A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed stretches it toward the finger on a rubber band, preserving volume, and a radial glow (alpha 0.30 light, 0.16 dark) blooms under the finger. Mouse hover lights it to 35%. Glass only observes pointer input; your `clickable`, `draggable` and `pointerInput` modifiers keep working. With `interactive = false` glass stays still: it neither grows, stretches nor lights up, also when an `interactionSource` is passed (clicks on the element still work), so `GlassButton("Static", onClick = {}, interactive = false)` is a static glass button (every overload takes `interactive`, `refraction` and `motion`).
 
 **Reduced motion:** with the system "Remove animations" setting (animator duration scale 0) or `motion = GlassMotion.Reduced`, glass does not grow, stretch or overshoot, and springs become critically damped crossfades. `GlassMotion.None` removes transitions entirely.
 
@@ -362,7 +362,7 @@ A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed str
 
 - One shader pass draws all surfaces of a scene. Pixels outside every surface cost a bounds check per surface; glass pixels cost a few bilinear samples plus the tone, tint and rim math. The program is compiled once per process and shared by every scene, including the private scenes of sliders and switches.
 - Regular glass adds two GPU blurs of the content layer (σ 7.33 dp and 23 dp). Skia downsamples large blurs, so they are cheap; scenes without Regular glass skip them.
-- A scene refracts up to **16 surfaces** (`GlassDefaults.MaxSurfacesPerScene`) on the GPU at once; surfaces outside the scene's bounds, clipped away or faded out (`opacity` 0, like a tab bar's resting lens) don't count. Any beyond that draw the fallback material over a platform blur, so nothing disappears. Nest scenes to go further.
+- A scene refracts up to **16 surfaces** (`GlassDefaults.MaxSurfacesPerScene`) on the GPU at once; surfaces outside the scene's bounds, clipped away or faded out (`opacity` 0, like a tab bar's resting lens) don't count. Any beyond that draw the fallback material (Regular surfaces over a platform blur, Clear ones a translucent fill), so nothing disappears. Nest scenes to go further.
 - Nothing animates while idle, including while a finger rests on a control after its springs settle. Only the shader passes are rebuilt when the content layer redraws (content changes, a surface moving, or a spring advancing); the frost and fallback blurs and each band's blur levels are kept until the density or the band's geometry changes.
 - Progressive blur draws six band-sized blur layers per band; keep bands as small as the design allows.
 
@@ -371,12 +371,12 @@ A press grows the surface by `min(16%, 8 dp / size)`. Dragging while pressed str
 | Where | What draws |
 | --- | --- |
 | Android 13+ inside a scene | The AGSL glass. |
-| Android 12 inside a scene | The fallback material (Regular glass over the platform blur of the content), plus the rim light. Progressive blur works. |
+| Android 12 inside a scene | The fallback material (Regular surfaces over the platform blur of the content, Clear ones a translucent fill), plus the rim light. Progressive blur works. |
 | Android 7–11 inside a scene | The fallback material (a translucent fill) plus the rim light. Progressive blur becomes a fade toward the edge. |
 | Outside any `GlassScene` | The fallback material (no backdrop to blur), plus the rim light. |
 | Inside the scene's own `GlassContent` | The fallback material: glass cannot refract the layer it is part of. Use a nested scene. |
 | Wholly outside the `GlassContent`'s bounds | The fallback material (the content layer has nothing there to refract). Glass across the content's edge keeps the GPU glass. |
-| More than 16 surfaces | Surfaces beyond the limit get the fallback material over a platform blur. |
+| More than 16 surfaces | Surfaces beyond the limit get the fallback material (Regular surfaces over a platform blur, Clear ones a translucent fill). |
 
 Glass never crashes and never draws nothing.
 
@@ -413,7 +413,7 @@ adb shell am start -n io.github.rookasrudzianskas.liquidglass.studio/.MainActivi
 
 ## Building and testing
 
-The Gradle project lives in `platforms/android` (JDK 17):
+The Gradle project lives in `platforms/android`. It needs JDK 17 and the Android SDK (platform 35); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties`:
 
 ```sh
 cd platforms/android

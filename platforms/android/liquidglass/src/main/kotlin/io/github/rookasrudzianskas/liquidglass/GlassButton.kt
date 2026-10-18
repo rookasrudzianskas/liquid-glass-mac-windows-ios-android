@@ -136,6 +136,10 @@ public fun GlassButton(
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass.
  * @param interactionSource source of the button's interactions.
+ * @param refraction optical travel at the rim, used as given; [Dp.Unspecified] takes the scene's, or follows the
+ *   resting size ([GlassDefaults.refraction]).
+ * @param interactive whether the glass grows, stretches and lights up under the finger; false is a static glass button.
+ * @param motion overrides the scene's motion.
  */
 @Composable
 public fun GlassButton(
@@ -149,6 +153,9 @@ public fun GlassButton(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     interactionSource: MutableInteractionSource? = null,
+    refraction: Dp = Dp.Unspecified,
+    interactive: Boolean = true,
+    motion: GlassMotion? = null,
 ) {
     GlassButton(
         onClick = onClick,
@@ -158,6 +165,9 @@ public fun GlassButton(
         material = material,
         appearance = appearance,
         tint = tint,
+        refraction = refraction,
+        interactive = interactive,
+        motion = motion,
         interactionSource = interactionSource,
     ) {
         if (icon != null) GlassIcon(icon, contentDescription = null, size = size.iconSize)
@@ -178,6 +188,10 @@ public fun GlassButton(
  * @param appearance light or dark; null inherits the scene's.
  * @param tint colors the glass.
  * @param interactionSource source of the button's interactions.
+ * @param refraction optical travel at the rim, used as given; [Dp.Unspecified] takes the scene's, or follows the
+ *   resting size ([GlassDefaults.refraction]).
+ * @param interactive whether the glass grows, stretches and lights up under the finger; false is a static glass button.
+ * @param motion overrides the scene's motion.
  */
 @Composable
 public fun GlassButton(
@@ -191,6 +205,9 @@ public fun GlassButton(
     appearance: GlassAppearance? = null,
     tint: Color = Color.Unspecified,
     interactionSource: MutableInteractionSource? = null,
+    refraction: Dp = Dp.Unspecified,
+    interactive: Boolean = true,
+    motion: GlassMotion? = null,
 ) {
     GlassButtonLayout(
         onClick = onClick,
@@ -201,9 +218,9 @@ public fun GlassButton(
         material = material,
         appearance = appearance,
         tint = tint,
-        refraction = Dp.Unspecified,
-        interactive = true,
-        motion = null,
+        refraction = refraction,
+        interactive = interactive,
+        motion = motion,
         interactionSource = interactionSource,
         iconOnly = true,
     ) {
@@ -283,7 +300,7 @@ private fun GlassButtonLayout(
         }
     }
     // Toolbar items sit on the toolbar's glass and keep its foreground color.
-    if (toolbarItem) button() else ProvideGlassContentColor(appearance, tint, button)
+    if (toolbarItem) button() else ProvideGlassContentColor(appearance, tint, material, button)
 }
 
 /** Keyboard focus ring around glass controls. */

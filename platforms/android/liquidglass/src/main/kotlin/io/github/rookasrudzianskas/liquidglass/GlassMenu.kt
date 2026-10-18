@@ -416,7 +416,7 @@ private fun MenuPanel(
     val menuTitle = stringResource(R.string.liquidglass_menu)
     if (expanded && LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
-    ProvideGlassContentColor(appearance, tint) {
+    ProvideGlassContentColor(appearance, tint, material) {
         // The panel sees its call site's locals; it is not part of a toolbar even when its trigger is.
         CompositionLocalProvider(LocalMenuDismiss provides onDismiss, LocalGlassToolbarItem provides false, LocalGlassToolbarClusters provides null) {
             Column(
