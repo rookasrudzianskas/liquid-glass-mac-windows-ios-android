@@ -25,7 +25,7 @@ body:
     attributes:
       label: Library version
       description: The package version, or the commit if you build from source.
-      placeholder: "1.0.0"
+      placeholder: "1.0.1"
     validations:
       required: true
   - type: input

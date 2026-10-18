@@ -15,7 +15,7 @@ Native Liquid Glass for iOS, macOS, Android and Windows: refraction, Clear and R
   <a href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/actions/workflows/website.yml"><img src="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/actions/workflows/website.yml/badge.svg?branch=main" alt="Website"></a>
   <a href="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/actions/workflows/spec.yml"><img src="https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/actions/workflows/spec.yml/badge.svg?branch=main" alt="Spec"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version 1.0.0"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-1.0.1-blue" alt="Version 1.0.1"></a>
 </p>
 
 <p align="center">
@@ -69,7 +69,7 @@ or in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.0"),
+    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.1"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
@@ -98,13 +98,13 @@ dependencyResolutionManagement {
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.0")
+    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
     // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
     implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
 ```
 
-JitPack (`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0`, a secondary route whose first build of a version can take a few minutes) and a plain AAR from the downloads page work too; see [Install](docs/android.md#install) in the Android guide.
+JitPack (`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.1`, a secondary route whose first build of a version can take a few minutes) and a plain AAR from the downloads page work too; see [Install](docs/android.md#install) in the Android guide.
 
 ### NuGet (Windows)
 
@@ -118,7 +118,7 @@ dotnet add package LiquidGlassEngineering.Wpf
 or in the project file:
 
 ```xml
-<PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
+<PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
 ```
 
 To keep the feed with the code, add a `nuget.config` next to the solution; see [Install](docs/windows.md#install) in the Windows guide.

@@ -21,7 +21,7 @@
     <RestoreAdditionalProjectSources>https://liquid-glass-engineering.vercel.app/nuget/index.json</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
+    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
   </ItemGroup>
   -->
 

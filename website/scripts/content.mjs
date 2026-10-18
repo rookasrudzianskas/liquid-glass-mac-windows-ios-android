@@ -819,7 +819,7 @@ async function buildStaticCode() {
   const manifest = await readJson(path.join(pub, "downloads/manifest.json"), null);
   const nuget = manifest?.items?.filter((i) => i.id?.startsWith("nuget-") && i.packageId) ?? [];
   const nugetId = (nuget.find((i) => /wpf/i.test(i.packageId)) ?? nuget[0])?.packageId ?? "LiquidGlassEngineering.Wpf";
-  const vars = { NUGET_ID: nugetId, VERSION: manifest?.version ?? "1.0.0", SITE_URL };
+  const vars = { NUGET_ID: nugetId, VERSION: manifest?.version ?? "1.0.1", SITE_URL };
   const fill = (s) => s.replace(/\{\{(\w+)\}\}/g, (_m, k) => vars[k] ?? _m);
   await writeIfChanged(path.join(gen, "packages.json"), json({ nugetId, version: vars.VERSION }));
   const out = {};
@@ -1155,7 +1155,7 @@ async function buildDownloads() {
       notes[item.id] = "Not code-signed, so Windows SmartScreen may stop the first launch: choose More info › Run anyway.";
     }
   }
-  await writeIfChanged(path.join(gen, "downloads.json"), json({ ...(manifest ?? { schema: 1, version: "1.0.0", generatedAt: null, items: [] }), notes }));
+  await writeIfChanged(path.join(gen, "downloads.json"), json({ ...(manifest ?? { schema: 1, version: "1.0.1", generatedAt: null, items: [] }), notes }));
   log(`downloads: ${manifest ? `${manifest.items.filter((i) => i.available).length}/${manifest.items.length} available` : "no manifest yet"}`);
 }
 

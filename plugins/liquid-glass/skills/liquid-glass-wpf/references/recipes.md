@@ -1,6 +1,6 @@
 # Recipes: Liquid Glass for WPF
 
-Seven complete windows built with `LiquidGlassEngineering.Wpf` 1.0.0. Each is a XAML file plus its code-behind in one
+Seven complete windows built with `LiquidGlassEngineering.Wpf` 1.0.1. Each is a XAML file plus its code-behind in one
 WPF project named `GlassRecipes`; set `StartupUri` in `App.xaml` to the window you want to run.
 
 ## Contents
@@ -19,7 +19,7 @@ WPF project named `GlassRecipes`; set `StartupUri` in `App.xaml` to the window y
 dotnet new wpf -n GlassRecipes
 cd GlassRecipes
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
-dotnet add package LiquidGlassEngineering.Wpf --version 1.0.0
+dotnet add package LiquidGlassEngineering.Wpf --version 1.0.1
 ```
 
 Then replace the generated project file and `App.xaml` with the ones below, add `app.manifest` and the images under
@@ -39,7 +39,7 @@ Then replace the generated project file and `App.xaml` with the ones below, add 
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
+    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
   </ItemGroup>
   <ItemGroup>
     <!-- Backdrops: any vivid images; album.jpg should be square. -->

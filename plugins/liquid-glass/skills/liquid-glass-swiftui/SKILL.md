@@ -34,7 +34,7 @@ app target. In `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.0"),
+    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.1"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
@@ -427,7 +427,7 @@ GlassScene {
 
 ## Checklist
 
-- [ ] Package added (`from: "1.0.0"`), product `LiquidGlass`, deployment target
+- [ ] Package added (`from: "1.0.1"`), product `LiquidGlass`, deployment target
       iOS 17 / macOS 14, built with Xcode 16 or later, `import LiquidGlass`; `CADisableMinimumFrameDurationOnPhone` =
       `YES` in an iPhone app's Info.plist.
 - [ ] One `GlassScene` per screen with a definite size (never inside a `ScrollView`); `GlassContent` first,

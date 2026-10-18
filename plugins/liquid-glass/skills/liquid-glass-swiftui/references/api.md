@@ -1,4 +1,4 @@
-# API reference: LiquidGlass 1.0.0 (SwiftUI)
+# API reference: LiquidGlass 1.0.1 (SwiftUI)
 
 Every public declaration of the `LiquidGlass` module (the package's `Sources/LiquidGlass` folder), copied from the
 source with its parameter defaults. Units are points. In every component, an optional option left `nil` inherits

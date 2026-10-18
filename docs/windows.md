@@ -41,7 +41,7 @@ dotnet add package LiquidGlassEngineering.Wpf
 or in the project file:
 
 ```xml
-<PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.0" />
+<PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
 ```
 
 To keep the feed with the code, so that CI and other machines restore without that step, put a `nuget.config` next to

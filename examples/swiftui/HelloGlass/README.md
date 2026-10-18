@@ -47,13 +47,13 @@ instead:
 1. In Xcode, select the project, open **Package Dependencies**, and remove the local `LiquidGlass` package.
 2. Choose **+** (or **File › Add Package Dependencies…**), enter
    `https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android`, set **Up to Next Major Version** from
-   `1.0.0`, and add the **LiquidGlass** library to the HelloGlass target.
+   `1.0.1`, and add the **LiquidGlass** library to the HelloGlass target.
 
 With a `Package.swift`, the same dependency is
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.0"),
+    .package(url: "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android", from: "1.0.1"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [

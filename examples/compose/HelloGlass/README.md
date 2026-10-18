@@ -37,7 +37,7 @@ The app depends on the library by its published coordinates, through the version
 ```toml
 # gradle/libs.versions.toml
 [versions]
-liquidGlass = "1.0.0"
+liquidGlass = "1.0.1"
 
 [libraries]
 liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-compose", version.ref = "liquidGlass" }
@@ -46,7 +46,7 @@ liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-comp
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation(libs.liquid.glass.compose) // or implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.0")
+    implementation(libs.liquid.glass.compose) // or implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
 }
 ```
 
@@ -73,6 +73,6 @@ dependencyResolutionManagement {
 }
 ```
 
-The repository serves the build of the `1.0.0` release. A build that resolved `1.0.0` from it before the release got a pre-release copy (it lacks `GlassSwitch(label = …)`, which this app uses, and the size-based refraction) and Gradle keeps that copy in its cache: run `./gradlew --refresh-dependencies :app:assembleDebug` once to fetch the release.
+The repository serves the build of the `1.0.1` release.
 
-JitPack works too, as a secondary route: add `maven("https://jitpack.io")` and depend on `com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0` (JitPack builds a version the first time it is requested, which can take a few minutes). The [Android guide](../../../docs/android.md#install) has every install route, including the plain AAR.
+JitPack works too, as a secondary route: add `maven("https://jitpack.io")` and depend on `com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.1` (JitPack builds a version the first time it is requested, which can take a few minutes). The [Android guide](../../../docs/android.md#install) has every install route, including the plain AAR.

@@ -1,6 +1,6 @@
 # Recipes: Liquid Glass for SwiftUI
 
-Six complete views built with the `LiquidGlass` Swift package (1.0.0, iOS 17+ and macOS 14+). Each file compiles on
+Six complete views built with the `LiquidGlass` Swift package (1.0.1, iOS 17+ and macOS 14+). Each file compiles on
 its own for iOS and macOS; add it to an app target that depends on the `LiquidGlass` product.
 
 ## Contents
@@ -15,7 +15,7 @@ its own for iOS and macOS; add it to an app target that depends on the `LiquidGl
 ## Setup shared by every recipe
 
 Add the package (Xcode: **File › Add Package Dependencies…**, paste
-`https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android`, from `1.0.0`, product `LiquidGlass`)
+`https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android`, from `1.0.1`, product `LiquidGlass`)
 and host a recipe in the app's window. Build and run with Xcode 16 or later (the Metal shaders are compiled by
 Xcode, not by `swift build`, and the iOS target needs the iOS 18 SDK). For 120 Hz glass on ProMotion iPhones, set
 `CADisableMinimumFrameDurationOnPhone` to `YES` in the app's Info.plist.

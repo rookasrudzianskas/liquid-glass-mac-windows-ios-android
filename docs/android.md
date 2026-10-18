@@ -11,7 +11,7 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 
 | | |
 | --- | --- |
-| Artifact | `io.github.rookasrudzianskas:liquid-glass-compose:1.0.0` |
+| Artifact | `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1` |
 | Min SDK | 24 (Android 7). The GPU glass path needs 33 (Android 13); below that a fallback material is drawn. |
 | Built with | Kotlin 2.0.21, Compose UI/Foundation 1.7.6, compileSdk 35 |
 | Dependencies | `androidx.compose.ui:ui`, `androidx.compose.foundation:foundation`, `androidx.activity:activity-compose` |
@@ -51,7 +51,7 @@ dependencyResolutionManagement {
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.0")
+    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
     // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
     implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
@@ -75,7 +75,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0")
+    implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.1")
     // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
     implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
@@ -85,7 +85,7 @@ JitPack builds `platforms/android` from the release tag (see [`jitpack.yml`](../
 
 ### As an AAR
 
-Download `liquid-glass-compose-1.0.0.aar` from the website's downloads, put it in `app/libs/` and add `implementation(files("libs/liquid-glass-compose-1.0.0.aar"))` together with the Compose UI, Foundation and Activity Compose dependencies listed above, and `material-icons-core` for the quick start's icons (an AAR carries no dependency information).
+Download `liquid-glass-compose-1.0.1.aar` from the website's downloads, put it in `app/libs/` and add `implementation(files("libs/liquid-glass-compose-1.0.1.aar"))` together with the Compose UI, Foundation and Activity Compose dependencies listed above, and `material-icons-core` for the quick start's icons (an AAR carries no dependency information).
 
 The library needs no ProGuard or R8 rules.
 
@@ -129,7 +129,7 @@ Three rules cover almost everything:
 2. **One `GlassContent`** inside it, first, holds what the glass refracts: its content, and anything its modifier draws (`GlassContent(Modifier.fillMaxSize().background(gradient)) {}` works too).
 3. **Glass goes anywhere else in the scene**: `GlassSurface`, `Modifier.liquidGlass()` and every `Glass*` control, at any depth, moving, scrolling, scaling or animating.
 
-[`examples/compose/HelloGlass`](../examples/compose/HelloGlass) is a complete one-screen app built this way: a Regular glass card with a tinted and a plain button and a Frosted switch, a toolbar and a tab bar over the Aurora wallpaper, in one Kotlin file. It depends on `io.github.rookasrudzianskas:liquid-glass-compose:1.0.0`, resolved from this repository's source; its README shows how to take the published package instead.
+[`examples/compose/HelloGlass`](../examples/compose/HelloGlass) is a complete one-screen app built this way: a Regular glass card with a tinted and a plain button and a Frosted switch, a toolbar and a tab bar over the Aurora wallpaper, in one Kotlin file. It depends on `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1`, resolved from this repository's source; its README shows how to take the published package instead.
 
 ## How it works
 
@@ -434,7 +434,7 @@ cd platforms/android
 ./gradlew :studio:assembleRelease
 ```
 
-Outputs go to `artifacts/android/`: `liquid-glass-compose-1.0.0.aar` and a Maven repository in `maven/`. A release build of the Studio is signed with the key named in `platforms/android/local-signing.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; never committed), or with the debug key when that file is absent. CI ([`.github/workflows/android.yml`](../.github/workflows/android.yml)) runs the unit tests, lint, the library and APK builds, the Hello Glass example's build and lint, and the device tests on Android 14 (the GPU glass), Android 12 (the fallback over the platform blur) and Android 9 (the fallback without blur) emulators.
+Outputs go to `artifacts/android/`: `liquid-glass-compose-1.0.1.aar` and a Maven repository in `maven/`. A release build of the Studio is signed with the key named in `platforms/android/local-signing.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; never committed), or with the debug key when that file is absent. CI ([`.github/workflows/android.yml`](../.github/workflows/android.yml)) runs the unit tests, lint, the library and APK builds, the Hello Glass example's build and lint, and the device tests on Android 14 (the GPU glass), Android 12 (the fallback over the platform blur) and Android 9 (the fallback without blur) emulators.
 
 The Hello Glass example is a Gradle build of its own that includes this one, so it builds the library from source:
 
