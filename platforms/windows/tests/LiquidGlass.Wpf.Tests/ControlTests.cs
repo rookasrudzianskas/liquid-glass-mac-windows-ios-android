@@ -463,6 +463,58 @@ public class ControlTests
     }
 
     /// <summary>
+    /// A menu opened a second time draws its panel at its items' size: the closed panel is collapsed, and measured that
+    /// way it came back with no height (its glass and items invisible). An item added while it is closed makes it taller.
+    /// </summary>
+    [Theory]
+    [InlineData(GlassMotion.None)]
+    [InlineData(GlassMotion.Full)]
+    public void MenuReopensAtTheSizeOfItsItems(GlassMotion motion)
+    {
+        Sta.Run(() =>
+        {
+            var menu = new GlassMenu
+            {
+                Header = "Sort",
+                Motion = motion,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Items = { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" } },
+            };
+            var window = Sta.Show(Scene(menu));
+            void Settle()
+            {
+                var settle = System.Diagnostics.Stopwatch.StartNew();
+                while (GlassFrameLoop.IsRunning(menu) && settle.Elapsed < TimeSpan.FromSeconds(8)) Sta.Wait(0.05);
+                Sta.Pump();
+            }
+            menu.IsOpen = true;
+            Settle();
+            var panel = menu.Panel!;
+            var height = panel.ActualHeight;
+            Assert.True(height > 60, $"first opening: {height:F1} high");
+            Assert.True(panel.IsVisible);
+
+            menu.IsOpen = false;
+            Settle();
+            Assert.False(panel.IsVisible);
+            menu.IsOpen = true;
+            Settle();
+            Assert.True(panel.IsVisible);
+            Assert.Equal(height, panel.ActualHeight, 1);
+            Assert.Equal(height, panel.Lens!.ShapeBounds.Height, 1);
+
+            menu.IsOpen = false;
+            Settle();
+            menu.Items.Add(new GlassMenuItem { Header = "Kind" });
+            menu.IsOpen = true;
+            Settle();
+            Assert.True(panel.ActualHeight > height + 20, $"with a third item: {panel.ActualHeight:F1} high, {height:F1} with two");
+            window.Close();
+        });
+    }
+
+    /// <summary>
     /// A menu row highlights in its label color at 8% (<see cref="GlassOptics.MenuHighlight"/>) for the pointer, keyboard
     /// focus and a press alike: a press no longer deepens it, since the menu's contrast floor counts the highlight.
     /// </summary>

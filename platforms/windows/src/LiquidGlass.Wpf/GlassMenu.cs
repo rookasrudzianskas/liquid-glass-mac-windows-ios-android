@@ -325,6 +325,9 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     {
         if (_trigger is null || !IsLoaded) return;
         var panel = EnsurePanel();
+        // Visible before it is measured: a panel collapsed by an earlier close measures as nothing, and would reopen
+        // with no height.
+        panel.Visibility = Visibility.Visible;
         var scene = GlassScene.FindScene(this);
         if (scene is not null && !scene.IsInBackdrop(this))
         {
@@ -355,7 +358,6 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
             _mirrored = false;
             _popup.IsOpen = true;
         }
-        panel.Visibility = Visibility.Visible;
         HookDismiss();
         var motion = GlassResolve.Motion(this);
         if (motion != GlassMotion.None && _layer is not null)
@@ -457,6 +459,9 @@ public class GlassMenu : HeaderedItemsControl, IGlassAnimation
     private void Place(GlassScene scene)
     {
         if (_panel is null || _trigger is null || _layer is null) return;
+        // Measured for its items as they are now, not at the size an earlier opening gave it.
+        _panel.ClearValue(WidthProperty);
+        _panel.ClearValue(HeightProperty);
         _panel.Measure(new Size(Math.Max(0, scene.ActualWidth - 2 * Gap), Math.Max(0, scene.ActualHeight - 2 * Gap)));
         var size = new Size(Math.Max(_panel.DesiredSize.Width, Math.Max(MinPanelWidth, _trigger.ActualWidth)), _panel.DesiredSize.Height);
         var trigger = _trigger.TransformToVisual(_layer).TransformBounds(new Rect(_trigger.RenderSize));
