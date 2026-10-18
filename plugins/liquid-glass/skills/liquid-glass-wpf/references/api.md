@@ -438,7 +438,9 @@ panels tinted with the platform's system colors at least 5.0:1 (5.07:1 at worst,
 Windows accent colors stay above 5.6:1); very light tints (pure yellow 4.37:1,
 white 4.13:1 in dark appearance over white) are not covered. The fallback material paints the backing over its veil
 or tint fill at `GlassFallback.LegibilityOpacity`, which keeps its labels at least as legible as the shader's where
-they contrast least. The trigger and other glass draw without the backing, and it is not an option. It closes when an item is
+they contrast least, and the opaque material (transparency reduced, no scene) paints it over its fill at the same
+opacity, so it keeps those floors too (5.11:1 over the system colors, 12.6:1 untinted). Shortcut text is drawn in the
+label's color, so the floors hold for it. The trigger and other glass draw without the backing, and it is not an option. It closes when an item is
 chosen, on Escape, Alt+F4, a click outside and when the window deactivates; Down or Enter on the trigger opens it with
 the first item focused; arrow keys and Tab cycle through items. The panel floats in the enclosing scene's top layer,
 clamped inside the scene (it cannot leave the window), and lines up with the trigger's start edge (in right-to-left
@@ -487,7 +489,7 @@ public class GlassMenuItem : ButtonBase
 public GlassMenuItem()
 public object? Header { get; set; }             // the label (AddOwner of HeaderedContentControl.HeaderProperty), see below
 public object? Icon { get; set; }               // drawn before the label; a glyph string renders in the icon font automatically
-public string InputGestureText { get; set; }    // default "": shortcut text after the label, at 0.55 opacity
+public string InputGestureText { get; set; }    // default "": shortcut text after the label, in its color
 public bool IsCheckable { get; set; }           // default false: choosing toggles IsChecked
 public bool IsChecked { get; set; }             // default false, BindsTwoWayByDefault; shows a check mark (glyph E73E)
 public bool StaysOpenOnClick { get; set; }      // default false

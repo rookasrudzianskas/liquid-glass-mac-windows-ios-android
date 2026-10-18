@@ -360,7 +360,12 @@ white backdrop in dark appearance a highlighted item on a pure yellow menu falls
 tint fill at the opacity that keeps the labels at least as legible as on the shader's glass where they contrast least
 (`GlassFallback.LegibilityOpacity`, 0.59 to 0.63 untinted), so its floors are the shader's or a little higher: 5.37:1
 and 5.24:1 for Regular and Clear in dark appearance, 7.56:1 and 6.75:1 in light, 5.11:1 over the system colors. The
-trigger and every other glass surface draw without the backing, and the trigger keeps its tint's own foreground. The
+opaque material (transparency effects off, `ReduceTransparency`, or a menu outside a scene, which opens in a popup)
+paints the backing over its fill at the same opacity, so it keeps those floors as well: on a tinted menu its fill is
+the fallback's tint fill (5.11:1 over the system colors, 5.64:1 over the Windows accents), and untinted menus keep
+12.6:1 on the reduced-transparency fill. Shortcut text (`InputGestureText`) is drawn in the label's color, so every
+floor here holds for it too. The trigger and every other glass surface draw without the backing, and the trigger keeps
+its tint's own foreground. The
 backing is part of the menu, not an option: `GlassOptics.MenuLegibility` (0.6), `GlassOptics.MenuHighlight` (0.08) and
 `GlassPalette.LegibilityBacking` give its values.
 
@@ -402,13 +407,14 @@ menu.Opened += (_, _) => Log("opened");
 is loaded.
 
 `GlassMenuItem` (a `ButtonBase`): `Header` (the label; it keeps the label current when it changes), `Icon`,
-`InputGestureText`, `IsCheckable`, `IsChecked`, `StaysOpenOnClick`, `Command`, `Click`, and `Checked` and `Unchecked`
-(the same routed events as WPF's `MenuItem`), raised however the check mark changes. Items draw in the glass text
-font whatever font the trigger uses, so an icon font on an icon-only menu does not reach them; set `FontFamily` on an
-item (or in `ItemContainerStyle`) to change it. Items' routed events (such as `Click`) bubble through the panel in the
-scene's popup layer, not through the menu: handle them on the item, or use commands. The menu and its panel are focus
-scopes, as WPF's menus and toolbars are, so a routed command such as `ApplicationCommands.Copy` that nothing in the
-menu handles goes on to the element that has focus in the window (the text box whose selection it copies).
+`InputGestureText` (shortcut text after the label, in the label's color; display only), `IsCheckable`, `IsChecked`,
+`StaysOpenOnClick`, `Command`, `Click`, and `Checked` and `Unchecked` (the same routed events as WPF's `MenuItem`),
+raised however the check mark changes. Items draw in the glass text font whatever font the trigger uses, so an icon
+font on an icon-only menu does not reach them; set `FontFamily` on an item (or in `ItemContainerStyle`) to change it.
+Items' routed events (such as `Click`) bubble through the panel in the scene's popup layer, not through the menu:
+handle them on the item, or use commands. The menu and its panel are focus scopes, as WPF's menus and toolbars are, so
+a routed command such as `ApplicationCommands.Copy` that nothing in the menu handles goes on to the element that has
+focus in the window (the text box whose selection it copies).
 
 UI Automation: the trigger button, which takes keyboard focus, is a Button with ExpandCollapse and the menu's state;
 the open panel is a Menu named after the menu's current header (raising MenuOpened and MenuClosed) whose items are
@@ -534,7 +540,7 @@ Glass never draws nothing and never crashes.
 | Pixel shader 3.0 in hardware (normal) | The glass shader. |
 | No pixel shader 3.0, a render tier below 2, software rendering (`RenderOptions.ProcessRenderMode = SoftwareOnly`), a window in software mode, a Remote Desktop session that renders in software, fewer than 1024 shader instruction slots | The fallback material: the frosted copy for Regular, a veil fitted to the material's tone curve (on a menu panel, the legibility backing over it), the rim light rasterized from the same model as the shader, the pointer glow and focus ring. |
 | `RenderMode="Fallback"` | The fallback material, always. Set it on what you snapshot with `RenderTargetBitmap`: WPF renders snapshots in software, where the shader cannot run, so glass in `Automatic` mode would be missing from the image. |
-| Transparency effects off, `ReduceTransparency`, glass outside a `GlassScene`, glass inside the scene's `Content` | The opaque material with the rim light. |
+| Transparency effects off, `ReduceTransparency`, glass outside a `GlassScene`, glass inside the scene's `Content` | The opaque material with the rim light (on a menu panel, the legibility backing over its fill). |
 | Contrast theme | System colors. |
 | d3dcompiler_47.dll missing and bytecode stale | The fallback material. |
 | The graphics driver rejects the shader | The fallback material, from then on, in every window of the process. |
@@ -605,7 +611,10 @@ pixels, the six menu panels at legibility 0.6 among them), and exercises the con
 Framework 4.8. Its menu rendering test opens Regular and Clear menus in both appearances, untinted and tinted with the
 system blue, the system yellow in its light and dark variants and the Windows 11 accent, over white or black with a row
 pressed, and holds the plain and highlighted rows, in the shader and in the fallback material, to the reference within
-3 levels and to 5.2:1 (untinted) or 5.0:1 (tinted). The [Windows workflow](../.github/workflows/windows.yml) builds,
+3 levels and to 5.2:1 (untinted) or 5.0:1 (tinted); a second one does the same for the opaque material, with
+transparency reduced in a scene and outside any scene (in a popup). The animation tests advance the springs by one
+fixed step per frame and sample them after each step, so a loaded machine cannot skip what they check, and the three
+.NET test hosts run one after another. The [Windows workflow](../.github/workflows/windows.yml) builds,
 tests, compiles the shader with fxc, captures Studio (also under a contrast theme), builds, runs and captures the
 [Hello Glass example](../examples/wpf/HelloGlass), publishes the x64, Arm64 and self-contained Studio builds and
 smoke-tests the x64 ones, and packs and checks the NuGet packages on every push to main and every pull request that

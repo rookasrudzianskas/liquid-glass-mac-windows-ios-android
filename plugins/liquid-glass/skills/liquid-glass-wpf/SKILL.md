@@ -366,7 +366,8 @@ buttons; the glass re-aligns by itself.
   `#111113` from the backed glass, which at 0.6 is the appearance's foreground too) and a highlighted item mixes it in
   at 8%, so untinted menus (Regular or Clear) keep at least 5.2:1 over any backdrop and menus tinted with the
   platform's system colors at least 5.0:1 (5.07:1 at worst, the Apple dark-appearance yellow; Windows accent colors
-  stay above 5.6:1), highlighted items included, in the fallback material too. Very light tints
+  stay above 5.6:1), highlighted items and shortcut text included, in the fallback and opaque materials too (with
+  transparency reduced, or outside a scene, the backing goes over the opaque fill). Very light tints
   (pure yellow, white) fall below 4.5:1 over white in dark appearance: tint menus with a deeper color, or not at all.
   Don't add a background to the panel or its items to make them readable; the trigger and other glass stay plain
   glass.
@@ -434,7 +435,8 @@ buttons; the glass re-aligns by itself.
 - Items' routed events (`Click`, `Checked`) bubble through the panel in the scene's top layer, not through the menu:
   handle them on the item (or in `ItemContainerStyle`), or use commands. `GlassMenuItem.Header` is the label and keeps
   it current when it changes; `Content` set by the application takes over from it.
-- `InputGestureText` only displays the shortcut. Register it yourself with a `KeyBinding` in `Window.InputBindings`.
+- `InputGestureText` only displays the shortcut, in the label's color. Register it yourself with a `KeyBinding` in
+  `Window.InputBindings`.
 - The menu, its panel and the toolbar are focus scopes, as WPF's menus and toolbars are: a routed `Command`
   (`ApplicationCommands.Copy`) on a `GlassMenuItem` or a toolbar button that nothing in the menu or toolbar handles
   goes on to the element that has focus in the window (the text box whose selection it copies). A routed command on a
