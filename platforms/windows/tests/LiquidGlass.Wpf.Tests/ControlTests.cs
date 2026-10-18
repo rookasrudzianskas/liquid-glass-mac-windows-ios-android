@@ -366,7 +366,7 @@ public class ControlTests
             Assert.Equal(0, panel.Lens!.Legibility);
             Settle();
 
-            // The open panel mixes its glass halfway toward the backing (OPTICS §3); the trigger and other glass do not.
+            // The open panel mixes its glass 60% toward the backing (OPTICS §3); the trigger and other glass do not.
             Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
             var triggerLenses = Visuals<GlassLens>(menu.Trigger!).ToList();
             Assert.NotEmpty(triggerLenses);
@@ -397,10 +397,11 @@ public class ControlTests
         .SelectMany(tint => new[] { new object[] { tint, false }, new object[] { tint, true } });
 
     /// <summary>
-    /// On a tinted menu the items take white or <c>#111113</c> from the panel's glass as it draws, the tint mixed toward
-    /// the legibility backing, not from the tint alone (which gave white labels on a light blue panel lightened toward
-    /// <c>#F5F5F7</c>, 2.4:1 over black); the trigger is plain tinted glass and keeps the tint's own color. Over white and
-    /// over black, in both appearances, the items keep at least 4.9:1 with these tints.
+    /// On a tinted menu the items take <see cref="GlassPalette.MenuForeground"/>: white or <c>#111113</c> from the panel's
+    /// glass as it draws, the tint mixed toward the legibility backing, not from the tint alone (which gave white labels on
+    /// a light blue panel lightened toward <c>#F5F5F7</c>, 2.4:1 over black); the trigger is plain tinted glass and keeps
+    /// the tint's own color. Over white and over black, in both appearances, the items keep at least 5.2:1 with these
+    /// tints, highlighted rows included.
     /// </summary>
     [Theory]
     [MemberData(nameof(MenuTints))]
@@ -436,13 +437,19 @@ public class ControlTests
 
             var t = GlassBrushes.ToRgb(tint);
             double Lowest(Rgb foreground) => new[] { new Rgb(1, 1, 1), new Rgb(0, 0, 0) }.Min(backdrop =>
-                Contrast(GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.TintColor(GlassMaterialOptics.MaterialColor(backdrop, GlassMaterial.Regular, dark), t, GlassMaterial.Regular), dark, GlassOptics.MenuLegibility), foreground));
+            {
+                var glass = GlassMaterialOptics.LegibilityColor(GlassMaterialOptics.TintColor(GlassMaterialOptics.MaterialColor(backdrop, GlassMaterial.Regular, dark), t, GlassMaterial.Regular), dark, GlassOptics.MenuLegibility);
+                var highlighted = new Rgb(GlassMath.Mix(glass.R, foreground.R, GlassOptics.MenuHighlight), GlassMath.Mix(glass.G, foreground.G, GlassOptics.MenuHighlight),
+                    GlassMath.Mix(glass.B, foreground.B, GlassOptics.MenuHighlight));
+                return Math.Min(Contrast(glass, foreground), Contrast(highlighted, foreground));
+            });
 
             menu.IsOpen = true;
             Sta.Pump();
             var label = Of(written.Foreground);
+            Assert.Equal(GlassPalette.MenuForeground(t, GlassMaterial.Regular, dark), label);
             Assert.Equal(label, Of(menu.Panel!.Foreground));
-            Assert.True(Lowest(label) >= 4.9, $"{what}: items in {label} on the menu glass: {Lowest(label):F2}:1");
+            Assert.True(Lowest(label) >= 5.2, $"{what}: items in {label} on the menu glass: {Lowest(label):F2}:1");
             // The trigger is not backed: it keeps the foreground of its tint.
             Assert.Equal(GlassPalette.ForegroundOnTint(t, GlassResolve.Material(menu.Trigger!)), Of(menu.Trigger!.Foreground));
             menu.IsOpen = false;
@@ -451,6 +458,39 @@ public class ControlTests
             Sta.Pump();
             var item = Visuals<GlassMenuItem>(generated.Panel!).Single();
             Assert.Equal(label, Of(item.Foreground));
+            window.Close();
+        });
+    }
+
+    /// <summary>
+    /// A menu row highlights in its label color at 8% (<see cref="GlassOptics.MenuHighlight"/>) for the pointer, keyboard
+    /// focus and a press alike: a press no longer deepens it, since the menu's contrast floor counts the highlight.
+    /// </summary>
+    [Fact]
+    public void MenuRowsHighlightInTheirLabelColorAtEightPercent()
+    {
+        Sta.Run(() =>
+        {
+            var row = new GlassMenuItem { Header = "Name" };
+            var menu = new GlassMenu { Header = "Sort", Tint = Color.FromRgb(0x00, 0x67, 0xC0), Motion = GlassMotion.None, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Items = { row } };
+            var window = Sta.Show(Scene(menu));
+            menu.IsOpen = true;
+            Sta.Pump();
+            var highlight = (Border)row.Template.FindName("Highlight", row);
+            Assert.Equal(0, highlight.Opacity);
+            Assert.Equal(((SolidColorBrush)row.Foreground).Color, ((SolidColorBrush)highlight.Background).Color);
+
+            var triggers = row.Template.Triggers.OfType<Trigger>().ToList();
+            foreach (var property in new[] { UIElement.IsMouseOverProperty, UIElement.IsKeyboardFocusedProperty, ButtonBase.IsPressedProperty })
+            {
+                var setter = triggers.Where(trigger => trigger.Property == property && Equals(trigger.Value, true))
+                    .SelectMany(trigger => trigger.Setters.OfType<Setter>()).Single(s => s.TargetName == "Highlight" && s.Property == UIElement.OpacityProperty);
+                Assert.Equal(GlassOptics.MenuHighlight, (double)setter.Value);
+            }
+            typeof(ButtonBase).GetMethod("SetIsPressed", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(bool) }, null)!
+                .Invoke(row, new object[] { true });
+            Assert.True(row.IsPressed);
+            Assert.Equal(GlassOptics.MenuHighlight, highlight.Opacity);
             window.Close();
         });
     }

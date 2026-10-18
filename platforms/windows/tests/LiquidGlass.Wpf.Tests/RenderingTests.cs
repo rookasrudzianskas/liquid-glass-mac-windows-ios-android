@@ -1,17 +1,25 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using LiquidGlass.Wpf.Rendering;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace LiquidGlass.Wpf.Tests;
 
 /// <summary>How glass lines its copy of the backdrop up with the screen, and how it follows the display's scale.</summary>
 public class RenderingTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public RenderingTests(ITestOutputHelper output) => _output = output;
+
     /// <summary>
     /// Glass over a red | blue seam shows, at every one of its pixels, the color beneath that pixel: across a
     /// right-to-left boundary (WPF mirrors the subtree), under rotation and under skew.
@@ -91,17 +99,18 @@ public class RenderingTests
     }
 
     /// <summary>
-    /// Menu glass mixes halfway toward the legibility backing (OPTICS §3), in the shader and in the fallback material,
-    /// over the backdrop where its labels contrast least: white under dark glass (where dark Regular glass gave white
-    /// labels 1.8:1 before), black under light glass. The shader draws the reference's value; the fallback paints the
-    /// backing over its veil at the amount that draws the same glass there. The bounds sit a byte level under the
-    /// reference's worst cases: 5.09:1 and 7.15:1 for Regular (dark, light), 4.94:1 and 6.07:1 for Clear.
+    /// Menu glass mixes 60% toward the legibility backing (OPTICS §3), in the shader and in the fallback material, over
+    /// the backdrop where its labels contrast least: white under dark glass (where dark Regular glass gave white labels
+    /// 1.8:1 without it), black under light glass. The shader draws the reference's value; the fallback paints the
+    /// backing over its veil at the opacity that keeps the labels at least as legible there. The bounds sit about a
+    /// byte level under the reference's worst cases for plain rows: 6.51:1 and 8.74:1 for Regular (dark, light), 6.35:1
+    /// and 7.74:1 for Clear.
     /// </summary>
     [Theory]
-    [InlineData(GlassMaterial.Regular, true, 5.0)]
-    [InlineData(GlassMaterial.Regular, false, 7.0)]
-    [InlineData(GlassMaterial.Clear, true, 4.85)]
-    [InlineData(GlassMaterial.Clear, false, 5.9)]
+    [InlineData(GlassMaterial.Regular, true, 6.4)]
+    [InlineData(GlassMaterial.Regular, false, 8.6)]
+    [InlineData(GlassMaterial.Clear, true, 6.25)]
+    [InlineData(GlassMaterial.Clear, false, 7.6)]
     public void MenuGlassMixesTowardTheLegibilityBacking(GlassMaterial material, bool dark, double minimum)
     {
         Sta.Run(() =>
@@ -171,7 +180,7 @@ public class RenderingTests
             }
             var veil = GlassFallback.Veil(material, dark).Apply(level);
             var veiled = new Rgb(veil, veil, veil);
-            var amount = LensOverlay.BackingOpacity(material, dark, GlassOptics.MenuLegibility, tinted: false);
+            var amount = LensOverlay.BackingOpacity(material, dark, GlassOptics.MenuLegibility, tint: null);
             AssertColor(GlassMaterialOptics.LegibilityColor(veiled, dark, amount), At(menu), 3, $"{what} menu glass (fallback)");
             AssertColor(expected, At(menu), 3, $"{what} menu glass (fallback, as the shader draws it)");
             AssertColor(veiled, At(plain), 3, $"{what} other glass (fallback)");
@@ -181,6 +190,164 @@ public class RenderingTests
             window.Close();
         });
     }
+
+    public static IEnumerable<object?[]> MenuFloorCases =>
+        from material in new[] { GlassMaterial.Regular, GlassMaterial.Clear }
+        from dark in new[] { false, true }
+        from tint in new[] { null, "#007AFF", "#FFCC00", "#0067C0" }
+        select new object?[] { material, dark, tint };
+
+    /// <summary>
+    /// An open menu over the backdrop where its labels contrast least (white under white labels, black under
+    /// <c>#111113</c>), its second row highlighted (pressed): the items take <see cref="GlassPalette.MenuForeground"/>; the
+    /// shader draws the reference's menu glass and, on the highlighted row, that glass with the label color mixed in at
+    /// 8%; the fallback draws its veil (or tint fill) and the backing at <see cref="GlassFallback.LegibilityOpacity"/>,
+    /// the label color mixed in the same way. Untinted menus and the system-color tints here (the system blue, the
+    /// system yellow, where the reference's tinted floor lies, and the Windows 11 accent) keep at least 5.2:1 on both
+    /// rows, in both paths.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(MenuFloorCases))]
+    public void OpenMenuRowsKeepTheFloor(GlassMaterial material, bool dark, string? hex)
+    {
+        Sta.Run(() =>
+        {
+            const int width = 480, height = 320;
+            var tint = hex is null ? (Color?)null : (Color)ColorConverter.ConvertFromString(hex);
+            var tintRgb = tint is { } t ? GlassBrushes.ToRgb(t) : (Rgb?)null;
+            var label = GlassPalette.MenuForeground(tintRgb, material, dark);
+            var level = label == GlassPalette.ForegroundDark ? 1.0 : 0.0;
+            var backdrop = new Rgb(level, level, level);
+            var rows = new[] { new GlassMenuItem { Header = "Name" }, new GlassMenuItem { Header = "Size" }, new GlassMenuItem { Header = "Kind" } };
+            var menu = new GlassMenu
+            {
+                Header = "Sort",
+                PanelMaterial = material,
+                Tint = tint,
+                Motion = GlassMotion.None,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(20),
+            };
+            foreach (var row in rows) menu.Items.Add(row);
+            var scene = new GlassScene { Content = new Border { Background = level > 0.5 ? Brushes.White : Brushes.Black } };
+            GlassScene.SetAppearance(scene, dark ? GlassAppearance.Dark : GlassAppearance.Light);
+            scene.Children.Add(menu);
+            var root = new Border { Child = scene };
+            var window = Sta.Show(root, width, height);
+            menu.IsOpen = true;
+            Sta.Pump();
+            Press(rows[1]);
+            Sta.Pump();
+            var what = $"{material} {(dark ? "dark" : "light")} {hex ?? "untinted"}";
+            var panel = menu.Panel!;
+            Assert.Equal(GlassOptics.MenuLegibility, panel.Lens!.Legibility);
+            Assert.All(rows, row => Assert.Equal(label, GlassBrushes.ToRgb(((SolidColorBrush)row.Foreground).Color)));
+
+            // The reference's menu glass over the backdrop, and the highlighted row's.
+            var glass = GlassMaterialOptics.MaterialColor(backdrop, material, dark);
+            if (tintRgb is { } tinted) glass = GlassMaterialOptics.TintColor(glass, tinted, material);
+            glass = GlassMaterialOptics.LegibilityColor(glass, dark, GlassOptics.MenuLegibility);
+            var highlighted = Highlight(glass, label);
+            // Right of the labels, clear of the panel's rim light.
+            Point Sample(FrameworkElement row) => new(row.ActualWidth - 16, row.ActualHeight / 2);
+
+            Assert.Equal(GlassDiagnostics.CanUseShader(window) ? GlassLensMode.Shader : GlassLensMode.Fallback, panel.RenderedMode);
+            if (panel.RenderedMode == GlassLensMode.Shader)
+            {
+                var scale = GlassResolve.Scale(panel);
+                (int, int) Device(FrameworkElement row)
+                {
+                    var p = Sample(row);
+                    return ((int)(p.X * scale), (int)(p.Y * scale));
+                }
+                // Menu glass lies between black (nothing drawn yet, or the black backdrop) and white (the white backdrop).
+                bool Drawn(ScreenPixels s)
+                {
+                    var (x, y) = Device(rows[0]);
+                    var c = s.Rgb(x, y);
+                    return Math.Max(c.R, Math.Max(c.G, c.B)) is > 35 and < 220;
+                }
+                var capture = ScreenPixels.CaptureWhen(window, rows[0], Drawn, 30);
+                Assert.True(capture is not null, $"{what}: the menu never reached the screen");
+                var plainAt = Device(rows[0]);
+                var plain = capture!.Rgb(plainAt.Item1, plainAt.Item2);
+                var second = ScreenPixels.Capture(window, rows[1]);
+                var pressedAt = Device(rows[1]);
+                var pressed = second.Rgb(pressedAt.Item1, pressedAt.Item2);
+                Report(what, "shader", glass, plain, highlighted, pressed, label);
+                AssertColor(glass, plain, 3, $"{what}: menu glass (shader)");
+                AssertColor(highlighted, pressed, 3, $"{what}: highlighted row (shader)");
+                AssertFloor(plain, label, $"{what}: plain row (shader)");
+                AssertFloor(pressed, label, $"{what}: highlighted row (shader)");
+            }
+
+            // The fallback material (software rendering, so RenderTargetBitmap shows it).
+            GlassScene.SetRenderMode(scene, GlassRenderMode.Fallback);
+            Sta.Pump();
+            Assert.Equal(GlassLensMode.Fallback, panel.RenderedMode);
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(root);
+            var pixels = new byte[width * height * 4];
+            bitmap.CopyPixels(pixels, width * 4, 0);
+            (byte R, byte G, byte B) At(FrameworkElement row)
+            {
+                var p = row.TransformToAncestor(root).Transform(Sample(row));
+                var i = ((int)p.Y * width + (int)p.X) * 4;
+                return (pixels[i + 2], pixels[i + 1], pixels[i]);
+            }
+            var fallback = FallbackMenuGlass(backdrop, material, dark, tint);
+            var fallbackHighlighted = Highlight(fallback, label);
+            Report(what, "fallback", fallback, At(rows[0]), fallbackHighlighted, At(rows[1]), label);
+            AssertColor(fallback, At(rows[0]), 3, $"{what}: menu glass (fallback)");
+            AssertColor(fallbackHighlighted, At(rows[1]), 3, $"{what}: highlighted row (fallback)");
+            AssertFloor(At(rows[0]), label, $"{what}: plain row (fallback)");
+            AssertFloor(At(rows[1]), label, $"{what}: highlighted row (fallback)");
+            // Where the labels contrast least, the fallback's are at least as legible as the shader's.
+            Assert.True(Contrast(fallbackHighlighted, label) >= Contrast(highlighted, label),
+                $"{what}: highlighted row {Contrast(fallbackHighlighted, label):F3}:1 in the fallback, {Contrast(highlighted, label):F3}:1 in the shader");
+            window.Close();
+        });
+    }
+
+    /// <summary>Presses a menu row as a pointer held down on it does (WPF sets IsPressed only from input).</summary>
+    private static void Press(ButtonBase row)
+    {
+        var setIsPressed = typeof(ButtonBase).GetMethod("SetIsPressed", BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(bool) }, null);
+        Assert.NotNull(setIsPressed);
+        setIsPressed!.Invoke(row, new object[] { true });
+        Assert.True(row.IsPressed);
+    }
+
+    /// <summary>The fallback's menu glass over an opaque backdrop: its 8-bit fill, then the backing at its opacity.</summary>
+    private static Rgb FallbackMenuGlass(Rgb backdrop, GlassMaterial material, bool dark, Color? tint)
+    {
+        static double Byte(double v) => Math.Round(GlassMath.Sat(v) * 255) / 255;
+        var veil = GlassFallback.Veil(material, dark);
+        var fill = tint is { } t ? GlassFallback.TintFill(GlassBrushes.ToRgb(t), material).Map(Byte) : new Rgb(Byte(veil.Gray), Byte(veil.Gray), Byte(veil.Gray));
+        var opacity = Byte(tint is null ? veil.Opacity : GlassFallback.TintFillOpacity);
+        var filled = new Rgb(GlassMath.Mix(backdrop.R, fill.R, opacity), GlassMath.Mix(backdrop.G, fill.G, opacity), GlassMath.Mix(backdrop.B, fill.B, opacity));
+        var amount = LensOverlay.BackingOpacity(material, dark, GlassOptics.MenuLegibility, tint);
+        return GlassMaterialOptics.LegibilityColor(filled, dark, amount);
+    }
+
+    private static Rgb Highlight(Rgb glass, Rgb label) => new(
+        GlassMath.Mix(glass.R, label.R, GlassOptics.MenuHighlight), GlassMath.Mix(glass.G, label.G, GlassOptics.MenuHighlight),
+        GlassMath.Mix(glass.B, label.B, GlassOptics.MenuHighlight));
+
+    private static Rgb Of((byte R, byte G, byte B) c) => new(c.R / 255.0, c.G / 255.0, c.B / 255.0);
+
+    private static void AssertFloor((byte R, byte G, byte B) drawn, Rgb label, string what)
+    {
+        var contrast = Contrast(Of(drawn), label);
+        Assert.True(contrast >= 5.2, $"{what}: labels {contrast:F2}:1 on rgb({drawn.R}, {drawn.G}, {drawn.B})");
+    }
+
+    private void Report(string what, string path, Rgb glass, (byte R, byte G, byte B) plain, Rgb highlighted, (byte R, byte G, byte B) pressed, Rgb label)
+        => _output.WriteLine($"{what} ({path}): plain rgb({plain.R}, {plain.G}, {plain.B}) {Contrast(Of(plain), label):F3}:1, expected {Hex(glass)} {Contrast(glass, label):F3}:1; " +
+                             $"highlighted rgb({pressed.R}, {pressed.G}, {pressed.B}) {Contrast(Of(pressed), label):F3}:1, expected {Hex(highlighted)} {Contrast(highlighted, label):F3}:1");
+
+    private static string Hex(Rgb c) => $"#{(int)Math.Round(c.R * 255):X2}{(int)Math.Round(c.G * 255):X2}{(int)Math.Round(c.B * 255):X2}";
 
     private static void AssertColor(Rgb expected, (byte R, byte G, byte B) actual, int tolerance, string what)
     {

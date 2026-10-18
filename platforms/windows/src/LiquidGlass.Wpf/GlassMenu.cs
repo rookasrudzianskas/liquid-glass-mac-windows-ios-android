@@ -15,12 +15,14 @@ namespace LiquidGlass.Wpf;
 
 /// <summary>
 /// A glass button (<see cref="HeaderedItemsControl.Header"/> is its content) that opens a menu: a Regular glass panel
-/// that grows out of the button with the morph spring and collapses back into it. The panel's glass mixes halfway
-/// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), so the items of an untinted Regular panel keep at
-/// least 5:1 contrast over any backdrop; on a tint they take white or <c>#111113</c> as the backed glass calls for.
-/// Items highlight in the foreground color at 8%; the menu closes when an item is chosen, on Escape and on a click
-/// outside it. The panel floats in the enclosing <see cref="GlassScene"/>, refracting its backdrop; outside a
-/// scene it opens in a popup with the opaque material.
+/// that grows out of the button with the morph spring and collapses back into it. The open panel's glass mixes 60%
+/// toward a solid backing (<see cref="GlassOptics.MenuLegibility"/>), fading in with the morph; its items take
+/// <see cref="GlassPalette.MenuForeground"/> (the appearance's foreground, or on a tint white or <c>#111113</c> as the
+/// backed glass calls for) and a highlighted item mixes that color into the glass at 8%
+/// (<see cref="GlassOptics.MenuHighlight"/>), so the items of an untinted panel (Regular or Clear) and of a panel
+/// tinted with a system color keep at least 5.2:1 contrast over any backdrop, highlighted or not. The menu closes when
+/// an item is chosen, on Escape and on a click outside it. The panel floats in the enclosing <see cref="GlassScene"/>,
+/// refracting its backdrop; outside a scene it opens in a popup with the opaque material.
 /// </summary>
 /// <remarks>
 /// Items are <see cref="GlassMenuItem"/>s and <see cref="Separator"/>s, written out or generated from
@@ -863,9 +865,9 @@ internal sealed class GlassMenuPanel : GlassSurface
 
     /// <summary>
     /// How far the panel's glass mixes toward the solid legibility backing now (OPTICS §3):
-    /// <see cref="GlassOptics.MenuLegibility"/> when open, so the items of an untinted Regular panel keep at least 5:1
-    /// contrast over any backdrop while the panel still refracts and frosts what is behind it, at half strength. It
-    /// follows the morph as the panel grows out of the trigger and collapses back into it.
+    /// <see cref="GlassOptics.MenuLegibility"/> when open, so the items keep at least 5.2:1 contrast over any backdrop
+    /// while the panel still refracts and frosts what is behind it, at 40% strength. It follows the morph (clamped to
+    /// [0, 1]) as the panel grows out of the trigger and collapses back into it.
     /// </summary>
     public double Legibility
     {

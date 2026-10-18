@@ -1,7 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:lg="clr-namespace:LiquidGlass.Wpf"
-                    xmlns:r="clr-namespace:LiquidGlass.Wpf.Rendering">
+                    xmlns:r="clr-namespace:LiquidGlass.Wpf.Rendering"
+                    xmlns:core="clr-namespace:LiquidGlass;assembly=LiquidGlass.Core">
 
   <FontFamily x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type lg:GlassScene}, ResourceId=Font}">Segoe UI Variable Text, Segoe UI</FontFamily>
 
@@ -465,14 +466,16 @@
             <Trigger Property="IsChecked" Value="True">
               <Setter TargetName="Check" Property="Visibility" Value="Visible" />
             </Trigger>
+            <!-- A highlighted row (pointer over it, keyboard focus, a press) mixes its label color into the glass at 8%
+                 (GlassOptics.MenuHighlight): the menu's contrast floor counts it. -->
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Highlight" Property="Opacity" Value="0.08" />
+              <Setter TargetName="Highlight" Property="Opacity" Value="{x:Static core:GlassOptics.MenuHighlight}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Highlight" Property="Opacity" Value="0.08" />
+              <Setter TargetName="Highlight" Property="Opacity" Value="{x:Static core:GlassOptics.MenuHighlight}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-              <Setter TargetName="Highlight" Property="Opacity" Value="0.14" />
+              <Setter TargetName="Highlight" Property="Opacity" Value="{x:Static core:GlassOptics.MenuHighlight}" />
             </Trigger>
             <!-- Contrast theme: the highlighted item is a solid highlight with highlight text; keyboard focus adds a border. -->
             <MultiDataTrigger>

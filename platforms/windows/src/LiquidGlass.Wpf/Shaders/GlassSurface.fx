@@ -21,7 +21,7 @@ float4 GlowOptics : register(c4);        // glow center (xy, from the surface ce
 float4 FillWeights : register(c5);       // Regular fill: 1-D tap weights for offsets 0..3
 float4 FillOptics : register(c6);        // Regular fill: weight for offset 4, tap spacing (layout units), unused, unused
 float4 DdxUvDdyUv : register(c7);        // supplied by WPF: d(uv)/dx (xy) and d(uv)/dy (zw) per device pixel
-float4 LegibilityOptics : register(c8);  // legibility backing amount (0.5 menu panels, 0 elsewhere), unused, unused, unused
+float4 LegibilityOptics : register(c8);  // legibility backing amount (0.6 open menu panels, 0 elsewhere), unused, unused, unused
 
 float4 Unpremultiply(float4 c)
 {

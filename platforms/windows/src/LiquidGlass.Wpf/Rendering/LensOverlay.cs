@@ -81,11 +81,12 @@ internal sealed class LensOverlay : FrameworkElement
             }
             case GlassLensMode.Fallback:
                 dc.DrawGeometry(FallbackFill(dark), null, _outline);
-                // The legibility backing over the veil (or tint): backing·a + glass·(1 − a) is the shader's
-                // mix(glass, backing, a), with the amount matched to the shader where the labels contrast least.
+                // The legibility backing over the veil (or tint fill): backing·a + glass·(1 − a) is the shader's
+                // mix(glass, backing, a), at the opacity that keeps the labels at least as legible as on the shader's
+                // glass where they contrast least.
                 if (_lens.Legibility > 0)
                 {
-                    var amount = BackingOpacity(_lens.Material, dark, _lens.Legibility, _lens.EffectiveTint is not null);
+                    var amount = BackingOpacity(_lens.Material, dark, _lens.Legibility, _lens.EffectiveTint);
                     dc.DrawGeometry(new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.LegibilityBacking(dark), amount)), null, _outline);
                 }
                 DrawLight(dc, shape, dark);
@@ -136,26 +137,11 @@ internal sealed class LensOverlay : FrameworkElement
 
     /// <summary>
     /// The opacity of the legibility backing over the fallback's fill, for glass that mixes toward it by
-    /// <paramref name="legibility"/>. Over the veil, the backing at the amount itself would be the shader's mix, but the
-    /// veil only approximates the tone curve: at the backdrop where the labels contrast least (white in dark appearance,
-    /// black in light) it draws lighter or darker than the material, which left white labels on a dark Regular menu
-    /// 4.8:1 over white where the shader gives 5.09:1. So the amount is scaled until, at
-    /// <see cref="GlassOptics.MenuLegibility"/>, the fallback draws the shader's menu glass over that backdrop: 5.07:1
-    /// (dark) and 7.17:1 (light) at worst for Regular, 4.93:1 and 6.05:1 for Clear. A tint fill already is the tinted
-    /// glass the labels are chosen on, so it takes the amount as it is.
+    /// <paramref name="legibility"/> (<see cref="GlassFallback.LegibilityOpacity"/>): an 8-bit level at which menu labels
+    /// on a highlighted row keep at least the contrast of the shader's menu glass where they contrast least.
     /// </summary>
-    internal static double BackingOpacity(GlassMaterial material, bool dark, double legibility, bool tinted)
-    {
-        if (tinted || legibility <= 0) return GlassMath.Sat(legibility);
-        var worst = dark ? 1.0 : 0.0;
-        var backing = GlassPalette.LegibilityBacking(dark).G;
-        var veiled = GlassFallback.Veil(material, dark).Apply(worst);
-        var drawn = GlassMaterialOptics.MaterialColor(new Rgb(worst, worst, worst), material, dark).G;
-        // (1 − a)·(veiled − backing) = (1 − M)·(drawn − backing) at the menu amount M; other amounts scale with it.
-        const double menu = GlassOptics.MenuLegibility;
-        var matched = 1 - (1 - menu) * (drawn - backing) / (veiled - backing);
-        return GlassMath.Sat(legibility * matched / menu);
-    }
+    internal static double BackingOpacity(GlassMaterial material, bool dark, double legibility, Color? tint)
+        => GlassFallback.LegibilityOpacity(material, dark, tint is { } t ? (Rgb?)GlassBrushes.ToRgb(t) : null, legibility);
 
     private Brush FallbackFill(bool dark)
     {
@@ -172,15 +158,9 @@ internal sealed class LensOverlay : FrameworkElement
         return new SolidColorBrush(GlassBrushes.ToColor(GlassPalette.ReducedTransparency(dark)));
     }
 
-    /// <summary>
-    /// Tinted glass is nearly opaque pigment that transmits the backdrop's luminance; without the shader,
-    /// the pigment at its body strength over the frosted copy reads the same way.
-    /// </summary>
+    /// <summary>The tint fill (<see cref="GlassFallback.TintFill"/>) over the frosted copy.</summary>
     private Brush TintFill(Color tint)
-    {
-        var body = GlassMaterials.TintBody(_lens.Material);
-        return new SolidColorBrush(GlassBrushes.ToColor(GlassBrushes.ToRgb(tint).Map(c => c * (body + (1 - body) * 0.5)), 0.9));
-    }
+        => new SolidColorBrush(GlassBrushes.ToColor(GlassFallback.TintFill(GlassBrushes.ToRgb(tint), _lens.Material), GlassFallback.TintFillOpacity));
 
     private readonly struct RimKey : IEquatable<RimKey>
     {

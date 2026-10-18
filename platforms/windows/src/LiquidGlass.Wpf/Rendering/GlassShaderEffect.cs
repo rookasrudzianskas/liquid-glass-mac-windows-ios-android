@@ -36,7 +36,7 @@ internal sealed class GlassShaderEffect : ShaderEffect
     /// <summary>Regular fill: weight of the taps at offset 4 and the tap spacing.</summary>
     public static readonly DependencyProperty FillOpticsProperty = Constant(nameof(FillOptics), 6);
 
-    /// <summary>How far the glass mixes toward the legibility backing: 0.5 on menu panels, 0 elsewhere (x).</summary>
+    /// <summary>How far the glass mixes toward the legibility backing: up to 0.6 on menu panels (following the morph), 0 elsewhere (x).</summary>
     public static readonly DependencyProperty LegibilityOpticsProperty = Constant(nameof(LegibilityOptics), 8);
 
     public GlassShaderEffect(PixelShader shader)
