@@ -942,7 +942,8 @@ class GlassRenderingTest {
      * labels are drawn in it; the highlighted row is the plain glass with the label color mixed in at
      * [MENU_HIGHLIGHT]; and on the GPU path the plain glass is the reference's glass (tinted) with the menus'
      * legibility backing. [extraSurfaces] small surfaces below the menu take up the GPU slots first, so with
-     * [GlassDefaults.MaxSurfacesPerScene] of them the menu draws the fallback material.
+     * [GlassDefaults.MaxSurfacesPerScene] of them the menu draws the fallback material. Under
+     * [reduceTransparency] the menu is the solid glass of [solidMenuGlass] on both paths, its labels Regular's.
      */
     private fun assertMenuLegible(
         backdrop: FloatArray,
@@ -950,12 +951,14 @@ class GlassRenderingTest {
         material: GlassMaterial = GlassMaterial.Regular,
         tint: Color = Color.Unspecified,
         extraSurfaces: Int = 0,
+        reduceTransparency: Boolean = false,
     ) {
         val dark = appearance == GlassAppearance.Dark
-        val regular = material == GlassMaterial.Regular
+        // The Reduce Transparency fill takes Regular's tint body, so its labels are Regular's.
+        val regular = reduceTransparency || material == GlassMaterial.Regular
         val backdropColor = Color(backdrop[0], backdrop[1], backdrop[2])
         val tintRgb = if (tint.isSpecified) floatArrayOf(tint.red, tint.green, tint.blue) else null
-        val case = "$material menu dark=$dark tint=${tintRgb?.toList()} over ${backdrop.take(3)} extra=$extraSurfaces"
+        val case = "$material menu dark=$dark tint=${tintRgb?.toList()} over ${backdrop.take(3)} extra=$extraSurfaces reduce=$reduceTransparency"
         val floor = if (tintRgb == null) UNTINTED_MENU_FLOOR else TINTED_MENU_FLOOR
         var sceneBounds = Rect.Zero
         var panelBounds = Rect.Zero
@@ -964,6 +967,7 @@ class GlassRenderingTest {
             GlassScene(
                 Modifier.fillMaxSize().onGloballyPositioned { sceneBounds = it.boundsInWindow() },
                 appearance = appearance,
+                reduceTransparency = reduceTransparency,
                 motion = GlassMotion.None,
                 increaseContrast = false,
             ) {
@@ -1012,9 +1016,15 @@ class GlassRenderingTest {
             if ((0..2).any { abs(ink[it] - expectedInk[it]) > 1f / 255f }) {
                 return@assertRendered "$case: labels drawn in ${ink.toList()}, not the menu foreground ${expectedInk.toList()}"
             }
-            val materialRgb = materialColor(backdrop, regular, dark)
-            val expected = legibilityColor(if (tintRgb != null) tintColor(materialRgb, tintRgb, regular) else materialRgb, dark, MENU_LEGIBILITY)
+            val expected = if (reduceTransparency) {
+                solidMenuGlass(backdrop, tintRgb, dark)
+            } else {
+                val materialRgb = materialColor(backdrop, regular, dark)
+                legibilityColor(if (tintRgb != null) tintColor(materialRgb, tintRgb, regular) else materialRgb, dark, MENU_LEGIBILITY)
+            }
             val gpu = Build.VERSION.SDK_INT >= 33 && extraSurfaces < GlassDefaults.MaxSurfacesPerScene
+            // The GPU glass is the reference's; the solid glass is the same on the fallback path.
+            val exact = gpu || reduceTransparency
             val left = panel.left.toInt()
             val top = panel.top.toInt()
             val right = panel.right.toInt()
@@ -1047,8 +1057,8 @@ class GlassRenderingTest {
                 }
             }
             for (i in 0..2) plain[i] /= count
-            // The GPU glass is the reference's; the fallback's is whatever it draws, uniform over a uniform backdrop.
-            val reference = if (gpu) expected else plain
+            // The fallback's translucent fill is whatever it draws, uniform over a uniform backdrop.
+            val reference = if (exact) expected else plain
             fun error(rows: IntRange, target: FloatArray): Float = rows.step(2).maxOf { y ->
                 columns.step(2).maxOf { x -> rgb(x, y).let { c -> (0..2).maxOf { i -> abs(c[i] - target[i]) } } }
             }
@@ -1067,15 +1077,30 @@ class GlassRenderingTest {
             when {
                 lowest < floor -> "$case: label contrast $lowest below $floor at $lowestAt"
                 text < 3f -> "$case: menu labels not drawn (best contrast with the glass $text)"
-                gpu && plainError > Tolerance -> "$case: menu glass differs from the reference by ${plainError * 255}/255 (expected ${expected.toList()})"
+                exact && plainError > Tolerance -> "$case: menu glass differs from the reference by ${plainError * 255}/255 (expected ${expected.toList()})"
                 highlightError > Tolerance -> "$case: the pressed row is not the glass with its label color mixed in at 8% (off by ${highlightError * 255}/255, expected ${lit.toList()})"
                 else -> null
             }
         }
     }
 
+    /**
+     * The menu glass under Reduce Transparency over the uniform [backdrop], as the shader draws it: the opaque
+     * fill (`#F2F2F7` / `#1C1C1E`, tinted with Regular's body) mixed toward the backing at [MENU_LEGIBILITY],
+     * painted at 94%, or `0.78 + 0.22 · 0.94` with a tint.
+     */
+    private fun solidMenuGlass(backdrop: FloatArray, tint: FloatArray?, dark: Boolean): FloatArray {
+        val fill = if (dark) floatArrayOf(28f / 255f, 28f / 255f, 30f / 255f) else floatArrayOf(242f / 255f, 242f / 255f, 247f / 255f)
+        val glass = legibilityColor(tint?.let { tintColor(fill, it, regular = true) } ?: fill, dark, MENU_LEGIBILITY)
+        val alpha = if (tint == null) 0.94f else 0.78f + 0.22f * 0.94f
+        return FloatArray(3) { alpha * glass[it] + (1f - alpha) * backdrop[it] }
+    }
+
     private val white = floatArrayOf(1f, 1f, 1f, 1f)
     private val black = floatArrayOf(0f, 0f, 0f, 1f)
+    private val systemBlue = Color(0xFF007AFF)
+    private val systemYellow = Color(0xFFFFCC00)
+    private val darkSystemYellow = Color(0xFFFFD60A)
 
     /** Untinted menus in both appearances over white and black: without the backing, white labels on dark Regular glass over white get 1.8:1, #111113 on light Regular glass over black 2.1:1. */
     private fun assertUntintedMenusLegible(material: GlassMaterial) {
@@ -1091,34 +1116,51 @@ class GlassRenderingTest {
     fun untintedClearMenusKeepTheirLabelsLegible() = assertUntintedMenusLegible(GlassMaterial.Clear)
 
     /*
-     * Tinted menus: the labels take white or #111113 by contrast with the tint mixed toward the backing, so the
-     * system colors of either appearance keep 5.0:1. The dark-appearance system yellow (#FFD60A) in dark
-     * appearance over white is the spec's worst system tint (5.07:1 with a highlighted row), the light-appearance
-     * yellow there 5.26:1; blue in light appearance takes #111113 where the tint alone would take white.
+     * Tinted menus, Regular and Clear: the labels take white or #111113 by contrast with the tint mixed toward the
+     * backing, so the system colors of either appearance keep 5.0:1. The dark-appearance system yellow (#FFD60A)
+     * in dark appearance over white is the spec's worst system tint (5.07:1 with a highlighted row on Regular
+     * glass, 5.19:1 on Clear), the light-appearance yellow there 5.26:1; blue in light appearance takes #111113
+     * where the tint alone would take white.
      */
 
     private fun assertTintedMenusLegible(tint: Color) {
-        for (appearance in listOf(GlassAppearance.Light, GlassAppearance.Dark)) {
-            for (backdrop in listOf(white, black)) assertMenuLegible(backdrop, appearance, tint = tint)
+        for (material in listOf(GlassMaterial.Regular, GlassMaterial.Clear)) {
+            for (appearance in listOf(GlassAppearance.Light, GlassAppearance.Dark)) {
+                for (backdrop in listOf(white, black)) assertMenuLegible(backdrop, appearance, material, tint)
+            }
         }
     }
 
     @Test
-    fun menusTintedSystemBlueKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFF007AFF))
+    fun menusTintedSystemBlueKeepTheirLabelsLegible() = assertTintedMenusLegible(systemBlue)
 
     @Test
-    fun menusTintedSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFFFFCC00))
+    fun menusTintedSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(systemYellow)
 
     @Test
-    fun menusTintedDarkSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(Color(0xFFFFD60A))
+    fun menusTintedDarkSystemYellowKeepTheirLabelsLegible() = assertTintedMenusLegible(darkSystemYellow)
 
     @Test
     fun fallbackMenusKeepTheirLabelsLegible() {
-        // Beyond the GPU limit the menu draws the fallback material, which folds in the same backing.
+        // Beyond the GPU limit the menu draws the fallback material, which folds in the same backing, tinted too.
         val extra = GlassDefaults.MaxSurfacesPerScene
         for (material in listOf(GlassMaterial.Regular, GlassMaterial.Clear)) {
             assertMenuLegible(white, GlassAppearance.Dark, material, extraSurfaces = extra)
             assertMenuLegible(black, GlassAppearance.Light, material, extraSurfaces = extra)
+            assertMenuLegible(white, GlassAppearance.Dark, material, darkSystemYellow, extraSurfaces = extra)
+            assertMenuLegible(black, GlassAppearance.Light, material, systemBlue, extraSurfaces = extra)
+        }
+    }
+
+    @Test
+    fun reduceTransparencyMenusKeepTheirLabelsLegible() {
+        // The solid glass, Regular or Clear asked for, on the GPU and (beyond the GPU limit) the fallback path.
+        for (extra in listOf(0, GlassDefaults.MaxSurfacesPerScene)) {
+            for (material in listOf(GlassMaterial.Regular, GlassMaterial.Clear)) {
+                assertMenuLegible(white, GlassAppearance.Dark, material, extraSurfaces = extra, reduceTransparency = true)
+                assertMenuLegible(black, GlassAppearance.Light, material, extraSurfaces = extra, reduceTransparency = true)
+                assertMenuLegible(white, GlassAppearance.Dark, material, darkSystemYellow, extra, reduceTransparency = true)
+            }
         }
     }
 

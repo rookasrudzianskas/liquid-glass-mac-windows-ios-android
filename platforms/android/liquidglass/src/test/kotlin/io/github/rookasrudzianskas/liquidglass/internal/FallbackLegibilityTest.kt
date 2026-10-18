@@ -10,13 +10,15 @@ import io.github.rookasrudzianskas.liquidglass.optics.contrastRatio
 import io.github.rookasrudzianskas.liquidglass.optics.highlighted
 import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
 import io.github.rookasrudzianskas.liquidglass.optics.menuForeground
+import io.github.rookasrudzianskas.liquidglass.optics.tintColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The fallback material folds the menus' legibility backing (spec/OPTICS.md §3) into its fill,
- * so a fallback menu (below Android 13, outside a scene, beyond the GPU limit) reads like a GPU one.
+ * The fallback material carries the menus' legibility backing (spec/OPTICS.md §3) in its fill (folded into a
+ * translucent stand-in, mixed into the Reduce Transparency fill as the shader does), so a fallback menu (below
+ * Android 13, outside a scene, beyond the GPU limit) reads like a GPU one.
  */
 class FallbackLegibilityTest {
 
@@ -78,12 +80,41 @@ class FallbackLegibilityTest {
                 for (tint in listOf<FloatArray?>(null) + SYSTEM_TINTS) {
                     val label = menuForeground(tint, regular, dark)
                     val tintColor = tint?.let { Color(it[0], it[1], it[2]) } ?: Color.Unspecified
-                    val fill = withLegibility(fallbackFill(material, dark, tintColor, blurred), dark, MENU_LEGIBILITY)
+                    val fill = fallbackGlassFill(material, dark, tintColor, blurred, MENU_LEGIBILITY)
                     for (backdrop in backdrops.take(2)) {
                         val glass = over(fill, backdrop)
                         val contrast = minOf(contrastRatio(label, glass), contrastRatio(label, highlighted(glass, label)))
                         val floor = if (tint == null) UNTINTED_MENU_FLOOR else TINTED_MENU_FLOOR
                         assertTrue("material $material dark=$dark blurred=$blurred tint=${tint?.toList()} over ${backdrop.toList()}: $contrast", contrast >= floor)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * The Reduce Transparency fill draws the shader's solid glass over any backdrop: `#F2F2F7` / `#1C1C1E`
+     * (tinted with Regular's body), mixed toward the backing, painted at 94%, or `0.78 + 0.22 · 0.94` with a
+     * tint, so a fallback menu under Reduce Transparency is the GPU one.
+     */
+    @Test
+    fun theReduceTransparencyFillIsTheShadersSolidGlass() {
+        for (dark in listOf(false, true)) {
+            val solid = if (dark) floatArrayOf(28f / 255f, 28f / 255f, 30f / 255f) else floatArrayOf(242f / 255f, 242f / 255f, 247f / 255f)
+            for (tint in listOf<FloatArray?>(null) + SYSTEM_TINTS) {
+                val pigment = tint?.let { Color(it[0], it[1], it[2]) } ?: Color.Unspecified
+                val rgb = tint?.let { tintColor(solid, it, regular = true) } ?: solid
+                val alpha = if (tint == null) 0.94f else 0.78f + 0.22f * 0.94f
+                for (amount in listOf(0f, 0.25f, MENU_LEGIBILITY, 1f)) {
+                    val glass = legibilityColor(rgb, dark, amount)
+                    val fill = fallbackGlassFill(ShaderMaterial.SOLID, dark, pigment, blurred = false, legibility = amount)
+                    for (backdrop in backdrops) {
+                        val drawn = over(fill, backdrop)
+                        for (i in 0..2) {
+                            val expected = alpha * glass[i] + (1f - alpha) * backdrop[i]
+                            // An sRGB Color holds 8 bits per channel, alpha included.
+                            assertEquals("dark=$dark tint=${tint?.toList()} amount=$amount over ${backdrop.toList()}[$i]", expected, drawn[i], 1.5f / 255f)
+                        }
                     }
                 }
             }

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import io.github.rookasrudzianskas.liquidglass.glassPath
 import io.github.rookasrudzianskas.liquidglass.optics.GlowParams
 import io.github.rookasrudzianskas.liquidglass.optics.legibilityBacking
+import io.github.rookasrudzianskas.liquidglass.optics.legibilityColor
 import io.github.rookasrudzianskas.liquidglass.optics.luma
 import io.github.rookasrudzianskas.liquidglass.optics.shapeParams
 import io.github.rookasrudzianskas.liquidglass.optics.tintBody
@@ -54,7 +55,7 @@ internal fun DrawScope.drawFallbackGlass(
             drawLayer(blurredBackdrop)
             drawContext.transform.translate(-backdropOffset.x, -backdropOffset.y)
         }
-        drawRect(withLegibility(fallbackFill(material, dark, tint, blurred = blurredBackdrop != null), dark, legibility), alpha = opacity)
+        drawRect(fallbackGlassFill(material, dark, tint, blurred = blurredBackdrop != null, legibility), alpha = opacity)
         val glowRadiusPx = glow.radius * density
         if (glowAmount > 0f && glowRadiusPx > 0f) {
             val alpha = glow.alpha * glowAmount * opacity
@@ -100,11 +101,29 @@ private fun DrawScope.drawFallbackRim(outline: Path, size: Size, radiusPx: Float
     drawPath(outline, horizontal, style = Stroke(1.2f * density), alpha = opacity)
 }
 
-/** The translucent fill that stands in for the material. */
+/**
+ * The fill drawn for the material, with [legibility] of the backing (spec/OPTICS.md §3). A translucent fill stands
+ * in for the GPU glass, which is opaque, so the backing is folded into it ([withLegibility]). The Reduce
+ * Transparency fill is the shader's own solid material: as in the shader, its color is mixed toward the backing
+ * and it keeps its opacity, so the fallback and the GPU draw the same solid glass.
+ */
+internal fun fallbackGlassFill(material: Float, dark: Boolean, tint: Color, blurred: Boolean, legibility: Float): Color {
+    val fill = fallbackFill(material, dark, tint, blurred)
+    if (material != ShaderMaterial.SOLID || legibility <= 0f) return withLegibility(fill, dark, legibility)
+    val rgb = legibilityColor(floatArrayOf(fill.red, fill.green, fill.blue), dark, legibility)
+    return Color(rgb[0], rgb[1], rgb[2], fill.alpha)
+}
+
+/**
+ * The translucent fill that stands in for the material. The Reduce Transparency fill is the shader's solid
+ * material: `#F2F2F7` / `#1C1C1E` at 94%, tinted with Regular's body, which a tint makes `0.78 + 0.22 · 0.94` opaque.
+ */
 internal fun fallbackFill(material: Float, dark: Boolean, tint: Color, blurred: Boolean): Color {
     if (material == ShaderMaterial.SOLID) {
         val fill = if (dark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
-        return if (tint.isSpecified) tinted(fill, tint, regular = true).copy(alpha = 0.94f) else fill.copy(alpha = 0.94f)
+        if (!tint.isSpecified) return fill.copy(alpha = SOLID_OPACITY)
+        val body = tintBody(regular = true)
+        return tinted(fill, tint, regular = true).copy(alpha = body + (1f - body) * SOLID_OPACITY)
     }
     val regular = material == ShaderMaterial.REGULAR
     val base = when {
@@ -131,6 +150,9 @@ internal fun withLegibility(fill: Color, dark: Boolean, amount: Float): Color {
     fun channel(c: Float, b: Float) = (((1f - amount) * a * c + amount * b) / alpha).coerceIn(0f, 1f)
     return Color(channel(fill.red, backing[0]), channel(fill.green, backing[1]), channel(fill.blue, backing[2]), alpha)
 }
+
+/** Opacity of the Reduce Transparency fill (spec/OPTICS.md §8). */
+private const val SOLID_OPACITY = 0.94f
 
 /** Tint transmits the luminance of what lies beneath, as in spec/OPTICS.md §3. */
 private fun tinted(under: Color, tint: Color, regular: Boolean): Color {
