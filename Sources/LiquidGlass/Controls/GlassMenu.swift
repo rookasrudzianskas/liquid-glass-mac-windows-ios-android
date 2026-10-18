@@ -194,7 +194,9 @@ public struct GlassMenuItem: View {
 
     /// Creates an item.
     /// - Parameters:
-    ///   - role: `.destructive` draws the item in red.
+    ///   - role: `.destructive` draws the item's title and icon in red. Its
+    ///     highlight, like every item's, mixes the menu's label color into
+    ///     the glass, not red, as system menus do.
     ///   - checked: `true` or `false` for an item that shows a choice, with
     ///     a checkmark when it is `true`; `nil` (the default) for a command.
     ///   - action: Runs when the item is chosen; the menu then closes.

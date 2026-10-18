@@ -588,7 +588,13 @@ final class RenderTests: XCTestCase {
     /// draw in `ink`; every plain face pixel matches `model` within
     /// `accuracy`, every highlighted one the model with `ink` mixed in at
     /// ``GlassOptics/menuHighlight``, and both keep at least `floor`
-    /// contrast with the label. Returns the lowest contrast.
+    /// contrast with the label. The highlight's amount is also fitted over
+    /// the row, the mean of `(pixel − model)·(ink − model) / |ink − model|²`,
+    /// and held to 8% ± 0.5% (the renders fit 7.7% to 8.3%): a per-pixel
+    /// `accuracy` of three 8-bit steps alone would let a highlight of
+    /// another color or strength through, such as the system label color at
+    /// 85%, a 6.8% mix toward black or white that comes within 2.9 steps of
+    /// the 8% mix on these menus. Returns the lowest contrast.
     @discardableResult
     private func assertMenuPanel(
         _ menu: MenuRender, ink: SIMD3<Double>, model: SIMD3<Double>, accuracy: Double, floor: Double, _ name: String,
@@ -615,6 +621,12 @@ final class RenderTests: XCTestCase {
             XCTAssertLessThanOrEqual(worst, accuracy, "\(name): \(kind) \(got.array) against the model's \(expected.array)", file: file, line: line)
             lowest = min(lowest, low)
         }
+        let axis = ink - model, length = (axis * axis).sum()
+        let amount = face.highlighted.reduce(0.0) { sum, point in
+            let p = menu.image.pixel(point.0, point.1)
+            return sum + ((SIMD3(p.x, p.y, p.z) - model) * axis).sum() / length
+        } / Double(max(face.highlighted.count, 1))
+        XCTAssertEqual(amount, GlassOptics.menuHighlight, accuracy: 0.005, "\(name): the highlight's amount, fitted over the row", file: file, line: line)
         return lowest
     }
 
@@ -672,30 +684,39 @@ final class RenderTests: XCTestCase {
         #endif
     }
 
+    /// `color` as it resolves in `scheme`, gamma-encoded sRGB.
+    private func srgb(_ color: Color, in scheme: ColorScheme) -> SIMD3<Double> {
+        var environment = EnvironmentValues()
+        environment.colorScheme = scheme
+        let resolved = color.resolve(in: environment).srgb
+        return SIMD3(Double(resolved.x), Double(resolved.y), Double(resolved.z))
+    }
+
     /// A menu tinted with a system color takes `menuForeground`: `#111113`
     /// on light glass and white on dark, whichever the tint, where the tint
     /// alone would give a light blue menu white labels (2.1:1 over white).
-    /// Over white and black, on plain glass and on a highlighted row, its
-    /// items keep at least 5.0:1 with the system colors as they resolve in
-    /// either color scheme (the spec's tinted floor; the lowest is
-    /// systemYellow's dark variant, 5.07:1 on a highlighted row of dark glass
-    /// over white).
+    /// Regular and Clear, in either appearance, with the system colors as
+    /// they resolve in either color scheme (light glass in a dark-mode window
+    /// included), over white and black, on plain glass and on a highlighted
+    /// row, its items keep at least 5.0:1, the spec's tinted floor (the
+    /// lowest is systemYellow's dark variant on a highlighted row of dark
+    /// glass over white: 5.07:1 in the model on Regular, 5.17:1 rendered on
+    /// Clear).
     func testTintedMenuLabels() throws {
         let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
-        for (name, color) in systemTints {
-            for (appearance, scheme) in [(GlassAppearance.light, ColorScheme.light), (.dark, .light), (.dark, .dark)] {
-                var environment = EnvironmentValues()
-                environment.colorScheme = scheme
-                let resolved = color.resolve(in: environment).srgb
-                let tint = SIMD3(Double(resolved.x), Double(resolved.y), Double(resolved.z))
-                let dark = appearance == .dark
-                let ink = GlassOptics.menuForeground(tint: tint, material: .regular, dark: dark)
-                XCTAssertEqual(ink, dark ? white : lightGlassInk, "\(name) \(appearance) menu label")
-                for backdrop in [white, black] {
-                    let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, tint: color, colorScheme: scheme)
-                    assertMenuPanel(menu, ink: ink, model: menuModel(backdrop, material: .regular, dark: dark, tint: tint),
-                                    accuracy: tolerance, floor: 5.0,
-                                    "\(name) \(tint.array) \(appearance) menu in \(scheme) mode over \(backdrop == white ? "white" : "black")")
+        for material in [GlassMaterial.regular, .clear] {
+            for (name, color) in systemTints {
+                for (appearance, scheme) in [(GlassAppearance.light, ColorScheme.light), (.light, .dark), (.dark, .light), (.dark, .dark)] {
+                    let tint = srgb(color, in: scheme)
+                    let dark = appearance == .dark
+                    let ink = GlassOptics.menuForeground(tint: tint, material: material, dark: dark)
+                    XCTAssertEqual(ink, dark ? white : lightGlassInk, "\(name) \(material) \(appearance) menu label")
+                    for backdrop in [white, black] {
+                        let menu = try renderMenuPanel(material: material, appearance: appearance, backdrop: backdrop, tint: color, colorScheme: scheme)
+                        assertMenuPanel(menu, ink: ink, model: menuModel(backdrop, material: material, dark: dark, tint: tint),
+                                        accuracy: tolerance, floor: 5.0,
+                                        "\(name) \(tint.array) \(material) \(appearance) menu in \(scheme) mode over \(backdrop == white ? "white" : "black")")
+                    }
                 }
             }
         }
@@ -706,21 +727,44 @@ final class RenderTests: XCTestCase {
     /// the backing mixes into that fill as into the glass: light, about
     /// `#F4F4F7`, which an 8-bit readback tells apart from the plain fill;
     /// dark, the fill is the backing already. Labels keep more than 11:1 over
-    /// the backdrops that are hardest on them, highlighted rows too.
+    /// the backdrops that are hardest on them, highlighted rows too. A tint
+    /// colors the fill as it colors the glass, its pigment raising the fill's
+    /// opacity, before the backing: systemYellow's dark variant on a dark
+    /// Regular menu over white, the hardest of the system colors on this
+    /// fill, keeps 5.8:1 on a highlighted row, held to the spec's tinted
+    /// floor of 5.0:1.
     func testMenuUnderReduceTransparency() throws {
         for (appearance, backdrop) in [(GlassAppearance.dark, SIMD3<Double>(1, 1, 1)), (.light, SIMD3<Double>(0, 0, 0))] {
             let dark = appearance == .dark
             let ink = dark ? SIMD3<Double>(1, 1, 1) : lightGlassInk
-            let fill = dark ? SIMD3<Double>(0x1C, 0x1C, 0x1E) / 255 : SIMD3<Double>(0xF2, 0xF2, 0xF7) / 255
-            let mixed = GlassOptics.legibilityColor(fill, dark: dark, amount: GlassOptics.menuLegibility)
-            let model = mixed * 0.94 + backdrop * 0.06
             let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, reduceTransparency: true)
             // About one 8-bit step: the plain fill is 1.7 steps off in light.
             // 14.4:1 on plain glass and 11.2:1 on a highlighted row of the
             // dark menu over white, the lowest of these.
-            assertMenuPanel(menu, ink: ink, model: model, accuracy: 1.0 / 255.0, floor: 11,
+            assertMenuPanel(menu, ink: ink, model: reducedMenuModel(backdrop, dark: dark), accuracy: 1.0 / 255.0, floor: 11,
                             "reduce transparency \(appearance) menu over \(dark ? "white" : "black")")
         }
+        let yellow = systemTints[1].color, tint = srgb(yellow, in: .dark), white = SIMD3<Double>(1, 1, 1)
+        let ink = GlassOptics.menuForeground(tint: tint, material: .regular, dark: true)
+        XCTAssertEqual(ink, white, "systemYellow dark menu label")
+        let menu = try renderMenuPanel(appearance: .dark, backdrop: white, tint: yellow, reduceTransparency: true)
+        assertMenuPanel(menu, ink: ink, model: reducedMenuModel(white, dark: true, tint: tint), accuracy: 1.0 / 255.0, floor: 5.0,
+                        "reduce transparency systemYellow \(tint.array) dark menu over white")
+    }
+
+    /// The model's Regular menu panel under Reduce Transparency over a solid
+    /// `backdrop`: the opaque fill, tinted like the glass (the pigment's
+    /// `body` raising its 94% opacity), then the backing mix.
+    private func reducedMenuModel(_ backdrop: SIMD3<Double>, dark: Bool, tint: SIMD3<Double>? = nil) -> SIMD3<Double> {
+        var rgb = dark ? SIMD3<Double>(0x1C, 0x1C, 0x1E) / 255 : SIMD3<Double>(0xF2, 0xF2, 0xF7) / 255
+        var alpha = 0.94
+        if let tint {
+            let body = GlassOptics.tintBody(.regular)
+            rgb = GlassOptics.tintColor(rgb, tint: tint, material: .regular)
+            alpha = body + (1 - body) * alpha
+        }
+        rgb = GlassOptics.legibilityColor(rgb, dark: dark, amount: GlassOptics.menuLegibility)
+        return rgb * alpha + backdrop * (1 - alpha)
     }
 
     // MARK: Clipping, sparse backdrops, degenerate sizes
