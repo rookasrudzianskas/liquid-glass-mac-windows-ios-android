@@ -11,7 +11,7 @@
     "dev": "node scripts/content.mjs && vite",
     "typecheck": "node scripts/content.mjs && tsc -p tsconfig.json --noEmit",
     "lint": "oxlint src scripts --deny-warnings",
-    "build": "node scripts/content.mjs && tsc -p tsconfig.json --noEmit && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/check-links.mjs --strict",
+    "build": "node scripts/ensure-downloads.mjs && node scripts/content.mjs && tsc -p tsconfig.json --noEmit && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/check-links.mjs --strict",
     "preview": "vite preview --port 4173",
     "check-links": "node scripts/check-links.mjs --strict"
   },

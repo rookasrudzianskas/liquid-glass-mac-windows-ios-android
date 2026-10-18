@@ -6,7 +6,7 @@
 import "./styles/base.css";
 import { GlassRenderer } from "./glass/renderer";
 import type { SurfaceFrame } from "./glass/renderer";
-import { defaultRefraction, shapeOutline } from "@lg/reference";
+import { defaultRefraction } from "@lg/reference";
 
 const W = 1200;
 const H = 630;
@@ -18,8 +18,8 @@ const say = (t: string) => {
 };
 
 // No surface sets a refraction, so each follows its size (OPTICS.md section 2).
-function surface(x: number, y: number, width: number, height: number, radius: number, material: "clear" | "regular", dark: boolean): SurfaceFrame {
-  return { x, y, width, height, radius, refraction: defaultRefraction(width, height), material, dark, nested: false, tint: null, opacity: 1, glowX: 0, glowY: 0, glow: 0, glowRadius: 1, contrast: false };
+function surface(x: number, y: number, width: number, height: number, radius: number, material: "clear" | "regular", dark: boolean, nested = false): SurfaceFrame {
+  return { x, y, width, height, radius, refraction: defaultRefraction(width, height), material, dark, nested, tint: null, opacity: 1, glowX: 0, glowY: 0, glow: 0, glowRadius: 1, contrast: false };
 }
 
 async function main() {
@@ -28,6 +28,10 @@ async function main() {
   const img = new Image();
   img.src = "/wallpapers/aurora-3072.jpg";
   await img.decode();
+  // The site's mark (waves under a lens), as in the favicon and the app icons.
+  const logo = new Image();
+  logo.src = "/favicon.svg";
+  await logo.decode();
 
   const gl = document.createElement("canvas");
   gl.width = W * S;
@@ -37,12 +41,16 @@ async function main() {
   renderer.setImage({ source: img, width: img.naturalWidth, height: img.naturalHeight, focusX: 0.5, focusY: 0.48 });
 
   const card = { x: 560, y: 330, w: 860, h: 300, r: 46 };
-  const lens = { x: 1010, y: 168, d: 210 };
+  // Clear of the card's corner, so it floats beside the card rather than covering it.
+  const lens = { x: 1075, y: 125, d: 210 };
+  const bar = { x: 560, y: 548, w: 330, h: 58 };
   renderer.render(
     [
       surface(card.x, card.y, card.w, card.h, card.r, "regular", true),
       surface(lens.x, lens.y, lens.d, lens.d, -1, "clear", true),
-      surface(560, 548, 330, 58, -1, "regular", true),
+      surface(bar.x, bar.y, bar.w, bar.h, -1, "regular", true),
+      // The selection lens on "Regular", as in every tab bar of the libraries.
+      surface(bar.x, bar.y, bar.w / 3 - 6, bar.h - 10, -1, "clear", true, true),
     ],
     true,
   );
@@ -85,30 +93,15 @@ async function main() {
   });
   ctx.globalAlpha = 1;
 
-  // Logo mark (top left), using the spec's continuous corner outline.
-  const mark = new Path2D();
-  shapeOutline(56, 56, 15, 12).forEach(([x, y], i) => (i ? mark.lineTo(68 + x, 64 + y) : mark.moveTo(68 + x, 64 + y)));
-  mark.closePath();
-  const g = ctx.createLinearGradient(68, 64, 124, 120);
-  g.addColorStop(0, "#3ad9e6");
-  g.addColorStop(0.5, "#7a5cff");
-  g.addColorStop(1, "#ff5fa2");
-  ctx.fillStyle = g;
-  // oxlint-disable-next-line unicorn/no-array-fill-with-reference-type -- Path2D, not an array
-  ctx.fill(mark);
-  ctx.beginPath();
-  ctx.arc(96, 91, 14, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  ctx.lineWidth = 2.4;
-  ctx.stroke();
+  // Logo mark (top left): the favicon's waves under a lens.
+  ctx.drawImage(logo, 68, 64, 56, 56);
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffffff";
   ctx.font = '650 24px "Inter Variable", sans-serif';
   ctx.fillText("liquid-glass-engineering.vercel.app", 142, 100);
 
-  // Downscale to the final 1200 x 630 PNG.
+  // Downscale to the final 1200 x 630 PNG. It is saved as the canvas encodes it (full color): do not quantize it
+  // to a palette afterwards, which speckles the glass with dithering.
   const final = document.createElement("canvas");
   final.width = W;
   final.height = H;
