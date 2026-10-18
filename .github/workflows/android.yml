@@ -39,7 +39,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      # setup-gradle v6 defaults to an "enhanced" cache, a proprietary component under Gradle's separate Terms of Use.
+      # The MIT "basic" provider keeps CI on open-source terms: one actions/cache entry of ~/.gradle/caches and
+      # ~/.gradle/wrapper, keyed by the build files.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
       - name: Unit tests against spec/vectors.json
         run: ./gradlew :liquidglass:testDebugUnitTest
       - name: Lint
@@ -50,7 +55,7 @@ jobs:
         run: ./gradlew :studio:assembleRelease
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android
           path: |
@@ -72,12 +77,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      # The MIT basic cache provider, as in the build job.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
       # The example's own Gradle build, with the library built from platforms/android through includeBuild.
       - name: Build and lint
         run: ./gradlew :app:assembleDebug :app:lintDebug
       - name: Upload the APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-hello-glass
           path: examples/compose/HelloGlass/app/build/outputs/apk/debug/*.apk
@@ -99,7 +107,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      # The MIT basic cache provider, as in the build job.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -134,7 +145,7 @@ jobs:
           PY
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-gpu-tests-api${{ matrix.api-level }}
           path: platforms/android/liquidglass/build/reports/androidTests/
