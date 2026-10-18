@@ -9,17 +9,25 @@ namespace LiquidGlass.Tests;
 /// <summary>
 /// Open menu panels mix their glass toward a solid backing (OPTICS §3, Legibility backing), by 0.6, and draw their labels
 /// in <see cref="GlassPalette.MenuForeground"/>; a highlighted row mixes the label color in at 8%. Untinted menus
-/// (Regular or Clear, both appearances) and menus tinted with system colors keep at least 5.2:1 over any backdrop,
-/// highlighted rows included.
+/// (Regular or Clear, both appearances) keep at least 5.2:1 over any backdrop and menus tinted with system colors (in
+/// the variants of either appearance) 5.0:1, highlighted rows included.
 /// </summary>
 public class LegibilityTests
 {
-    /// <summary>The system colors of the reference's floor (spec/generate-vectors.mjs), in its order.</summary>
+    /// <summary>
+    /// The system colors of the reference's floor (spec/generate-vectors.mjs), in its order: Apple's system colors in
+    /// their light variants, then their dark variants (the most luminous of the platforms' palettes).
+    /// </summary>
     private static readonly Rgb[] SystemTints = new (byte R, byte G, byte B)[]
     {
         (0, 122, 255), (52, 199, 89), (255, 59, 48), (255, 149, 0), (255, 204, 0),
         (175, 82, 222), (255, 45, 85), (88, 86, 214), (90, 200, 250), (0, 199, 190),
+        (10, 132, 255), (48, 209, 88), (255, 69, 58), (255, 159, 10), (255, 214, 10),
+        (191, 90, 242), (255, 55, 95), (94, 92, 230), (100, 210, 255), (102, 212, 207),
     }.Select(c => Rgb.FromBytes(c.R, c.G, c.B)).ToArray();
+
+    /// <summary>The light variants of <see cref="SystemTints"/>.</summary>
+    private static Rgb[] LightSystemTints => SystemTints.Take(10).ToArray();
 
     /// <summary>The 48 accent colors of Windows' Settings › Personalization › Colors, and the Windows 11 control accent.</summary>
     private static readonly Rgb[] WindowsAccents = new[]
@@ -151,11 +159,17 @@ public class LegibilityTests
     [Fact]
     public void SystemTintsKeepTheFloorOverAnyBackdrop()
     {
-        // The reference's system colors (its floor, 5.26:1, is yellow on a highlighted dark Regular row over white) and
-        // the Windows accent palette (5.64:1 at worst, its gold #FFB900), over an 11-step grid.
+        // The reference's system colors in both variants keep 5.0:1, highlighted rows included (its floor, 5.07:1, is the
+        // dark-appearance yellow #FFD60A on a highlighted dark Regular row over white; the light variants keep 5.26:1,
+        // their yellow #FFCC00 there), and the Windows accent palette 5.64:1 (its gold #FFB900), over an 11-step grid.
         var system = Materials.SelectMany(m => Appearances.SelectMany(d => SystemTints.Select(t => Floor(m, d, t, 10)))).Min();
+        var light = Materials.SelectMany(m => Appearances.SelectMany(d => LightSystemTints.Select(t => Floor(m, d, t, 10)))).Min();
         var accents = Materials.SelectMany(m => Appearances.SelectMany(d => WindowsAccents.Select(t => Floor(m, d, t, 10)))).Min();
-        Assert.Equal(5.26, system, 2);
+        Assert.Equal(5.07, system, 2);
+        Assert.Equal(system, Floor(GlassMaterial.Regular, true, Hex("FFD60A"), 10));
+        Assert.True(system >= 5.0);
+        Assert.Equal(5.26, light, 2);
+        Assert.Equal(light, Floor(GlassMaterial.Regular, true, Hex("FFCC00"), 10));
         Assert.Equal(5.64, accents, 2);
         Assert.Equal(accents, Floor(GlassMaterial.Regular, true, Hex("FFB900"), 10));
     }
@@ -215,10 +229,12 @@ public class LegibilityTests
         // Between 0.57 and 0.72: the panel keeps refracting what is behind it.
         Assert.InRange(levels.Min(), 145, 155);
         Assert.InRange(levels.Max(), 175, 185);
-        // The fallback's floor over the system colors is the shader's, yellow on a highlighted dark Regular row.
+        // Over the system colors the fallback's floor (5.11:1) sits above the shader's (5.07:1, the dark-appearance yellow
+        // on a highlighted dark Regular row over white).
         var system = Materials.SelectMany(m => Appearances.SelectMany(d => SystemTints.Select(t =>
             FallbackFloor(m, d, t, GlassFallback.LegibilityOpacity(m, d, t, GlassOptics.MenuLegibility), 10)))).Min();
-        Assert.Equal(5.27, system, 2);
+        Assert.Equal(5.11, system, 2);
+        Assert.True(system >= Materials.SelectMany(m => Appearances.SelectMany(d => SystemTints.Select(t => Floor(m, d, t, 10)))).Min());
     }
 
     [Fact]
