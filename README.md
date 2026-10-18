@@ -99,6 +99,8 @@ dependencyResolutionManagement {
 // app/build.gradle.kts
 dependencies {
     implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.0")
+    // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
+    implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
 ```
 

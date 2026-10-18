@@ -52,6 +52,8 @@ dependencyResolutionManagement {
 // app/build.gradle.kts
 dependencies {
     implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.0")
+    // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
+    implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
 ```
 
@@ -74,6 +76,8 @@ dependencyResolutionManagement {
 // app/build.gradle.kts
 dependencies {
     implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.0")
+    // Icons.Default.* in the quick start; apps on Material 3 usually have it already.
+    implementation("androidx.compose.material:material-icons-core:1.7.6")
 }
 ```
 
@@ -81,7 +85,7 @@ JitPack builds `platforms/android` from the release tag (see [`jitpack.yml`](../
 
 ### As an AAR
 
-Download `liquid-glass-compose-1.0.0.aar` from the website's downloads, put it in `app/libs/` and add `implementation(files("libs/liquid-glass-compose-1.0.0.aar"))` together with the Compose UI, Foundation and Activity Compose dependencies listed above (an AAR carries no dependency information).
+Download `liquid-glass-compose-1.0.0.aar` from the website's downloads, put it in `app/libs/` and add `implementation(files("libs/liquid-glass-compose-1.0.0.aar"))` together with the Compose UI, Foundation and Activity Compose dependencies listed above, and `material-icons-core` for the quick start's icons (an AAR carries no dependency information).
 
 The library needs no ProGuard or R8 rules.
 
