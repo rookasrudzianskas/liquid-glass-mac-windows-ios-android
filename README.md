@@ -110,7 +110,7 @@ JitPack (`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.
 
 The packages are published on the project's own NuGet feed, not on nuget.org. Add the feed once, then the package:
 
-```
+```powershell
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf
 ```

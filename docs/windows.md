@@ -33,7 +33,7 @@ verified against the same golden vectors.
 The packages are published on the project's own NuGet feed, not on nuget.org. Add the feed once (this writes it to
 your user NuGet configuration), then the package:
 
-```
+```powershell
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf
 ```
@@ -558,7 +558,7 @@ directly: `--page hero|controls|materials|blur --appearance system|light|dark --
 The solution is `platforms/windows/LiquidGlass.sln`: `LiquidGlass.Core`, `LiquidGlass.Wpf`, `LiquidGlass.Studio`,
 `LiquidGlass.Core.Tests`, `LiquidGlass.Wpf.Tests` and `tools/LiquidGlass.CiTools`.
 
-```
+```sh
 cd platforms/windows
 scripts/dotnet.sh build LiquidGlass.sln -c Release      # also on macOS and Linux (EnableWindowsTargeting)
 scripts/dotnet.sh test tests/LiquidGlass.Core.Tests      # anywhere

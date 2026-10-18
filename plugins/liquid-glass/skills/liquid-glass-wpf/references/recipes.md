@@ -15,7 +15,7 @@ WPF project named `GlassRecipes`; set `StartupUri` in `App.xaml` to the window y
 
 ## Setup shared by every recipe
 
-```
+```powershell
 dotnet new wpf -n GlassRecipes
 cd GlassRecipes
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass

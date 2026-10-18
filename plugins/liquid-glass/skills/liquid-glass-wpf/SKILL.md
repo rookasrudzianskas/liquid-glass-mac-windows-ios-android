@@ -30,7 +30,7 @@ shares one optical model with the SwiftUI and Compose ports, so the same options
 The packages are served from the project's static NuGet v3 feed (not on nuget.org yet). Add the feed once, then the
 package (`LiquidGlassEngineering.Core` comes with it):
 
-```
+```powershell
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf
 ```

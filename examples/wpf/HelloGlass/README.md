@@ -48,7 +48,7 @@ What it shows:
 On Windows 10 (version 1809 or later) or Windows 11 with the [.NET 10 SDK](https://dotnet.microsoft.com/download), from
 the repository root:
 
-```
+```powershell
 dotnet run --project examples/wpf/HelloGlass
 ```
 
@@ -58,7 +58,7 @@ project uses the published package (below), the .NET 8 SDK or Visual Studio 2022
 
 On macOS and Linux the example builds (running it needs Windows):
 
-```
+```sh
 dotnet build examples/wpf/HelloGlass -p:EnableWindowsTargeting=true
 ```
 
@@ -82,7 +82,7 @@ The packages are on the project's own NuGet feed, not on nuget.org; `RestoreAddi
 for this project only, and `LiquidGlassEngineering.Core` comes with the package. To add the feed for every project
 instead, as the [install instructions](../../../docs/windows.md#install) do, delete the `ProjectReference` and run:
 
-```
+```powershell
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
 dotnet add package LiquidGlassEngineering.Wpf --version 1.0.0
 ```
