@@ -179,6 +179,12 @@
   transform-origin: top right;
 }
 
+/* The nav bar's own backdrop-filter makes it the backdrop root, so a menu inside
+   it cannot blur the page behind: it is almost opaque instead, in both themes. */
+.nav__bar .popover {
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
