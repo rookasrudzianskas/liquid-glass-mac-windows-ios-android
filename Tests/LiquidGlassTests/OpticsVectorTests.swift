@@ -127,12 +127,13 @@ final class OpticsVectorTests: XCTestCase {
     }
 
     /// The legibility backing of menu panels (`spec/OPTICS.md` §3): the
-    /// menu amount, the backing colors, the mix and the worst-case label
-    /// contrast it guarantees over a white or a black backdrop.
+    /// menu amount and highlight, the backing colors, the mix and the
+    /// label contrast it gives over a white or a black backdrop.
     func testLegibility() {
         let legibility = Vectors.object("legibility")
         XCTAssertFalse(legibility.isEmpty, "legibility section missing")
         XCTAssertEqual(GlassOptics.menuLegibility, legibility.double("menuAmount"))
+        XCTAssertEqual(GlassOptics.menuHighlight, legibility.double("highlight"))
         let backing = legibility["backing"] as? [String: Any] ?? [:]
         assertClose(GlassOptics.legibilityBacking(dark: false).array, backing.doubles("light"), accuracy: tolerance, "light backing")
         assertClose(GlassOptics.legibilityBacking(dark: true).array, backing.doubles("dark"), accuracy: tolerance, "dark backing")
@@ -151,8 +152,50 @@ final class OpticsVectorTests: XCTestCase {
             GlassOptics.materialColor(black, material: .regular, dark: false), dark: false, amount: GlassOptics.menuLegibility)
         assertClose(contrastRatio(darkOverWhite, white), worst.double("darkOverWhite"), accuracy: tolerance, "white labels on dark menu glass over white")
         assertClose(contrastRatio(lightOverBlack, lightGlassInk), worst.double("lightOverBlack"), accuracy: tolerance, "#111113 labels on light menu glass over black")
-        XCTAssertGreaterThanOrEqual(contrastRatio(darkOverWhite, white), 5)
-        XCTAssertGreaterThanOrEqual(contrastRatio(lightOverBlack, lightGlassInk), 5)
+        XCTAssertGreaterThanOrEqual(contrastRatio(darkOverWhite, white), 5.2)
+        XCTAssertGreaterThanOrEqual(contrastRatio(lightOverBlack, lightGlassInk), 5.2)
+    }
+
+    /// The label color of menus: the appearance foreground untinted, white
+    /// or `#111113` by contrast with the tint mixed toward the backing.
+    func testMenuForeground() {
+        let cases = Vectors.object("legibility")["menuForeground"] as? [[String: Any]] ?? []
+        XCTAssertEqual(cases.count, 8)
+        XCTAssertEqual(cases.filter { $0["tint"] is NSNull }.count, 2, "untinted cases")
+        for (i, c) in cases.enumerated() {
+            let value = GlassOptics.menuForeground(tint: c.rgb("tint"), material: c.material(), dark: c.bool("dark"))
+            assertClose(value.array, c.doubles("value"), accuracy: tolerance, "menuForeground[\(i)] \(c)")
+        }
+        // Without the backing, the tinted rule is the one of tinted glass
+        // (OPTICS §8): a light blue Regular menu would take white labels.
+        let blue = SIMD3<Double>(0, 0.478, 1)
+        assertClose(GlassOptics.menuForeground(tint: blue, material: .regular, dark: false, legibility: 0).array, [1, 1, 1], accuracy: 0, "blue without the backing")
+        assertClose(GlassOptics.menuForeground(tint: blue, material: .regular, dark: false).array, lightGlassInk.array, accuracy: tolerance, "blue with the backing")
+    }
+
+    /// The label floors (`legibility.worstCase`): over a 6 × 6 × 6 grid of
+    /// solid backdrops, plain and highlighted rows of untinted menus and of
+    /// menus tinted with the system colors, Regular and Clear, light and
+    /// dark, keep at least 5.2:1.
+    func testMenuWorstCase() {
+        let worst = Vectors.object("legibility")["worstCase"] as? [String: Any] ?? [:]
+        func floor(_ material: GlassMaterial, dark: Bool, tint: SIMD3<Double>?) -> Double {
+            let label = GlassOptics.menuForeground(tint: tint, material: material, dark: dark)
+            return MenuWorstCase.backdrops.map { backdrop in
+                var rgb = GlassOptics.materialColor(backdrop, material: material, dark: dark)
+                if let tint { rgb = GlassOptics.tintColor(rgb, tint: tint, material: material) }
+                let glass = GlassOptics.legibilityColor(rgb, dark: dark, amount: GlassOptics.menuLegibility)
+                return MenuWorstCase.contrast(glass: glass, label: label)
+            }.min() ?? 0
+        }
+        let untinted = MenuWorstCase.configurations.map { floor($0.material, dark: $0.dark, tint: nil) }.min() ?? 0
+        let tinted = MenuWorstCase.configurations.flatMap { c in
+            MenuWorstCase.systemTints.map { floor(c.material, dark: c.dark, tint: $0) }
+        }.min() ?? 0
+        assertClose(untinted, worst.double("untintedWithHighlight"), accuracy: tolerance, "untinted menus with the highlight")
+        assertClose(tinted, worst.double("systemTintsWithHighlight"), accuracy: tolerance, "system tints with the highlight")
+        XCTAssertGreaterThanOrEqual(untinted, 5.2)
+        XCTAssertGreaterThanOrEqual(tinted, 5.2)
     }
 
     func testRimOverlay() {
@@ -170,8 +213,10 @@ final class OpticsVectorTests: XCTestCase {
     func testGlassPixel() {
         let cases = Vectors.object("glassPixel")["cases"] as? [[String: Any]] ?? []
         XCTAssertEqual(cases.count, 63)
-        // Six menu panel pixels, light and dark, carry the legibility backing.
+        // Six menu panel pixels, light and dark, carry the open menu's
+        // legibility backing.
         XCTAssertEqual(cases.filter { $0["legibility"] != nil }.count, 6)
+        XCTAssertEqual(cases.compactMap { $0["legibility"] as? Double }, Array(repeating: GlassOptics.menuLegibility, count: 6))
         for (i, c) in cases.enumerated() {
             let x = c.double("x"), y = c.double("y")
             let value = GlassOptics.glassPixel(

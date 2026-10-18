@@ -14,8 +14,8 @@ struct GlassRenderStyle: Equatable {
     var reduceTransparency: Bool
     var pixel: Double
     /// How far the glass mixes toward the solid legibility backing
-    /// (`spec/OPTICS.md` §3): ``GlassOptics/menuLegibility`` on menu
-    /// panels, 0 on every other surface.
+    /// (`spec/OPTICS.md` §3): ``GlassOptics/menuLegibility`` times the open
+    /// progress on menu panels, 0 on every other surface.
     var legibility: Double = 0
 }
 

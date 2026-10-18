@@ -57,7 +57,8 @@ inline float4 lgFill(SwiftUI::Layer layer, float2 q, float sigma, float4 valid) 
 //           2 rim only over a platform material), fill kernel sigma
 // valid:    rectangle the backdrop copy is valid in (minX, minY, maxX, maxY)
 // legibility: how far the glass mixes toward the solid legibility backing
-//           (0.5 on menu panels, 0 elsewhere; spec/OPTICS.md §3)
+//           (0.6 times the open progress on menu panels, 0 elsewhere;
+//           spec/OPTICS.md §3)
 [[ stitchable ]] half4 liquidGlass(float2 position, SwiftUI::Layer layer,
                                    float4 frame, float4 shape, float4 material,
                                    float4 tint, float4 glow, float4 extras, float4 valid,

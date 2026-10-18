@@ -152,18 +152,20 @@ enum GlassForeground {
     /// backdrop (`spec/OPTICS.md` §3: the pigment passes
     /// `body + (1 − body)·luma`, with luma 0.5). Blue, red or purple glass
     /// takes white; yellow, mint, green, orange or cyan glass a dark label.
-    static func onTint(_ tint: SIMD3<Float>, material: GlassMaterial) -> Color {
-        let body = material == .regular ? 0.78 : 0.68
-        let pass = body + (1 - body) * 0.5
-        let glass = relativeLuminance(Double(tint.x) * pass, Double(tint.y) * pass, Double(tint.z) * pass)
-        let onWhite = 1.05 / (glass + 0.05)
-        let onDark = (glass + 0.05) / (relativeLuminance(17 / 255, 17 / 255, 19 / 255) + 0.05)
-        return onDark > onWhite ? Self.light : Self.dark
+    ///
+    /// Glass mixed toward the legibility backing (menu panels) passes the
+    /// full amount, ``GlassOptics/menuLegibility``, as `legibility`, and the
+    /// glass compared is the tint mixed toward the backing of `dark`
+    /// appearance (``GlassOptics/menuForeground(tint:material:dark:legibility:)``),
+    /// so the label keeps its color while the panel opens and closes.
+    static func onTint(_ tint: SIMD3<Float>, material: GlassMaterial, dark: Bool = false, legibility: Double = 0) -> Color {
+        let label = GlassOptics.menuForeground(
+            tint: SIMD3(Double(tint.x), Double(tint.y), Double(tint.z)), material: material, dark: dark, legibility: legibility)
+        return label.x > 0.5 ? Self.dark : Self.light
     }
 
     /// WCAG 2 relative luminance of a gamma-encoded sRGB color.
     static func relativeLuminance(_ red: Double, _ green: Double, _ blue: Double) -> Double {
-        func linear(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        GlassOptics.relativeLuminance(SIMD3(red, green, blue))
     }
 }

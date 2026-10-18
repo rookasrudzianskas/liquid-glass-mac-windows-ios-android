@@ -106,3 +106,32 @@ func contrastRatio(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double {
 
 /// `#111113`, the label color on light glass (`spec/OPTICS.md` §8).
 let lightGlassInk = SIMD3<Double>(0x11, 0x11, 0x13) / 255
+
+/// The menu label floors of `spec/generate-vectors.mjs` (`legibility.worstCase`):
+/// labels over a 6 × 6 × 6 grid of solid backdrops, on plain rows and on
+/// highlighted ones.
+enum MenuWorstCase {
+    /// Every backdrop of the grid, channels in steps of 0.2.
+    static let backdrops: [SIMD3<Double>] = {
+        let steps = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        return steps.flatMap { r in steps.flatMap { g in steps.map { b in SIMD3(r, g, b) } } }
+    }()
+
+    /// The platform system colors the tinted floor covers (their light
+    /// variants): blue, green, red, orange, yellow, purple, pink, indigo,
+    /// teal and mint.
+    static let systemTints: [SIMD3<Double>] = [
+        [0, 122, 255], [52, 199, 89], [255, 59, 48], [255, 149, 0], [255, 204, 0],
+        [175, 82, 222], [255, 45, 85], [88, 86, 214], [90, 200, 250], [0, 199, 190],
+    ].map { SIMD3<Double>($0[0], $0[1], $0[2]) / 255 }
+
+    /// Untinted and tinted menus: Regular and Clear, light and dark.
+    static let configurations: [(material: GlassMaterial, dark: Bool)] = [(.regular, false), (.regular, true), (.clear, false), (.clear, true)]
+
+    /// The lower contrast of `label` with the menu glass `glass` and with
+    /// the same glass on a highlighted row, the label mixed in at
+    /// ``GlassOptics/menuHighlight``.
+    static func contrast(glass: SIMD3<Double>, label: SIMD3<Double>) -> Double {
+        min(contrastRatio(glass, label), contrastRatio(glass + (label - glass) * GlassOptics.menuHighlight, label))
+    }
+}

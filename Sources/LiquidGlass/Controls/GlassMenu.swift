@@ -5,16 +5,23 @@ import SwiftUI
 ///
 /// The trigger is a ``GlassButton`` (a plain item inside a ``GlassToolbar``).
 /// Opening morphs the trigger's glass into the panel on the morph spring
-/// while the items condense out of a blur; closing reverses it. The panel's
-/// glass mixes halfway toward a solid backing (`#F5F5F7` light, `#1C1C1E`
-/// dark, ``GlassOptics/menuLegibility``) while it still refracts and frosts,
-/// so the items of an untinted Regular menu (the default) keep at least 5:1
-/// contrast over any backdrop; an untinted Clear menu about 4.9:1 at worst.
-/// A tint has no such floor: its labels follow the tint and the backing the
-/// appearance, so over white a light menu tinted blue leaves its white
-/// labels about 2.1:1. Items highlight with the foreground color at 8%. Tap
-/// outside, press Escape, or choose an item to dismiss; the arrow keys and
-/// Return navigate the items.
+/// while the items condense out of a blur; closing reverses it. As it opens,
+/// the panel's glass mixes toward a solid backing (`#F5F5F7` light,
+/// `#1C1C1E` dark) by up to ``GlassOptics/menuLegibility`` (0.6), so it
+/// leaves the trigger as the trigger's own glass and still refracts and
+/// frosts when open. Items take the menu's label color,
+/// ``GlassOptics/menuForeground(tint:material:dark:legibility:)``: the
+/// appearance foreground, or on a tinted menu white or `#111113`, whichever
+/// contrasts more with the tint mixed toward the backing. A highlighted item
+/// (hovered, focused or pressed) mixes that color into the glass at 8%.
+/// Untinted menus, Regular or Clear, keep at least 5.2:1 contrast over any
+/// backdrop in both appearances, highlighted items included, and so do
+/// menus tinted with the system colors as they resolve in light mode;
+/// in dark mode `.yellow`, the lightest of them, keeps 5.07:1 on a
+/// highlighted item. Very light tints (pure yellow, lime, white) can fall
+/// below 4.5:1 over a white backdrop in dark appearance: tint a menu with a
+/// deeper color, or not at all. Tap outside, press Escape, or choose an
+/// item to dismiss; the arrow keys and Return navigate the items.
 ///
 /// ```swift
 /// GlassMenu(icon: "ellipsis", label: "More") {
@@ -48,9 +55,12 @@ public struct GlassMenu<Label: View, Content: View>: View {
     ///   - appearance: Light or dark glass for the trigger and the panel,
     ///     and their labels; `nil` inherits.
     ///   - radius: The panel's corner radius. Default 28.
-    ///   - tint: Colors the trigger's and the panel's glass; labels on it
-    ///     turn white or dark for contrast with the tint. A tinted panel's
-    ///     labels can fall well below 5:1 over some backdrops.
+    ///   - tint: Colors the trigger's and the panel's glass. The trigger's
+    ///     label turns white or dark for contrast with the tint; the panel's
+    ///     items take white or `#111113` for contrast with the tint mixed
+    ///     toward the legibility backing. Prefer a system color or a deeper
+    ///     tint: very light tints such as pure yellow or white can leave the
+    ///     items below 4.5:1 over a white backdrop in dark appearance.
     ///   - motion: Overrides the scene's motion level.
     ///   - content: ``GlassMenuItem``s and ``GlassMenuDivider``s.
     ///   - label: The trigger's label.
@@ -233,7 +243,12 @@ public struct GlassMenuItem: View {
                     Spacer(minLength: 16)
                 }
                 .font(GlassMenuMetrics.font)
-                .foregroundStyle(role == .destructive ? AnyShapeStyle(Color.red) : AnyShapeStyle(.foreground))
+                // Items draw in the panel's foreground, the menu's label
+                // color (`GlassOptics.menuForeground`); a destructive item is
+                // red. `.primary` keeps the inherited style, where
+                // `.foreground` would reset it to the system label color
+                // (black or white at 85% on macOS, and never the tint's).
+                .foregroundStyle(role == .destructive ? AnyShapeStyle(Color.red) : AnyShapeStyle(HierarchicalShapeStyle.primary))
                 .opacity(isEnabled ? 1 : 0.4)
                 .padding(.horizontal, GlassMenuMetrics.itemPadding)
                 .frame(minHeight: GlassMenuMetrics.itemHeight)
@@ -430,8 +445,11 @@ struct GlassMenuPanel<Content: View>: View {
             .frame(minWidth: GlassMenuMetrics.minWidth, alignment: .leading)
             .fixedSize()
             .environment(\.glassMenuPanel, context)
-            // The items draw over the panel's glass, in its foreground.
-            .modifier(GlassForegroundStyle(options: options, defaultMaterial: .regular))
+            // The items draw over the panel's glass in the menu's label
+            // color: the appearance foreground, or on a tinted menu white or
+            // #111113 for contrast with the tint mixed toward the backing
+            // (`GlassOptics.menuForeground`), the same while it opens.
+            .modifier(GlassForegroundStyle(options: options, defaultMaterial: .regular, legibility: GlassOptics.menuLegibility))
             // The items keep the app's layout direction.
             .environment(\.layoutDirection, layoutDirection)
             .onPreferenceChange(GlassMenuItemKey.self) { items = $0 }
@@ -567,9 +585,10 @@ private struct GlassMenuPlacement: Layout {
     }
 }
 
-/// An item's highlight: the foreground color at 8% while pressed, hovered
-/// or chosen with the keyboard, concentric with the panel.
-private struct GlassMenuItemStyle: ButtonStyle {
+/// An item's highlight while pressed, hovered or chosen with the keyboard,
+/// concentric with the panel: the panel's foreground, the menu's label
+/// color, mixed into the glass at ``GlassOptics/menuHighlight`` (8%).
+struct GlassMenuItemStyle: ButtonStyle {
     let highlighted: Bool
     let radius: GlassRadius
 
@@ -577,7 +596,7 @@ private struct GlassMenuItemStyle: ButtonStyle {
         configuration.label
             .background {
                 GlassShape(radius: radius)
-                    .fill(.foreground.opacity(configuration.isPressed || highlighted ? GlassControlMetrics.highlightOpacity : 0))
+                    .fill(.foreground.opacity(configuration.isPressed || highlighted ? GlassOptics.menuHighlight : 0))
             }
     }
 }

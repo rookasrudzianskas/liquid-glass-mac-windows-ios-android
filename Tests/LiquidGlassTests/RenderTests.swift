@@ -504,95 +504,158 @@ final class RenderTests: XCTestCase {
     /// frosted layer stays inside it.
     private let menuScene = CGSize(width: 400, height: 300)
 
-    /// An open menu panel (Regular, untinted) under a trigger at the top
-    /// right, over a solid `backdrop`, with a 20 pt square in the glass
-    /// foreground standing in for a label; the panel's and the label's
-    /// rectangles in points.
+    /// A rendered menu panel and where its parts are, in points.
+    private struct MenuRender {
+        let image: Bitmap
+        let panel: CGRect
+        /// A highlighted row: an item drawn with ``GlassMenuItemStyle`` as
+        /// a hovered, focused or pressed item draws, with `label`, a 20 pt
+        /// square in the panel's foreground, standing in for its title.
+        let row: CGRect
+        let label: CGRect
+        /// A ``GlassMenuItem`` with a filled square for its icon, at `icon`.
+        let item: CGRect
+        let icon: CGPoint
+    }
+
+    /// An open menu panel under a trigger at the top right, over a solid
+    /// `backdrop`, in the color scheme of its appearance: a highlighted row,
+    /// a plain item and an empty stretch of glass.
     private func renderMenuPanel(
-        appearance: GlassAppearance, backdrop: SIMD3<Double>, reduceTransparency: Bool = false
-    ) throws -> (image: Bitmap, panel: CGRect, label: CGRect) {
+        material: GlassMaterial? = nil, appearance: GlassAppearance, backdrop: SIMD3<Double>, tint: Color? = nil,
+        colorScheme: ColorScheme? = nil, reduceTransparency: Bool = false
+    ) throws -> MenuRender {
         let morph = GlassMenuMorph()
         morph.open(motion: .none)
         let trigger = CGRect(x: 300, y: 20, width: 44, height: 44)
         let inset = GlassMenuMetrics.inset
-        let width = max(GlassMenuMetrics.minWidth, 180 + 2 * inset), height = 90 + 2 * inset
+        let rowWidth: CGFloat = 180, rowHeight: CGFloat = 44, itemHeight = GlassMenuMetrics.itemHeight, filler: CGFloat = 60
+        let width = max(GlassMenuMetrics.minWidth, rowWidth + 2 * inset), height = rowHeight + itemHeight + filler + 2 * inset
         let panel = CGRect(x: trigger.maxX - width, y: trigger.maxY + GlassMenuMetrics.offset, width: width, height: height)
-        let label = CGRect(x: panel.minX + inset + 80, y: panel.minY + inset + 35, width: 20, height: 20)
+        let row = CGRect(x: panel.minX + inset, y: panel.minY + inset, width: rowWidth, height: rowHeight)
+        let label = CGRect(x: row.midX - 10, y: row.midY - 10, width: 20, height: 20)
+        let item = CGRect(x: row.minX, y: row.maxY, width: rowWidth, height: itemHeight)
+        let icon = CGPoint(x: item.minX + GlassMenuMetrics.itemPadding + GlassMenuMetrics.iconWidth / 2, y: item.midY)
         let ground = Color(.sRGB, red: backdrop.x, green: backdrop.y, blue: backdrop.z)
         let image = try render(GlassScene(material: .clear, appearance: appearance) {
             GlassContent { ground }
             GlassMenuPanel(
-                options: GlassSurfaceOptions(material: nil, appearance: nil, radius: 28, refraction: nil, tint: nil, interactive: true, motion: nil),
+                options: GlassSurfaceOptions(material: material, appearance: nil, radius: 28, refraction: nil, tint: tint, interactive: true, motion: nil),
                 presenter: trigger, presenterRadius: 22, scene: menuScene, morph: morph, dismiss: {},
-                content: Rectangle().fill(.foreground).frame(width: 20, height: 20).frame(width: 180, height: 90)
+                content: VStack(alignment: .leading, spacing: 0) {
+                    Button {} label: {
+                        Rectangle().fill(.foreground).frame(width: 20, height: 20).frame(width: rowWidth, height: rowHeight)
+                    }
+                    .buttonStyle(GlassMenuItemStyle(highlighted: true, radius: .points(Double(28 - inset))))
+                    GlassMenuItem("Item", systemImage: "square.fill") {}
+                        .frame(width: rowWidth, height: itemHeight)
+                    Color.clear.frame(width: rowWidth, height: filler)
+                }
             )
         }
+        .environment(\.colorScheme, colorScheme ?? (appearance == .dark ? .dark : .light))
         .environment(\._accessibilityReduceTransparency, reduceTransparency), size: menuScene, settle: true)
-        return (image, panel, label)
+        return MenuRender(image: image, panel: panel, row: row, label: label, item: item, icon: icon)
     }
 
-    /// The pixels of a menu panel's face: past the rim's inner glow (4.5 pt
-    /// inside the outline) and clear of the label.
-    private func menuFace(panel: CGRect, label: CGRect) -> [(Int, Int)] {
+    /// The pixels of a menu panel's face, past the rim's inner glow (4.5 pt
+    /// inside the outline): those of the highlighted row clear of its ends
+    /// and its label, and the plain glass clear of the row and the item.
+    private func menuFace(_ menu: MenuRender) -> (plain: [(Int, Int)], highlighted: [(Int, Int)]) {
+        let panel = menu.panel
         let shape = GlassOptics.shapeParameters(width: Double(panel.width), height: Double(panel.height), radius: 28)
-        let keepOut = label.insetBy(dx: -2, dy: -2)
-        var face: [(Int, Int)] = []
+        let band = menu.row.insetBy(dx: 24, dy: 3), label = menu.label.insetBy(dx: -2, dy: -2)
+        let row = menu.row.insetBy(dx: -2, dy: -2), item = menu.item.insetBy(dx: -2, dy: -2)
+        var plain: [(Int, Int)] = [], highlighted: [(Int, Int)] = []
         for py in Int(panel.minY)..<Int(panel.maxY) {
             for px in Int(panel.minX)..<Int(panel.maxX) {
-                let x = Double(px) + 0.5, y = Double(py) + 0.5
+                let point = CGPoint(x: Double(px) + 0.5, y: Double(py) + 0.5)
                 let field = GlassOptics.shapeField(
-                    x: x - Double(panel.midX), y: y - Double(panel.midY), width: Double(panel.width), height: Double(panel.height),
+                    x: point.x - Double(panel.midX), y: point.y - Double(panel.midY), width: Double(panel.width), height: Double(panel.height),
                     extent: shape.extent, exponent: shape.exponent)
-                if field.distance < -6, !keepOut.contains(CGPoint(x: x, y: y)) { face.append((px, py)) }
+                guard field.distance < -6, !label.contains(point) else { continue }
+                if band.contains(point) {
+                    highlighted.append((px, py))
+                } else if !row.contains(point), !item.contains(point) {
+                    plain.append((px, py))
+                }
             }
         }
-        return face
+        return (plain, highlighted)
     }
 
-    /// Checks a rendered menu panel: its label draws in `ink`, and every face
-    /// pixel matches `model` within `accuracy` and keeps at least `floor`
-    /// contrast with the label.
+    /// Checks a rendered menu panel: its stand-in label and its item's icon
+    /// draw in `ink`; every plain face pixel matches `model` within
+    /// `accuracy`, every highlighted one the model with `ink` mixed in at
+    /// ``GlassOptics/menuHighlight``, and both keep at least `floor`
+    /// contrast with the label. Returns the lowest contrast.
+    @discardableResult
     private func assertMenuPanel(
-        _ menu: (image: Bitmap, panel: CGRect, label: CGRect), ink: SIMD3<Double>, model: SIMD3<Double>,
-        accuracy: Double, floor: Double, _ name: String, file: StaticString = #filePath, line: UInt = #line
-    ) {
+        _ menu: MenuRender, ink: SIMD3<Double>, model: SIMD3<Double>, accuracy: Double, floor: Double, _ name: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) -> Double {
         let drawn = menu.image.pixel(Int(menu.label.midX), Int(menu.label.midY))
         assertClose(SIMD3(drawn.x, drawn.y, drawn.z).array, ink.array, accuracy: tolerance, "\(name): label color", file: file, line: line)
-        let face = menuFace(panel: menu.panel, label: menu.label)
-        var lowest = Double.infinity, at = (0, 0), worst = 0.0, got = SIMD3<Double>()
-        for (px, py) in face {
-            let p = menu.image.pixel(px, py), glass = SIMD3(p.x, p.y, p.z)
-            let ratio = contrastRatio(glass, ink)
-            if ratio < lowest { lowest = ratio; at = (px, py) }
-            let d = (glass - model).array.map(abs).max() ?? 0
-            if d > worst { worst = d; got = glass }
+        let icon = menu.image.pixel(Int(menu.icon.x), Int(menu.icon.y))
+        assertClose(SIMD3(icon.x, icon.y, icon.z).array, ink.array, accuracy: tolerance, "\(name): the item's icon color", file: file, line: line)
+        let face = menuFace(menu)
+        let highlight = model + (ink - model) * GlassOptics.menuHighlight
+        var lowest = Double.infinity
+        for (pixels, expected, kind) in [(face.plain, model, "glass"), (face.highlighted, highlight, "highlighted row")] {
+            var low = Double.infinity, at = (0, 0), worst = 0.0, got = SIMD3<Double>()
+            for (px, py) in pixels {
+                let p = menu.image.pixel(px, py), glass = SIMD3(p.x, p.y, p.z)
+                let ratio = contrastRatio(glass, ink)
+                if ratio < low { low = ratio; at = (px, py) }
+                let d = (glass - expected).array.map(abs).max() ?? 0
+                if d > worst { worst = d; got = glass }
+            }
+            XCTAssertGreaterThan(pixels.count, 1_000, "\(name): \(kind) pixels", file: file, line: line)
+            XCTAssertGreaterThanOrEqual(low, floor, "\(name): label contrast on the \(kind) at \(at)", file: file, line: line)
+            XCTAssertLessThanOrEqual(worst, accuracy, "\(name): \(kind) \(got.array) against the model's \(expected.array)", file: file, line: line)
+            lowest = min(lowest, low)
         }
-        XCTAssertGreaterThan(face.count, 10_000, "\(name): face pixels", file: file, line: line)
-        XCTAssertGreaterThanOrEqual(lowest, floor, "\(name): label contrast at \(at)", file: file, line: line)
-        XCTAssertLessThanOrEqual(worst, accuracy, "\(name): glass \(got.array) against the model's \(model.array)", file: file, line: line)
+        return lowest
     }
 
-    /// Menu text reads over any backdrop (`spec/OPTICS.md` §3): the open
-    /// panel's glass mixes halfway toward its solid backing, so white labels
-    /// on dark glass over a white backdrop and `#111113` labels on light glass
-    /// over black keep at least 4.5:1 (5.09 and 7.15 in the model; Regular
-    /// glass alone gives 1.8 and 2.1, which a Regular surface, with no
-    /// backing, still shows).
-    func testMenuTextContrastsOverAnyBackdrop() throws {
-        for (appearance, backdrop) in [(GlassAppearance.dark, SIMD3<Double>(1, 1, 1)), (.light, SIMD3<Double>(0, 0, 0))] {
-            let dark = appearance == .dark
-            let ink = dark ? SIMD3<Double>(1, 1, 1) : lightGlassInk
-            let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop)
-            let model = GlassOptics.legibilityColor(
-                GlassOptics.materialColor(backdrop, material: .regular, dark: dark), dark: dark, amount: GlassOptics.menuLegibility)
-            assertMenuPanel(menu, ink: ink, model: model, accuracy: tolerance, floor: 4.5,
-                            "\(appearance) menu over \(dark ? "white" : "black")")
+    /// The model's menu glass over a solid `backdrop`: the material color,
+    /// the tint, then the open panel's backing mix.
+    private func menuModel(_ backdrop: SIMD3<Double>, material: GlassMaterial, dark: Bool, tint: SIMD3<Double>? = nil) -> SIMD3<Double> {
+        var rgb = GlassOptics.materialColor(backdrop, material: material, dark: dark)
+        if let tint { rgb = GlassOptics.tintColor(rgb, tint: tint, material: material) }
+        return GlassOptics.legibilityColor(rgb, dark: dark, amount: GlassOptics.menuLegibility)
+    }
 
-            // A Regular surface of the panel's size carries no backing.
+    /// Menu text reads over any backdrop (`spec/OPTICS.md` §3): untinted
+    /// Regular and Clear menus, light and dark, over white and over black,
+    /// draw their items in the appearance foreground and keep at least
+    /// 5.2:1 with them, on plain glass and on a highlighted row (the model's
+    /// lowest over these backdrops, 5.24:1, is Clear in dark appearance over
+    /// white). Regular glass alone, a surface without the backing, gives
+    /// white labels over white and `#111113` over black less than 2.5:1.
+    func testMenuTextContrastsOverAnyBackdrop() throws {
+        let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
+        var panel = CGSize.zero
+        for material in [GlassMaterial.regular, .clear] {
+            for appearance in [GlassAppearance.light, .dark] {
+                for backdrop in [white, black] {
+                    let dark = appearance == .dark
+                    let ink = GlassOptics.menuForeground(tint: nil, material: material, dark: dark)
+                    XCTAssertEqual(ink, dark ? white : lightGlassInk)
+                    let menu = try renderMenuPanel(material: material, appearance: appearance, backdrop: backdrop)
+                    panel = menu.panel.size
+                    assertMenuPanel(menu, ink: ink, model: menuModel(backdrop, material: material, dark: dark), accuracy: tolerance, floor: 5.2,
+                                    "\(material) \(appearance) menu over \(backdrop == white ? "white" : "black")")
+                }
+            }
+        }
+        // A Regular surface of a panel's size carries no backing.
+        for (appearance, backdrop) in [(GlassAppearance.dark, white), (.light, black)] {
+            let ink = appearance == .dark ? white : lightGlassInk
             let ground = Color(.sRGB, red: backdrop.x, green: backdrop.y, blue: backdrop.z)
             let surface = try render(GlassScene(material: .regular, appearance: appearance) {
                 GlassContent { ground }
-                GlassSurface(radius: 28) { Color.clear.frame(width: menu.panel.width, height: menu.panel.height) }
+                GlassSurface(radius: 28) { Color.clear.frame(width: panel.width, height: panel.height) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }, size: menuScene)
             let center = surface.pixel(Int(menuScene.width / 2), Int(menuScene.height / 2))
@@ -600,12 +663,53 @@ final class RenderTests: XCTestCase {
         }
     }
 
+    /// The platform's system blue and yellow.
+    private var systemTints: [(name: String, color: Color)] {
+        #if canImport(UIKit)
+        [("systemBlue", Color(uiColor: .systemBlue)), ("systemYellow", Color(uiColor: .systemYellow))]
+        #else
+        [("systemBlue", Color(nsColor: .systemBlue)), ("systemYellow", Color(nsColor: .systemYellow))]
+        #endif
+    }
+
+    /// A menu tinted with a system color takes `menuForeground`: `#111113`
+    /// on light glass and white on dark, whichever the tint, where the tint
+    /// alone would give a light blue menu white labels (2.1:1 over white).
+    /// Over white and black, on plain glass and on a highlighted row, its
+    /// items keep at least 5.2:1 with the system colors as they resolve in
+    /// light mode (the colors of the spec's floor), also on dark glass; in
+    /// dark mode, systemYellow's dark variant leaves 5.07:1 on a highlighted
+    /// row of dark glass over white.
+    func testTintedMenuLabels() throws {
+        let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
+        for (name, color) in systemTints {
+            for (appearance, scheme) in [(GlassAppearance.light, ColorScheme.light), (.dark, .light), (.dark, .dark)] {
+                var environment = EnvironmentValues()
+                environment.colorScheme = scheme
+                let resolved = color.resolve(in: environment).srgb
+                let tint = SIMD3(Double(resolved.x), Double(resolved.y), Double(resolved.z))
+                let dark = appearance == .dark
+                let ink = GlassOptics.menuForeground(tint: tint, material: .regular, dark: dark)
+                XCTAssertEqual(ink, dark ? white : lightGlassInk, "\(name) \(appearance) menu label")
+                // The light variants are the spec's colors; systemYellow's
+                // dark variant on dark glass keeps 5:1.
+                let floor = scheme == .dark && name == "systemYellow" ? 5 : 5.2
+                for backdrop in [white, black] {
+                    let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, tint: color, colorScheme: scheme)
+                    assertMenuPanel(menu, ink: ink, model: menuModel(backdrop, material: .regular, dark: dark, tint: tint),
+                                    accuracy: tolerance, floor: floor,
+                                    "\(name) \(tint.array) \(appearance) menu in \(scheme) mode over \(backdrop == white ? "white" : "black")")
+                }
+            }
+        }
+    }
+
     /// Under Reduce Transparency the panel draws the opaque fill
     /// (`spec/OPTICS.md` §8, `#F2F2F7` light and `#1C1C1E` dark at 94%), and
     /// the backing mixes into that fill as into the glass: light, about
     /// `#F4F4F7`, which an 8-bit readback tells apart from the plain fill;
-    /// dark, the fill is the backing already. Labels keep far more than 5:1
-    /// over the backdrops that are hardest on them.
+    /// dark, the fill is the backing already. Labels keep more than 11:1 over
+    /// the backdrops that are hardest on them, highlighted rows too.
     func testMenuUnderReduceTransparency() throws {
         for (appearance, backdrop) in [(GlassAppearance.dark, SIMD3<Double>(1, 1, 1)), (.light, SIMD3<Double>(0, 0, 0))] {
             let dark = appearance == .dark
@@ -614,8 +718,10 @@ final class RenderTests: XCTestCase {
             let mixed = GlassOptics.legibilityColor(fill, dark: dark, amount: GlassOptics.menuLegibility)
             let model = mixed * 0.94 + backdrop * 0.06
             let menu = try renderMenuPanel(appearance: appearance, backdrop: backdrop, reduceTransparency: true)
-            // About one 8-bit step: the plain fill is 1.4 steps off in light.
-            assertMenuPanel(menu, ink: ink, model: model, accuracy: 1.0 / 255.0, floor: 12,
+            // About one 8-bit step: the plain fill is 1.7 steps off in light.
+            // 14.4:1 on plain glass and 11.2:1 on a highlighted row of the
+            // dark menu over white, the lowest of these.
+            assertMenuPanel(menu, ink: ink, model: model, accuracy: 1.0 / 255.0, floor: 11,
                             "reduce transparency \(appearance) menu over \(dark ? "white" : "black")")
         }
     }

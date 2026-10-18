@@ -20,8 +20,15 @@ final class ShaderVectorTests: XCTestCase {
         queue = device.makeCommandQueue()
     }
 
-    /// Runs one mode of the test kernel over `inputs` (up to 16 floats each).
+    /// Runs one mode of the test kernel over `inputs` (up to 16 floats each),
+    /// one threadgroup at a time.
     private func evaluate(mode: UInt32, _ inputs: [[Float]]) throws -> [SIMD4<Float>] {
+        let group = pipeline.maxTotalThreadsPerThreadgroup
+        if inputs.count > group {
+            return try stride(from: 0, to: inputs.count, by: group).flatMap { start in
+                try evaluate(mode: mode, Array(inputs[start..<min(start + group, inputs.count)]))
+            }
+        }
         var flat = [Float](repeating: 0, count: inputs.count * 16)
         for (i, input) in inputs.enumerated() {
             precondition(input.count <= 16)
@@ -130,8 +137,8 @@ final class ShaderVectorTests: XCTestCase {
     }
 
     /// `lgLegibility`, the menu panels' mix toward the solid backing: the
-    /// backing colors (the mix at amount 1), the cases, and the worst-case
-    /// label contrast of Regular menu glass over white and over black.
+    /// backing colors (the mix at amount 1), the cases, and the label
+    /// contrast of Regular menu glass over white and over black.
     func testLegibility() throws {
         let legibility = Vectors.object("legibility")
         let backing = legibility["backing"] as? [String: Any] ?? [:]
@@ -151,8 +158,7 @@ final class ShaderVectorTests: XCTestCase {
         let amount = Float(legibility.double("menuAmount"))
         let menus = try evaluate(mode: 8, [[1, 1, 1, 1, 1, amount], [0, 0, 0, 1, 0, amount]])
         let worst = legibility["worstCase"] as? [String: Any] ?? [:]
-        let darkOverWhite = SIMD3<Double>(Double(menus[0].x), Double(menus[0].y), Double(menus[0].z))
-        let lightOverBlack = SIMD3<Double>(Double(menus[1].x), Double(menus[1].y), Double(menus[1].z))
+        let darkOverWhite = rgb(menus[0]), lightOverBlack = rgb(menus[1])
         let white = SIMD3<Double>(1, 1, 1), black = SIMD3<Double>(0, 0, 0)
         assertClose(darkOverWhite.array, GlassOptics.legibilityColor(
             GlassOptics.materialColor(white, material: .regular, dark: true), dark: true, amount: GlassOptics.menuLegibility).array,
@@ -163,8 +169,79 @@ final class ShaderVectorTests: XCTestCase {
         // 2e-3 in each channel moves these ratios by at most about 0.05.
         assertClose(contrastRatio(darkOverWhite, white), worst.double("darkOverWhite"), accuracy: 0.06, "GPU white labels on dark menu glass over white")
         assertClose(contrastRatio(lightOverBlack, lightGlassInk), worst.double("lightOverBlack"), accuracy: 0.06, "GPU #111113 labels on light menu glass over black")
-        XCTAssertGreaterThanOrEqual(contrastRatio(darkOverWhite, white), 5)
-        XCTAssertGreaterThanOrEqual(contrastRatio(lightOverBlack, lightGlassInk), 5)
+        XCTAssertGreaterThanOrEqual(contrastRatio(darkOverWhite, white), 5.2)
+        XCTAssertGreaterThanOrEqual(contrastRatio(lightOverBlack, lightGlassInk), 5.2)
+    }
+
+    /// The input of the test kernel's mode 9, the menu glass in the
+    /// shader's order: the material color of `rgb` (when `materialColor` is
+    /// set), the tint, then the backing mix.
+    private func menuGlass(
+        _ rgb: SIMD3<Double>, material: GlassMaterial, dark: Bool, tint: SIMD3<Double>?, legibility: Double, materialColor: Bool
+    ) -> [Float] {
+        let t = tint ?? .zero
+        return [
+            Float(rgb.x), Float(rgb.y), Float(rgb.z), material == .regular ? 1 : 0, flag(dark),
+            Float(t.x), Float(t.y), Float(t.z), tint == nil ? 0 : 1, Float(legibility), materialColor ? 1 : 0,
+        ]
+    }
+
+    private func rgb(_ v: SIMD4<Float>) -> SIMD3<Double> { SIMD3(Double(v.x), Double(v.y), Double(v.z)) }
+
+    /// `menuForeground` on the shader's glass: the tint as the shader draws
+    /// it over a mid-gray backdrop (whose luma is 0.5) and mixed toward the
+    /// backing, which picks the same label as the vectors.
+    func testMenuForeground() throws {
+        let legibility = Vectors.object("legibility")
+        let cases = (legibility["menuForeground"] as? [[String: Any]] ?? []).filter { $0.rgb("tint") != nil }
+        XCTAssertEqual(cases.count, 6)
+        let amount = legibility.double("menuAmount")
+        let gray = SIMD3<Double>(repeating: 0.5)
+        let results = try evaluate(mode: 9, cases.map { c in
+            menuGlass(gray, material: c.material(), dark: c.bool("dark"), tint: c.rgb("tint"), legibility: amount, materialColor: false)
+        })
+        for (i, (c, r)) in zip(cases, results).enumerated() {
+            guard let tint = c.rgb("tint") else { continue }
+            let body = GlassOptics.tintBody(c.material())
+            let expected = GlassOptics.legibilityColor(tint * (body + (1 - body) * 0.5), dark: c.bool("dark"), amount: amount)
+            let glass = rgb(r)
+            assertClose(glass.array, expected.array, accuracy: tolerance, "GPU menu glass of menuForeground[\(i)] \(c)")
+            let label = contrastRatio(glass, lightGlassInk) > contrastRatio(glass, SIMD3(1, 1, 1)) ? lightGlassInk : SIMD3(1, 1, 1)
+            assertClose(label.array, c.doubles("value"), accuracy: 1e-4, "GPU label of menuForeground[\(i)] \(c)")
+        }
+    }
+
+    /// The label floors (`legibility.worstCase`) on the shader's menu glass:
+    /// over a 6 × 6 × 6 grid of solid backdrops, plain and highlighted rows
+    /// of untinted menus and of menus tinted with the system colors, Regular
+    /// and Clear, light and dark, keep at least 5.2:1.
+    func testMenuWorstCase() throws {
+        let legibility = Vectors.object("legibility")
+        let worst = legibility["worstCase"] as? [String: Any] ?? [:]
+        let amount = legibility.double("menuAmount")
+        var inputs: [[Float]] = [], labels: [SIMD3<Double>] = [], tinted: [Bool] = []
+        for c in MenuWorstCase.configurations {
+            for tint in [nil] + MenuWorstCase.systemTints.map(Optional.some) {
+                let label = GlassOptics.menuForeground(tint: tint, material: c.material, dark: c.dark)
+                for backdrop in MenuWorstCase.backdrops {
+                    inputs.append(menuGlass(backdrop, material: c.material, dark: c.dark, tint: tint, legibility: amount, materialColor: true))
+                    labels.append(label)
+                    tinted.append(tint != nil)
+                }
+            }
+        }
+        XCTAssertEqual(inputs.count, 4 * 11 * 216)
+        let results = try evaluate(mode: 9, inputs)
+        var untintedFloor = Double.infinity, tintedFloor = Double.infinity
+        for (i, r) in results.enumerated() {
+            let ratio = MenuWorstCase.contrast(glass: rgb(r), label: labels[i])
+            if tinted[i] { tintedFloor = min(tintedFloor, ratio) } else { untintedFloor = min(untintedFloor, ratio) }
+        }
+        // 2e-3 in each channel moves these ratios by at most about 0.05.
+        assertClose(untintedFloor, worst.double("untintedWithHighlight"), accuracy: 0.06, "GPU untinted menus with the highlight")
+        assertClose(tintedFloor, worst.double("systemTintsWithHighlight"), accuracy: 0.06, "GPU system tints with the highlight")
+        XCTAssertGreaterThanOrEqual(untintedFloor, 5.2)
+        XCTAssertGreaterThanOrEqual(tintedFloor, 5.2)
     }
 
     func testRimOverlay() throws {

@@ -85,6 +85,12 @@ struct GlassOutlineShape: Shape {
 struct GlassForegroundStyle: ViewModifier {
     let options: GlassSurfaceOptions
     var defaultMaterial: GlassMaterial?
+    /// How far the glass under the content mixes toward the legibility
+    /// backing when it is fully there: menu panels pass
+    /// ``GlassOptics/menuLegibility``, so their items take
+    /// ``GlassOptics/menuForeground(tint:material:dark:legibility:)``, and
+    /// keep it while the panel opens and closes.
+    var legibility: Double = 0
 
     @Environment(\.self) private var environment
 
@@ -101,7 +107,7 @@ struct GlassForegroundStyle: ViewModifier {
 
     private func foreground(_ style: GlassRenderStyle) -> Color {
         if let tint = style.tint {
-            return GlassForeground.onTint(tint, material: style.material)
+            return GlassForeground.onTint(tint, material: style.material, dark: style.dark, legibility: legibility)
         }
         return GlassForeground.color(dark: style.dark)
     }
@@ -125,8 +131,8 @@ struct GlassSurfaceCore<Content: View>: View {
     /// Fades the glass (not the content) in and out.
     var opacity: Double = 1
     /// How far the glass mixes toward the solid legibility backing
-    /// (`spec/OPTICS.md` §3): menu panels pass ``GlassOptics/menuLegibility``;
-    /// every other surface keeps 0.
+    /// (`spec/OPTICS.md` §3): menu panels pass ``GlassOptics/menuLegibility``
+    /// times their open progress; every other surface keeps 0.
     var legibility: Double = 0
     /// Extra room around the surface for outlines that grow past its bounds.
     var extraPadding: CGFloat = 0

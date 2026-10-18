@@ -222,9 +222,16 @@ public enum GlassOptics {
     // MARK: Legibility backing
 
     /// How far menu panels mix their glass toward the solid legibility
-    /// backing (`spec/OPTICS.md` §3), so menu text keeps at least 5:1
-    /// contrast over any backdrop. Every other surface uses 0.
-    public static let menuLegibility = 0.5
+    /// backing when open (`spec/OPTICS.md` §3); the panel applies it times
+    /// its open progress, so the glass leaves the trigger as the trigger's
+    /// own glass. With labels in ``menuForeground(tint:material:dark:legibility:)``,
+    /// untinted menus, Regular or Clear, keep at least 5.2:1 contrast over
+    /// any backdrop, highlighted rows included. Every other surface uses 0.
+    public static let menuLegibility = 0.6
+
+    /// How far a highlighted menu row (hovered, focused with the keyboard or
+    /// pressed) mixes its label color into the glass.
+    public static let menuHighlight = 0.08
 
     /// The solid backing of the legibility mix: `#F5F5F7` light, `#1C1C1E` dark.
     public static func legibilityBacking(dark: Bool) -> SIMD3<Double> {
@@ -235,6 +242,30 @@ public enum GlassOptics {
     /// (0 leaves it unchanged). Applied after the material color and tint.
     public static func legibilityColor(_ c: SIMD3<Double>, dark: Bool, amount: Double) -> SIMD3<Double> {
         c + (legibilityBacking(dark: dark) - c) * amount
+    }
+
+    /// The label color of a menu (`spec/OPTICS.md` §3), gamma-encoded sRGB.
+    ///
+    /// Untinted, the appearance foreground: `#111113` light, white dark. On
+    /// a tinted menu, white or `#111113`, whichever has the higher WCAG 2
+    /// contrast with the tint as the menu draws it over a mid-tone backdrop,
+    /// mixed toward the legibility backing:
+    /// `mix(tint · (body + (1 − body)·0.5), backing, legibility)`, with the
+    /// pigment ``tintBody(_:)`` of `material`.
+    public static func menuForeground(
+        tint: SIMD3<Double>?, material: GlassMaterial, dark: Bool, legibility: Double = menuLegibility
+    ) -> SIMD3<Double> {
+        let ink = SIMD3<Double>(0x11, 0x11, 0x13) / 255, white = SIMD3<Double>(1, 1, 1)
+        guard let tint else { return dark ? white : ink }
+        let body = tintBody(material)
+        let glass = relativeLuminance(legibilityColor(tint * (body + (1 - body) * 0.5), dark: dark, amount: legibility))
+        return (glass + 0.05) / (relativeLuminance(ink) + 0.05) > 1.05 / (glass + 0.05) ? ink : white
+    }
+
+    /// WCAG 2 relative luminance of a gamma-encoded sRGB color.
+    static func relativeLuminance(_ c: SIMD3<Double>) -> Double {
+        func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * linear(c.x) + 0.7152 * linear(c.y) + 0.0722 * linear(c.z)
     }
 
     // MARK: Rim light
@@ -281,7 +312,8 @@ public enum GlassOptics {
     ///   - sample: The backdrop color (unpremultiplied RGBA) at the pixel
     ///     offset by `(dx, dy)`. Regular glass samples its frosted backdrop.
     ///   - legibility: How far the glass mixes toward the legibility
-    ///     backing: ``menuLegibility`` on menu panels, 0 elsewhere.
+    ///     backing: on menu panels ``menuLegibility`` times the open
+    ///     progress, 0 elsewhere.
     ///   - base: The unrefracted backdrop at the pixel, premultiplied.
     /// - Returns: The premultiplied result.
     public static func glassPixel(

@@ -63,6 +63,13 @@ kernel void lgTestEvaluate(device const float *input [[buffer(0)]],
         output[id] = float4(lgLegibility(lgMaterialColor(float3(a[0], a[1], a[2]), a[3], a[4], 0.0), a[4], a[5]), 0.0);
         break;
     }
+    case 9: { // menu glass, in the shader's order: rgb, material, dark, tint rgb, tint on, legibility, material color on
+        float3 rgb = float3(a[0], a[1], a[2]);
+        if (a[10] > 0.5) rgb = lgMaterialColor(rgb, a[3], a[4], 0.0);
+        if (a[8] > 0.5) rgb = lgTintColor(rgb, float3(a[5], a[6], a[7]), a[3]);
+        output[id] = float4(lgLegibility(rgb, a[4], a[9]), 0.0);
+        break;
+    }
     default:
         output[id] = float4(NAN);
     }
