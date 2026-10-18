@@ -349,10 +349,11 @@ struct SettingsCard: View {
 Two standalone menus at the top trailing corner: a titled trigger that names the current choice, whose items check
 it with `checked:` (a checkmark column, read as selected by VoiceOver), and an icon-only one (the same circle as a
 `GlassButton(icon:)`) with an item disabled until there is a selection. Both sit in one foreground container, so
-either panel draws above everything else. Opening morphs the trigger's glass into a Regular panel (radius 28); it
-opens below the trigger with trailing edges aligned, flips above when it does not fit below, and keeps 8 pt from the
-scene's left and right edges. The panel never scrolls, so keep menus short. Tap outside, press Escape or choose an
-item to close it.
+either panel draws above everything else. Opening morphs the trigger's glass into a Regular panel (radius 28) mixed
+halfway toward a solid backing, so its items keep at least 5:1 contrast over any backdrop; it opens below the
+trigger with trailing edges aligned, flips above when it does not fit below, and keeps 8 pt from the scene's left
+and right edges. The panel never scrolls, so keep menus short. Tap outside, press Escape or choose an item to close
+it.
 
 ```swift
 import LiquidGlass

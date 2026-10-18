@@ -676,13 +676,16 @@ Toggle("Bluetooth", isOn: $bluetooth).toggleStyle(GlassSwitchStyle())
 
 A menu whose trigger is a `GlassButton` (a plain item inside a `GlassToolbar`); `appearance` and `tint` apply to the
 trigger and the panel. Opening morphs the trigger's glass into a Regular panel on the morph spring while the items
-condense out of a blur; closing reverses it. The panel opens below the trigger with trailing edges aligned (the left
-edges, right to left) and 8 pt from it, flips above when it does not fit below but fits above, and keeps 8 pt from
-the scene's left and right edges. It never scrolls: a menu that fits on neither side runs past the scene's bottom
-edge. Items highlight with the foreground at 8%. Tap outside, press Escape (or the VoiceOver escape gesture), or
-choose an item to dismiss; up/down arrows and Return navigate, skipping disabled items. The panel draws in the
-enclosing scene's overlay; outside a `GlassScene` the menu falls back to the system `Menu` with the same items
-(checked items become toggles there).
+condense out of a blur; closing reverses it. The panel's glass mixes halfway (`GlassOptics.menuLegibility`) toward a
+solid backing, `#F5F5F7` light and `#1C1C1E` dark, which fades in as it opens: menu text keeps at least 5:1 contrast
+over any backdrop (5.09:1 for white labels over white in dark appearance, 7.15:1 for `#111113` over black in light)
+while the panel still refracts and frosts at half strength. No other surface has the backing. The panel opens below
+the trigger with trailing edges aligned (the left edges, right to left) and 8 pt from it, flips above when it does
+not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls: a menu that
+fits on neither side runs past the scene's bottom edge. Items highlight with the foreground at 8%. Tap outside, press
+Escape (or the VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping
+disabled items. The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the
+system `Menu` with the same items (checked items become toggles there).
 
 ```swift
 public struct GlassMenu<Label: View, Content: View>: View {
@@ -967,6 +970,7 @@ public enum GlassOptics {
     public static let continuousExponent = 3.26     // Superellipse exponent of a continuous corner.
     public static let luma = SIMD3<Double>(0.213, 0.715, 0.072)   // SVG saturate luma weights.
     public static let frostSigma = 7.33             // σ of the Regular material's frost blur.
+    public static let menuLegibility = 0.5          // Mix toward the legibility backing on menu panels (0 elsewhere).
     public static let progressiveLevels = 6         // Blur levels above the sharp backdrop.
 
     // Result types (public fields, no public initializers).
@@ -995,6 +999,8 @@ public enum GlassOptics {
     public static func tintColor(_ c: SIMD3<Double>, tint: SIMD3<Double>, material: GlassMaterial) -> SIMD3<Double>
     public static func fillSigma(dark: Bool) -> Double                          // 23 light, 21.8 dark
     public static func frostColor(frost: SIMD3<Double>, fill: SIMD3<Double>, dark: Bool) -> SIMD3<Double>
+    public static func legibilityBacking(dark: Bool) -> SIMD3<Double>           // #F5F5F7 light, #1C1C1E dark
+    public static func legibilityColor(_ c: SIMD3<Double>, dark: Bool, amount: Double) -> SIMD3<Double>  // mix(c, backing, amount)
 
     // Rim light (premultiplied RGBA)
     public static func rimOverlay(distance d: Double, nx: Double, ny: Double, dark: Bool, pixel: Double, tint: SIMD3<Double>? = nil) -> SIMD4<Double>
@@ -1003,7 +1009,7 @@ public enum GlassOptics {
     public static func glassPixel(
         x: Double, y: Double, width: Double, height: Double, radius: GlassRadius,
         material: GlassMaterial = .clear, dark: Bool = false, refraction: Double = defaultRefraction,
-        tint: SIMD3<Double>? = nil, pixel: Double = 1.0 / 3.0, nested: Bool = false,
+        tint: SIMD3<Double>? = nil, pixel: Double = 1.0 / 3.0, nested: Bool = false, legibility: Double = 0,
         sample: (_ dx: Double, _ dy: Double) -> SIMD4<Double>, base: SIMD4<Double>
     ) -> SIMD4<Double>
 
@@ -1045,6 +1051,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
+| `GlassMenu` panel legibility backing (mix, light, dark) | 0.5, `#F5F5F7`, `#1C1C1E`; menu text at 5:1 or more over any backdrop | same |
 | Highlight of pressed / hovered / focused items | foreground at 8% | foreground at 8% |
 | Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more | same |
 
