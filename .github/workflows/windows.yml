@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
         working-directory: platforms/windows
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -387,7 +387,7 @@ jobs:
     # feed is behind this commit's packages, not that the commit is broken, so it does not fail the run.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: windows-release

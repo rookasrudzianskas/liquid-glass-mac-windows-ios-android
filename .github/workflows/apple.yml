@@ -39,7 +39,7 @@ jobs:
       matrix:
         platform: [macOS, iOS Simulator]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Select the newest Xcode
         run: platforms/apple/scripts/ci-select-xcode.sh
       - name: Unit, GPU and render tests against spec/vectors.json
@@ -61,7 +61,7 @@ jobs:
           - platform: macOS
             destination: platform=macOS
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Select the newest Xcode
         run: platforms/apple/scripts/ci-select-xcode.sh
       - name: Build examples/swiftui/HelloGlass against the package at the repository root
@@ -75,7 +75,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Select the newest Xcode
         run: platforms/apple/scripts/ci-select-xcode.sh
       - name: Build for macOS (Release)
