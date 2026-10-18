@@ -2,7 +2,7 @@
 
 All notable changes to Liquid Glass Engineering are recorded here. The project follows [Semantic Versioning](https://semver.org); the libraries, the demo apps, the website and the agent skills share one version.
 
-## [1.0.1] - 2026-10-18
+## [1.0.1] - 2026-10-19
 
 A patch release: menus stay legible over any backdrop on every platform, with menu fixes for Apple, Android and Windows, and the Gradle 8.14.6 wrapper.
 
