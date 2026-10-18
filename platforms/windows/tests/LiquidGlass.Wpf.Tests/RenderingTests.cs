@@ -142,7 +142,8 @@ public class RenderingTests
             {
                 var scale = GlassResolve.Scale(menu);
                 var center = ((int)(100 * scale), (int)(60 * scale));
-                bool Drawn(ScreenPixels s) => Math.Abs(s.Rgb(center.Item1, center.Item2).R - level * 255) > 30;
+                // Every glass here lies between black (nothing drawn yet, or the black backdrop) and white (the white backdrop).
+                bool Drawn(ScreenPixels s) => s.Rgb(center.Item1, center.Item2).R is > 35 and < 220;
                 var withBacking = ScreenPixels.CaptureWhen(window, menu, Drawn, 30);
                 var without = ScreenPixels.CaptureWhen(window, plain, Drawn, 30);
                 Assert.True(withBacking is not null && without is not null, $"{what}: the glass never reached the screen");
