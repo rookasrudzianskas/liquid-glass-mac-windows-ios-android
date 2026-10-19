@@ -615,9 +615,12 @@ a.doc-card:hover {
   line-height: 1.5;
 }
 
+/* One cell padding for every table: 8 px at the sides is what the port matrix in
+   COMPONENTS.md (four columns of names) needs to fit beside the table of contents at
+   1280 px, and narrower tables keep the same rhythm. */
 .prose th,
 .prose td {
-  padding: 10px 12px;
+  padding: 10px 8px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--line);
@@ -635,13 +638,6 @@ a.doc-card:hover {
 
 .prose thead th {
   white-space: normal;
-}
-
-/* Tables of four or more columns (the port matrix in COMPONENTS.md) need their width for
-   the names in them: with narrower cell padding the matrix fits the column beside the
-   table of contents at 1280 px, and still never breaks inside a name. */
-.prose table:has(th:nth-child(4)) :is(th, td) {
-  padding-inline: 8px;
 }
 
 .prose :is(td, th) > code {
