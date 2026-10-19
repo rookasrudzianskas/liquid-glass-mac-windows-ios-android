@@ -8,6 +8,8 @@ import { SurfaceMotion } from "./motion";
 import type { BackdropImage, Material } from "./renderer";
 import { loadBackdrop } from "./backdrop";
 import type { BackdropSpec } from "./backdrop";
+import { registerNavTone } from "../lib/nav-tone";
+import type { Tone } from "../lib/nav-tone";
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -41,6 +43,13 @@ export interface GlassStageProps {
   /** Cross-fade duration when the backdrop changes. */
   transition?: number;
   onRenderer?: (kind: RendererKind, reason?: string) => void;
+  /**
+   * Called when a backdrop starts to show (its cross-fade begins), so what is drawn over
+   * the stage can follow the backdrop on screen rather than the one just asked for.
+   */
+  onBackdrop?: (spec: BackdropSpec) => void;
+  /** The tone of what the stage shows: the nav bar takes its palette while over the stage. */
+  navTone?: Tone;
 }
 
 /** Cover-fit a backdrop into a 2D canvas, keeping its focal point in view (as the WebGL renderer does). */
@@ -62,7 +71,7 @@ function paintBackdrop(canvas: HTMLCanvasElement, image: BackdropImage) {
   ctx.drawImage(image.source as CanvasImageSource, x, y, dw, dh);
 }
 
-export function GlassStage({ backdrop, appearance, className, style, children, fallback, transition = 650, onRenderer }: GlassStageProps) {
+export function GlassStage({ backdrop, appearance, className, style, children, fallback, transition = 650, onRenderer, onBackdrop, navTone }: GlassStageProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Without WebGL the chosen backdrop is painted into a plain 2D canvas instead,
@@ -78,6 +87,8 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
   };
   const callback = useRef(onRenderer);
   callback.current = onRenderer;
+  const backdropCallback = useRef(onBackdrop);
+  backdropCallback.current = onBackdrop;
   const appearanceRef = useRef(appearance);
   appearanceRef.current = appearance;
 
@@ -131,6 +142,7 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
       first.current = false;
       shown.current = image;
       paintFlat();
+      backdropCallback.current?.(backdrop);
     });
     return () => {
       cancelled = true;
@@ -157,6 +169,11 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
     // paintFlat reads refs only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    return root && navTone ? registerNavTone(root, navTone) : undefined;
+  }, [navTone]);
 
   const value = useMemo(() => ({ scene, kind, appearance }), [scene, kind, appearance]);
 

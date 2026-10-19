@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { defaultRefraction } from "@lg/reference";
 import { Glass, GlassStage, GlassTabBar, useDefaultRefraction } from "../../glass/react";
-import { wallpaperInfo, wallpaperNames } from "../../glass/backdrop";
+import { wallpaperInfo, wallpaperNames, wallpaperTone } from "../../glass/backdrop";
 import type { WallpaperName } from "../../glass/backdrop";
 import type { Material } from "../../glass/renderer";
 import { useTheme } from "../../theme";
@@ -51,6 +51,9 @@ export function WallpaperFallback({ light, dark }: { light: WallpaperName; dark:
 export function Hero() {
   const { theme, mounted } = useTheme();
   const [picked, setPicked] = useState<WallpaperName | null>(null);
+  // The wallpaper on screen: a newly picked one shows once it has loaded and its
+  // cross-fade starts, and the copy changes tone with it, not before.
+  const [shown, setShown] = useState<WallpaperName | null>(null);
   const [material, setMaterial] = useState<Material>("regular");
   const [tint, setTint] = useState(0);
   const [refraction, setRefraction] = useState(true);
@@ -61,7 +64,9 @@ export function Hero() {
   // <html>), so markup stays theme-neutral and CSS picks the right tone.
   const current = mounted ? (picked ?? defaultWallpaper(theme)) : null;
   const wallpaper = current ?? defaultWallpaper("light");
-  const tone = current ? wallpaperInfo[current].tone : undefined;
+  // Before the stage draws one, the CSS fallback shows the theme's default wallpaper.
+  const visible = mounted ? (shown ?? defaultWallpaper(theme)) : null;
+  const tone = visible ? wallpaperTone(visible) : undefined;
   const lightTone = wallpaperInfo[defaultWallpaper("light")].tone;
   const darkTone = wallpaperInfo[defaultWallpaper("dark")].tone;
   // The wash under the copy that keeps it legible on this wallpaper (home.css).
@@ -73,7 +78,7 @@ export function Hero() {
     "--hero-scrim-light-narrow": lightInfo.scrimNarrow,
     "--hero-scrim-dark": darkInfo.scrim,
     "--hero-scrim-dark-narrow": darkInfo.scrimNarrow,
-    ...(current ? { "--hero-scrim-wide": wallpaperInfo[current].scrim, "--hero-scrim-narrow": wallpaperInfo[current].scrimNarrow } : null),
+    ...(visible ? { "--hero-scrim-wide": wallpaperInfo[visible].scrim, "--hero-scrim-narrow": wallpaperInfo[visible].scrimNarrow } : null),
   } as CSSProperties;
   const tintHex = TINTS[tint]?.hex ?? null;
   const tintName = TINTS[tint]?.name ?? "None";
@@ -86,7 +91,14 @@ export function Hero() {
 
   return (
     <section className="hero" data-tone={tone} data-tone-light={lightTone} data-tone-dark={darkTone} style={scrimStyle} aria-labelledby="hero-title">
-      <GlassStage backdrop={current ? { kind: "wallpaper", name: current } : null} appearance={theme} className="hero__stage" fallback={<WallpaperFallback light={defaultWallpaper("light")} dark={defaultWallpaper("dark")} />}>
+      <GlassStage
+        backdrop={current ? { kind: "wallpaper", name: current } : null}
+        appearance={theme}
+        className="hero__stage"
+        fallback={<WallpaperFallback light={defaultWallpaper("light")} dark={defaultWallpaper("dark")} />}
+        onBackdrop={(spec) => spec.kind === "wallpaper" && setShown(spec.name)}
+        navTone={tone}
+      >
         <div className="hero__copy">
           <p className="hero__eyebrow">iOS · macOS · Android · Windows</p>
           <h1 id="hero-title" className="hero__title">

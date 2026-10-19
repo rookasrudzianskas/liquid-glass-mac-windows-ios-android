@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { defaultRefraction } from "@lg/reference";
 import { Glass, GlassStage, hexToRgb } from "../glass/react";
-import { wallpaperInfo, wallpaperNames, wallpaperSrcSet } from "../glass/backdrop";
+import { wallpaperInfo, wallpaperNames, wallpaperSrcSet, wallpaperTone } from "../glass/backdrop";
 import type { BackdropSpec, WallpaperName } from "../glass/backdrop";
 import type { Material } from "../glass/renderer";
 import type { RendererKind } from "../glass/scene";
@@ -410,6 +410,11 @@ export default function Playground() {
 
   const appearance = s.appearance === "automatic" ? theme : s.appearance;
   const backdrop: BackdropSpec | null = !mounted || !ready ? null : s.backdrop === "grid" || s.backdrop === "type" ? { kind: "canvas", pattern: s.backdrop } : { kind: "wallpaper", name: s.backdrop };
+  // The backdrop on screen (a new one shows once loaded), and before the stage draws one,
+  // the fallback for the chosen one. Grid and type are drawn in the appearance's colors.
+  const [shownBackdrop, setShownBackdrop] = useState<BackdropSpec | null>(null);
+  const visible = shownBackdrop ?? backdrop;
+  const navTone = !visible ? undefined : visible.kind === "wallpaper" ? wallpaperTone(visible.name) : appearance;
   const current = CODE_TABS.find((t) => t.id === tab) ?? CODE_TABS[0];
   const source = useMemo(() => (current ? current.make(s) : ""), [current, s]);
   const html = useMemo(() => (current ? highlight(source, current.lang) : ""), [source, current]);
@@ -458,6 +463,8 @@ export default function Playground() {
         transition={450}
         fallback={ready ? <StageFallback backdrop={s.backdrop} /> : null}
         onRenderer={(kind, reason) => setRenderer({ kind, reason })}
+        onBackdrop={setShownBackdrop}
+        navTone={navTone}
       >
         <div className="pg__center">
           <Glass

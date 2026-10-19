@@ -25,7 +25,10 @@
   size-adjust: 107.12%;
 }
 
-:root {
+/* The palettes: light on :root, dark under [data-theme="dark"]. The nav bar over a
+   glass stage takes the palette of the stage's backdrop (data-tone, layout.css). */
+:root,
+.nav[data-tone="light"] {
   --font-sans: "Inter Variable", "Inter Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
@@ -53,6 +56,10 @@
   --glass-css-line: rgba(255, 255, 255, 0.75);
   --glass-css-shadow: rgba(0, 0, 0, 0.08);
   --nav-bg: rgba(250, 250, 252, 0.72);
+  /* The bar over a glass stage: a denser fill and deeper secondary labels, so every
+     label holds 4.5:1 over the brightest and darkest parts of each backdrop. */
+  --nav-bg-stage: rgba(250, 250, 252, 0.84);
+  --nav-fg-3-stage: #58585d;
   --spectrum: linear-gradient(90deg, #12b5cb 0%, #4b6bff 35%, #8a4dff 60%, #ff4f9a 100%);
   /* The spectrum as text color: deeper stops keep every glyph at 4.5:1 or more on the light background. */
   --spectrum-text: linear-gradient(90deg, #0a7080 0%, #3a4bd6 35%, #6b2fd8 60%, #b8256a 100%);
@@ -65,7 +72,8 @@
   color-scheme: light;
 }
 
-[data-theme="dark"] {
+[data-theme="dark"],
+.nav[data-tone="dark"] {
   --spectrum-text: var(--spectrum);
   --bg: #000000;
   --bg-elevated: #121214;
@@ -89,6 +97,8 @@
   --glass-css-line: rgba(255, 255, 255, 0.22);
   --glass-css-shadow: rgba(0, 0, 0, 0.3);
   --nav-bg: rgba(22, 22, 26, 0.66);
+  --nav-bg-stage: rgba(22, 22, 26, 0.8);
+  --nav-fg-3-stage: #aaaab0;
   color-scheme: dark;
 }
 

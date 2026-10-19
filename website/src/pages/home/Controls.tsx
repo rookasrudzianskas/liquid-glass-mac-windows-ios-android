@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GlassStage } from "../../glass/react";
 import { GlassButton, GlassSlider, GlassSwitch } from "../../glass/controls";
-import { wallpaperNames, wallpaperSrcSet } from "../../glass/backdrop";
+import { wallpaperNames, wallpaperSrcSet, wallpaperTone } from "../../glass/backdrop";
 import type { WallpaperName } from "../../glass/backdrop";
 import { useTheme } from "../../theme";
 import { ArrowRightIcon, DropIcon, SparkleIcon } from "../../components/Icons";
@@ -30,6 +30,7 @@ export function Controls() {
           backdrop={mounted ? { kind: "wallpaper", name } : null}
           appearance={theme}
           className="controls__stage"
+          navTone={wallpaperTone(name)}
           fallback={
             <picture className="stage__fallback">
               <source type="image/avif" srcSet={wallpaperSrcSet(name, "avif")} sizes="min(1180px, 100vw)" />

@@ -2,7 +2,7 @@ import { Suspense, useRef } from "react";
 import screens from "../generated/screens.json";
 import { Link, REPO_URL } from "../router";
 import { Glass, GlassStage } from "../glass/react";
-import { wallpaperNames } from "../glass/backdrop";
+import { wallpaperNames, wallpaperTone } from "../glass/backdrop";
 import type { WallpaperName } from "../glass/backdrop";
 import { useTheme } from "../theme";
 import { Static } from "../components/Static";
@@ -122,6 +122,7 @@ function CallToAction() {
         backdrop={mounted ? { kind: "wallpaper", name } : null}
         appearance={theme}
         className="cta__stage"
+        navTone={mounted ? wallpaperTone(name) : undefined}
         fallback={<WallpaperFallback light={CTA_WALLPAPER.light} dark={CTA_WALLPAPER.dark} />}
       >
         <Glass className="cta__card" material="regular" radius={40} interactive enterDelay={80}>

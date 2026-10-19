@@ -13,6 +13,8 @@ export type BackdropSpec = { kind: "wallpaper"; name: WallpaperName } | { kind: 
 
 export const wallpaperInfo = wallpapers.items;
 export const wallpaperNames = Object.keys(wallpapers.items) as WallpaperName[];
+/** The tone text over a wallpaper takes (content.mjs measures it): dark text on "light". */
+export const wallpaperTone = (name: WallpaperName): "light" | "dark" => (wallpapers.items[name].tone === "dark" ? "dark" : "light");
 
 let preferredFormat: "avif" | "webp" | "jpg" | null = null;
 

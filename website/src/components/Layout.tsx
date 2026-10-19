@@ -5,6 +5,7 @@ import { useTheme } from "../theme";
 import type { Preference } from "../theme";
 import site from "../generated/site.json";
 import { docHref } from "../docs";
+import { useNavTone } from "../lib/nav-tone";
 import { CloseIcon, GitHubIcon, LogoMark, MenuIcon, MoonIcon, SearchIcon, SunIcon, SystemIcon } from "./Icons";
 
 const Search = lazy(() => import("./Search"));
@@ -155,6 +156,9 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
   }, []);
   const sheetRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  // Over a glass stage the bar takes the palette of the stage's backdrop (layout.css).
+  const barRef = useRef<HTMLElement>(null);
+  const tone = useNavTone(barRef);
   useEffect(() => {
     if (!open) return;
     // Escape closes; focus inside the sheet goes back to the toggle instead of falling to <body>.
@@ -182,8 +186,8 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
   }, [open]);
 
   return (
-    <header className="nav" data-overlay={overlay ? "" : undefined} data-scrolled={scrolled ? "" : undefined} data-open={open ? "" : undefined}>
-      <nav className="nav__bar" aria-label="Primary">
+    <header className="nav" data-overlay={overlay ? "" : undefined} data-tone={tone} data-scrolled={scrolled ? "" : undefined} data-open={open ? "" : undefined}>
+      <nav ref={barRef} className="nav__bar" aria-label="Primary">
         <Link href="/" className="nav__brand" aria-label="Liquid Glass Engineering, home">
           <LogoMark size={26} />
           <span className="nav__name">
