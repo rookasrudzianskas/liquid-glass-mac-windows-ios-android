@@ -304,13 +304,14 @@ GlassScene {
 
 - Defaults: material `.clear`, appearance `.automatic`, refraction by size, motion `.full`. Menu panels are Regular
   unless you pass a material, and as they open their glass mixes toward a solid backing (`#F5F5F7` light, `#1C1C1E`
-  dark) by up to 0.6; no other surface has it. Menu items take `GlassOptics.menuForeground`: the appearance
-  foreground untinted, or on a tinted menu white or `#111113` by contrast with the tint mixed toward the backing. So
-  untinted menus, Regular or Clear, light or dark, keep at least 5.2:1 over any backdrop, even plain white or black,
+  dark) by up to 0.6; no other surface has it. Menu items take `GlassOptics.menuForeground`: the appearance foreground
+  untinted, or on a tinted menu white or `#111113` by contrast with the tint mixed toward the backing. So untinted
+  menus, Regular or Clear, light or dark, keep at least 5.2:1 over any backdrop, even plain white or black,
   highlighted items included, and menus tinted with a system color (either appearance's variant) at least 5.0:1. Very
   light tints (pure yellow and white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper
   color or not at all. Destructive items (`role: .destructive`) take `GlassOptics.menuDestructive(dark:)`, `#560D0A`
-  on light menus (at least 5.0:1) and `#FFEEED` on dark ones (at least 4.5:1).
+  on light menus (at least 5.0:1) and, in dark appearance, a light pink, `#FFEEED`, so they stay readable on any
+  backdrop (at least 4.5:1); the title carries the meaning.
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
 - A surface's `material` applies to that surface only; it does not cascade to controls inside it. Set defaults for a

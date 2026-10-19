@@ -357,7 +357,7 @@ keep 7.54:1 and 6.71:1. Menus tinted with the platform's system colors keep at l
 accent colors stay above 5.6:1 (5.64:1 for gold, `#FFB900`). Very light tints are not covered: over a white backdrop in
 dark appearance a highlighted item on a pure yellow menu falls to 4.37:1 and on a white one to 4.13:1, so tint menus
 with a deeper color, or not at all. There is no destructive item style (the Apple and Android menus draw destructive
-items in `#560D0A` on light menus and `#FFEEED` on dark ones, which keep 5.0:1 and 4.5:1); an item given its own
+items in `#560D0A` on light menus and a light pink, `#FFEEED`, on dark ones, so they keep 5.0:1 and 4.5:1); an item given its own
 `Foreground` is not covered. The fallback material paints the backing over its veil or tint fill at the opacity that
 keeps the labels at least as legible as on the shader's glass where they contrast least
 (`GlassFallback.LegibilityOpacity`, 0.59 to 0.63 untinted), so its floors are the shader's or a little higher: 5.37:1
