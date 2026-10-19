@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
 
 plugins {
     alias(libs.plugins.android.library)
@@ -80,11 +82,61 @@ val specVectorsAssets = tasks.register<SpecVectorsAssets>("specVectorsAssets") {
     vectors.set(repositoryRoot.resolve("spec/vectors.json"))
 }
 
+/**
+ * The repository's LICENSE and NOTICE.md as Java resources, under META-INF/liquid-glass-compose/: they land in the
+ * AAR's classes.jar (so in the Maven and JitPack publications) and in every app built with the library. The optical
+ * model is ported from the MIT-licensed Glass HQ library, whose copyright and permission notice NOTICE.md carries;
+ * its license asks for that notice in all copies.
+ */
+abstract class LicenseResources : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val notices: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDirectory.get().asFile.resolve("META-INF/liquid-glass-compose")
+        target.deleteRecursively()
+        target.mkdirs()
+        notices.files.forEach { it.copyTo(target.resolve(it.name), overwrite = true) }
+    }
+}
+
+val licenseResources = tasks.register<LicenseResources>("licenseResources") {
+    notices.from(repositoryRoot.resolve("LICENSE"), repositoryRoot.resolve("NOTICE.md"))
+}
+
 androidComponents {
     onVariants { variant ->
+        variant.sources.resources?.addGeneratedSourceDirectory(licenseResources, LicenseResources::outputDirectory)
         variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(specVectorsAssets, SpecVectorsAssets::outputDirectory)
     }
 }
+
+/** Fails when the release AAR's classes.jar lacks LICENSE or NOTICE.md; the publication and exportAar depend on it. */
+val verifyReleaseAarLicense by tasks.registering {
+    group = "verification"
+    description = "Checks that the release AAR carries LICENSE and NOTICE.md."
+    dependsOn("bundleReleaseAar")
+    val aar = layout.buildDirectory.file("outputs/aar/liquidglass-release.aar")
+    inputs.file(aar)
+    doLast {
+        val file = aar.get().asFile
+        val names = ZipFile(file).use { zip ->
+            val classes = zip.getEntry("classes.jar") ?: throw GradleException("${file.name} has no classes.jar")
+            ZipInputStream(zip.getInputStream(classes)).use { jar ->
+                generateSequence { jar.nextEntry }.map { it.name }.toSet()
+            }
+        }
+        val missing = listOf("LICENSE", "NOTICE.md").map { "META-INF/liquid-glass-compose/$it" }.filterNot(names::contains)
+        if (missing.isNotEmpty()) throw GradleException("${file.name}: classes.jar lacks ${missing.joinToString()}")
+    }
+}
+
+tasks.matching { it.name.startsWith("publishReleasePublication") }.configureEach { dependsOn(verifyReleaseAarLicense) }
 
 kotlin {
     explicitApi()
@@ -164,7 +216,7 @@ publishing {
 val exportAar by tasks.registering(Copy::class) {
     group = "distribution"
     description = "Copies the release AAR to artifacts/android."
-    dependsOn("assembleRelease")
+    dependsOn("assembleRelease", verifyReleaseAarLicense)
     from(layout.buildDirectory.file("outputs/aar/liquidglass-release.aar"))
     into(repositoryRoot.resolve("artifacts/android"))
     rename { "$libraryArtifact-$libraryVersion.aar" }

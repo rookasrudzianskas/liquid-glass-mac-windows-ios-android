@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -83,3 +84,19 @@ dependencies {
     implementation(libs.core.ktx)
     debugImplementation(libs.compose.bom.tooling)
 }
+
+/** Fails when the release APK lacks the library's LICENSE and NOTICE.md (META-INF/liquid-glass-compose/). */
+val verifyReleaseApkLicense by tasks.registering {
+    group = "verification"
+    description = "Checks that the release APK carries LICENSE and NOTICE.md."
+    val apks = layout.buildDirectory.dir("outputs/apk/release")
+    doLast {
+        val apk = apks.get().asFile.listFiles { file -> file.extension == "apk" }?.singleOrNull()
+            ?: throw GradleException("no single release APK in ${apks.get().asFile}")
+        val names = ZipFile(apk).use { zip -> zip.entries().asSequence().map { it.name }.toSet() }
+        val missing = listOf("LICENSE", "NOTICE.md").map { "META-INF/liquid-glass-compose/$it" }.filterNot(names::contains)
+        if (missing.isNotEmpty()) throw GradleException("${apk.name} lacks ${missing.joinToString()}")
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach { finalizedBy(verifyReleaseApkLicense) }
