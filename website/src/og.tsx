@@ -63,13 +63,57 @@ async function main() {
   ctx.drawImage(gl, 0, 0);
   ctx.scale(S, S);
 
-  // Card content.
+  // White text over light wallpaper or light glass gets a dimmed backdrop so it reads at feed size: at least
+  // WCAG 4.5:1 against the pixels behind it, measured on the PNG. Canvas shadows and filters ignore the transform,
+  // so their blur is given in output pixels.
+  const ink = "4, 14, 34";
+  // A soft halo: first only the text's dark blurred shadow (the text is drawn off the canvas, its shadow offset
+  // back under the real line), then the text itself.
+  const halo = (draw: () => void, alpha: number, blur: number) => {
+    ctx.save();
+    ctx.translate(-2 * W, 0);
+    ctx.shadowOffsetX = 2 * W * S;
+    ctx.shadowColor = `rgba(${ink}, ${alpha})`;
+    ctx.shadowBlur = blur * S;
+    draw();
+    ctx.restore();
+    draw();
+  };
+  // A feathered band of the same dimming under a line of text on the card, clipped to the card.
+  const band = (x: number, y: number, w: number, h: number, alpha: number) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(card.x - card.w / 2, card.y - card.h / 2, card.w, card.h, card.r);
+    ctx.clip();
+    ctx.filter = `blur(${14 * S}px)`;
+    ctx.fillStyle = `rgba(${ink}, ${alpha})`;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 24);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // The mark and domain sit on the light aqua top band: a feathered scrim (an ellipse that fades out above the
+  // card and well clear of the round lens) dims the band behind them.
+  ctx.save();
+  ctx.translate(310, 88);
+  ctx.scale(420, 90);
+  const scrim = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  const falloff: [number, number][] = [[0, 0.58], [0.45, 0.56], [0.6, 0.5], [0.72, 0.38], [0.82, 0.24], [0.9, 0.12], [0.96, 0.04], [1, 0]];
+  for (const [at, alpha] of falloff) scrim.addColorStop(at, `rgba(${ink}, ${alpha})`);
+  ctx.fillStyle = scrim;
+  ctx.fillRect(-1, -1, 2, 2);
+  ctx.restore();
+
+  // Card content. The kicker sits where the card's glass is lightest (the teal behind its top-left corner) and
+  // the subtitle over the pink at its bottom right, so both are at 0.9 (from 0.7), haloed, over a faint band.
   const left = card.x - card.w / 2 + 56;
   ctx.fillStyle = "#ffffff";
   ctx.textBaseline = "alphabetic";
+  band(left - 24, card.y - 117, 389, 62, 0.32);
   ctx.font = '600 22px "Inter Variable", sans-serif';
-  ctx.globalAlpha = 0.72;
-  ctx.fillText("iOS · macOS · Android · Windows", left, card.y - 78);
+  ctx.globalAlpha = 0.9;
+  halo(() => ctx.fillText("iOS · macOS · Android · Windows", left, card.y - 78), 0.4, 8);
   ctx.globalAlpha = 1;
   ctx.font = '750 66px "Inter Variable", sans-serif';
   ctx.letterSpacing = "-2.4px";
@@ -77,10 +121,12 @@ async function main() {
   ctx.globalAlpha = 0.86;
   ctx.font = '650 66px "Inter Variable", sans-serif';
   ctx.fillText("Engineering", left, card.y + 62);
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = 1;
   ctx.letterSpacing = "0px";
+  band(left - 24, card.y + 76, 581, 64, 0.32);
+  ctx.globalAlpha = 0.9;
   ctx.font = '500 21px "Inter Variable", sans-serif';
-  ctx.fillText("SwiftUI · Jetpack Compose · WPF — one optical model", left, card.y + 112);
+  halo(() => ctx.fillText("SwiftUI · Jetpack Compose · WPF — one optical model", left, card.y + 112), 0.4, 8);
   ctx.globalAlpha = 1;
 
   // Tab bar labels.
@@ -98,10 +144,10 @@ async function main() {
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffffff";
   ctx.font = '650 24px "Inter Variable", sans-serif';
-  ctx.fillText("liquid-glass-engineering.vercel.app", 142, 100);
+  halo(() => ctx.fillText("liquid-glass-engineering.vercel.app", 142, 100), 0.35, 6);
 
-  // Downscale to the final 1200 x 630 PNG. It is saved as the canvas encodes it (full color): do not quantize it
-  // to a palette afterwards, which speckles the glass with dithering.
+  // Downscale to the final 1200 x 630 PNG. It is saved as the canvas encodes it (full color). A lossless re-encode
+  // (RGB, maximum compression) halves the file; do not quantize it to a palette, which speckles the glass with dithering.
   const final = document.createElement("canvas");
   final.width = W;
   final.height = H;
