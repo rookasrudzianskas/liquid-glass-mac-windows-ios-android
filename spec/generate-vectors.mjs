@@ -89,6 +89,7 @@ const legibility = {
   menuAmount: R.MENU_LEGIBILITY,
   backing: { light: round(R.legibilityBacking(false)), dark: round(R.legibilityBacking(true)) },
   highlight: R.MENU_HIGHLIGHT,
+  destructive: { light: round(R.menuDestructive(false)), dark: round(R.menuDestructive(true)) },
   cases: [[[0.2, 0.4, 0.6], false, 0.6], [[0.2, 0.4, 0.6], true, 0.6], [[1, 1, 1], true, 0.6], [[0, 0, 0], false, 0.6], [[0.9, 0.2, 0.1], true, 0.25], [[0.5, 0.5, 0.5], false, 0]]
     .map(([color, dark, amount]) => ({ color, dark, amount, value: round(R.legibilityColor(color, dark, amount)) })),
   menuForeground: [[null, "regular", false], [null, "regular", true], [[0, 0.478, 1], "regular", false], [[0, 0.478, 1], "regular", true],
@@ -98,14 +99,17 @@ const legibility = {
     // Labels over a 6x6x6 grid of backdrops, with and without the row highlight.
     const steps = [0, 0.2, 0.4, 0.6, 0.8, 1];
     const grid = steps.flatMap((r) => steps.flatMap((g) => steps.map((b) => [r, g, b])));
-    const floor = (material, dark, tint) => {
+    // A row's text (the label color, or `text` for a destructive item) over the glass, plain and highlighted; the
+    // highlight always mixes in the label color.
+    const floor = (material, dark, tint, text) => {
       const fg = R.menuForeground(tint, material, dark);
+      const ink = text ?? fg;
       let low = Infinity;
       for (const bg of grid) {
         let rgb = R.materialColor(bg, material, dark);
         if (tint) rgb = R.tintColor(rgb, tint, material);
         rgb = R.legibilityColor(rgb, dark, R.MENU_LEGIBILITY);
-        low = Math.min(low, contrast(rgb, fg), contrast(rgb.map((c, i) => c + (fg[i] - c) * R.MENU_HIGHLIGHT), fg));
+        low = Math.min(low, contrast(rgb, ink), contrast(rgb.map((c, i) => c + (fg[i] - c) * R.MENU_HIGHLIGHT), ink));
       }
       return low;
     };
@@ -114,11 +118,16 @@ const legibility = {
       [10, 132, 255], [48, 209, 88], [255, 69, 58], [255, 159, 10], [255, 214, 10], [191, 90, 242], [255, 55, 95], [94, 92, 230], [100, 210, 255], [102, 212, 207]].map((c) => c.map((x) => x / 255));
     const untinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].map((d) => floor(m, d))));
     const tinted = Math.min(...["regular", "clear"].flatMap((m) => [false, true].flatMap((d) => system.map((t) => floor(m, d, t)))));
+    const destructive = (dark, tints) => Math.min(...["regular", "clear"].flatMap((m) => tints.map((t) => floor(m, dark, t, R.menuDestructive(dark)))));
     return {
       darkOverWhite: round(contrast(R.legibilityColor(R.materialColor([1, 1, 1], "regular", true), true, R.MENU_LEGIBILITY), [1, 1, 1])),
       lightOverBlack: round(contrast(R.legibilityColor(R.materialColor([0, 0, 0], "regular", false), false, R.MENU_LEGIBILITY), ink)),
       untintedWithHighlight: round(untinted),
       systemTintsWithHighlight: round(tinted),
+      // Destructive items (menuDestructive), untinted and on the system tints, highlighted rows included.
+      destructiveLightWithHighlight: round(destructive(false, [undefined])),
+      destructiveDarkWithHighlight: round(destructive(true, [undefined])),
+      destructiveSystemTintsWithHighlight: round(Math.min(destructive(false, system), destructive(true, system))),
     };
   })(),
 };

@@ -1,5 +1,6 @@
 package io.github.rookasrudzianskas.liquidglass
 
+import androidx.compose.ui.graphics.Color
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,5 +30,12 @@ class MenuLegibilityTest {
             assertTrue("not monotonic at ${i / 100f}", amount >= last)
             last = amount
         }
+    }
+
+    @Test
+    fun destructiveItemsTakeTheRedOnTheSideOfTheLabels() {
+        // spec/OPTICS.md §3: #560D0A where the labels are #111113, #FFEEED where they are white.
+        assertEquals(Color(0xFF560D0A), menuDestructiveColor(whiteLabels = false))
+        assertEquals(Color(0xFFFFEEED), menuDestructiveColor(whiteLabels = true))
     }
 }

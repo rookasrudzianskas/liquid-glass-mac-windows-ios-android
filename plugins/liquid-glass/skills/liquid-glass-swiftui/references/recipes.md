@@ -351,9 +351,9 @@ with `checked:` (a checkmark column, read as selected by VoiceOver), and an icon
 `GlassButton(icon:)`) with an item disabled until there is a selection. Both sit in one foreground container, so
 either panel draws above everything else. Opening morphs the trigger's glass into a Regular panel (radius 28) mixed
 toward a solid backing (0.6 when open), so its items keep at least 5.2:1 contrast over any backdrop, highlighted items
-included (5.0:1 tinted with a system color); it opens below the trigger with trailing edges aligned, flips above when
-it does not fit below, and keeps 8 pt from the scene's left and right edges. The panel never scrolls, so keep menus
-short. Tap outside, press Escape or choose an item to close it.
+included (5.0:1 tinted with a system color; a destructive item's red 5.0:1 light, 4.5:1 dark); it opens below the
+trigger with trailing edges aligned, flips above when it does not fit below, and keeps 8 pt from the scene's left and
+right edges. The panel never scrolls, so keep menus short. Tap outside, press Escape or choose an item to close it.
 
 ```swift
 import LiquidGlass

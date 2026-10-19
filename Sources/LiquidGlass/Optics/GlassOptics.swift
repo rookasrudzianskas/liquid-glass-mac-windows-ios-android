@@ -264,6 +264,18 @@ public enum GlassOptics {
         return (glass + 0.05) / (relativeLuminance(ink) + 0.05) > 1.05 / (glass + 0.05) ? ink : white
     }
 
+    /// The label color of a destructive menu item (`spec/OPTICS.md` §3),
+    /// gamma-encoded sRGB: a red that keeps the menu's floor on the backed
+    /// glass. In light appearance `#560D0A`, system red darkened, which keeps
+    /// at least 5.0:1 (5.12:1 at worst, highlighted items included). In dark
+    /// appearance `#FFEEED`, white with a trace of system red, which keeps at
+    /// least 4.5:1 (4.67:1 untinted, 4.52:1 on the system colors): over a
+    /// white backdrop the backed dark glass is a mid gray that no saturated
+    /// red reaches 4.5:1 on.
+    public static func menuDestructive(dark: Bool) -> SIMD3<Double> {
+        dark ? SIMD3(0xFF, 0xEE, 0xED) / 255 : SIMD3(0x56, 0x0D, 0x0A) / 255
+    }
+
     /// WCAG 2 relative luminance of a gamma-encoded sRGB color.
     static func relativeLuminance(_ c: SIMD3<Double>) -> Double {
         func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }

@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -118,6 +119,7 @@ import io.github.rookasrudzianskas.liquidglass.optics.MENU_HIGHLIGHT
 import io.github.rookasrudzianskas.liquidglass.optics.MENU_LEGIBILITY
 import io.github.rookasrudzianskas.liquidglass.optics.SpringSpec
 import io.github.rookasrudzianskas.liquidglass.optics.SpringValue
+import io.github.rookasrudzianskas.liquidglass.optics.menuDestructive
 import io.github.rookasrudzianskas.liquidglass.optics.menuForeground
 import io.github.rookasrudzianskas.liquidglass.optics.mix
 import kotlin.math.roundToInt
@@ -134,9 +136,10 @@ import kotlin.math.roundToInt
  * panels, Regular or Clear, keep their labels at 5.2:1 or more over any
  * backdrop, highlighted rows included, and panels tinted with the system
  * colors of either appearance at 5.0:1 or more, also with the fallback
- * material. Very light tints (pure yellow, lime,
- * white) can fall below 4.5:1 over white in dark appearance: use a deeper
- * tint, or none.
+ * material. Very light tints (pure yellow and white) can fall below 4.5:1
+ * over white in dark appearance: use a deeper tint, or none. Destructive
+ * items are drawn in a red that keeps at least 5.0:1 on light panels
+ * (`#560D0A`) and 4.5:1 on dark ones (`#FFEEED`).
  * Tapping outside, Back and Escape dismiss it; choosing an item runs its
  * action and dismisses it.
  *
@@ -283,7 +286,10 @@ public fun GlassMenu(
  * @param modifier modifier for the row.
  * @param icon optional leading icon.
  * @param enabled whether the item can be chosen.
- * @param destructive draws the item in red, for actions like Delete.
+ * @param destructive draws the label, icon and check mark in a red that keeps the menu's floor on its backed glass,
+ *   for actions like Delete: `#560D0A` where the labels are `#111113` (at least 5.0:1) and `#FFEEED` where they are
+ *   white (at least 4.5:1); system red would fall to about 1.3:1 there at worst. The highlight stays the menu's
+ *   label color.
  * @param checked null for an action; true or false for a choice, which shows a check mark when
  *   true and is announced as checked or not checked.
  */
@@ -303,7 +309,8 @@ public fun GlassMenuItem(
     val focused by source.collectIsFocusedAsState()
     val hovered by source.collectIsHoveredAsState()
     val foreground = LocalGlassContentColor.current
-    val color = if (destructive) DestructiveColor else foreground
+    // A destructive item's red is on the side of the labels: the light red where they are white.
+    val color = if (destructive) menuDestructiveColor(whiteLabels = foreground.luminance() > 0.5f) else foreground
     // Drawn over the glass, the menu's label color at 8% mixes into it by that much (spec/OPTICS.md §3).
     val highlighted = enabled && (pressed || focused || hovered)
     Row(
@@ -666,4 +673,5 @@ private val MinMenuWidth = 220.dp
 private val PanelMargin = 8.dp
 private val ItemShape = RoundedCornerShape(22.dp)
 private val ItemTextStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Normal)
-private val DestructiveColor = Color(0xFFFF3B30)
+/** A destructive item's color ([menuDestructive]): `#FFEEED` where the menu's labels are white, `#560D0A` where they are dark. */
+internal fun menuDestructiveColor(whiteLabels: Boolean): Color = menuDestructive(whiteLabels).let { Color(it[0], it[1], it[2]) }

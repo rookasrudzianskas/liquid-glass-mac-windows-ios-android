@@ -168,6 +168,15 @@ internal fun menuForeground(tint: FloatArray?, regular: Boolean, dark: Boolean, 
     return if (darkLabel) ink else floatArrayOf(1f, 1f, 1f)
 }
 
+/**
+ * Label color of a destructive menu item (`spec/OPTICS.md` §3, `menuDestructive` in the reference), gamma-encoded
+ * sRGB: a red that keeps the menu's floor on its backed glass. Where the labels are `#111113` ([dark] false),
+ * `#560D0A`, system red darkened, at least 5.0:1; where they are white, `#FFEEED`, white with a trace of system red,
+ * at least 4.5:1 (over a white backdrop the backed dark glass is a mid gray that no saturated red reaches 4.5:1 on).
+ */
+internal fun menuDestructive(dark: Boolean): FloatArray =
+    if (dark) floatArrayOf(0xFF / 255f, 0xEE / 255f, 0xED / 255f) else floatArrayOf(0x56 / 255f, 0x0D / 255f, 0x0A / 255f)
+
 /** Gaussian σ of the Regular frost, in dp. */
 internal const val FROST_SIGMA: Float = 7.33f
 

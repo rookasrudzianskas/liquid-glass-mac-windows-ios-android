@@ -202,21 +202,39 @@ class GoldenVectorsTest {
         close(worst.f("systemTintsWithHighlight"), tinted, "systemTintsWithHighlight", tolerance = 1e-3f)
         assertTrue("untinted menu labels keep 5.2:1 ($untinted)", untinted >= UNTINTED_MENU_FLOOR)
         assertTrue("system-tinted menu labels keep 5.0:1 ($tinted)", tinted >= TINTED_MENU_FLOOR)
+        // Destructive items: #560D0A keeps 5.0:1 on light menus, #FFEEED 4.5:1 on dark ones, untinted and on the
+        // system tints, highlighted rows (the label color mixed in) included.
+        val destructive = legibility.getValue("destructive").jsonObject
+        close(destructive.floats("light"), menuDestructive(dark = false), "destructive light")
+        close(destructive.floats("dark"), menuDestructive(dark = true), "destructive dark")
+        val destructiveLight = listOf(true, false).minOf { regular -> menuFloor(regular, dark = false, tint = null, text = menuDestructive(false)) }
+        val destructiveDark = listOf(true, false).minOf { regular -> menuFloor(regular, dark = true, tint = null, text = menuDestructive(true)) }
+        val destructiveTinted = SYSTEM_TINTS.minOf { tint ->
+            listOf(true, false).minOf { regular -> listOf(false, true).minOf { dark -> menuFloor(regular, dark, tint, menuDestructive(dark)) } }
+        }
+        close(worst.f("destructiveLightWithHighlight"), destructiveLight, "destructiveLightWithHighlight", tolerance = 1e-3f)
+        close(worst.f("destructiveDarkWithHighlight"), destructiveDark, "destructiveDarkWithHighlight", tolerance = 1e-3f)
+        close(worst.f("destructiveSystemTintsWithHighlight"), destructiveTinted, "destructiveSystemTintsWithHighlight", tolerance = 1e-3f)
+        assertTrue("light destructive items keep 5.0:1 ($destructiveLight)", destructiveLight >= 5.0f)
+        assertTrue("dark destructive items keep 4.5:1 ($destructiveDark)", destructiveDark >= 4.5f)
+        assertTrue("destructive items on the system tints keep 4.5:1 ($destructiveTinted)", destructiveTinted >= 4.5f)
     }
 
     /**
-     * The lowest contrast of a menu's labels ([menuForeground]) with its glass, plain and with the row highlight,
-     * over a 6 x 6 x 6 grid of backdrops, as spec/generate-vectors.mjs measures it.
+     * The lowest contrast of a menu row's [text] (its labels, [menuForeground], unless given) with its glass, plain
+     * and with the row highlight (the label color mixed in), over a 6 x 6 x 6 grid of backdrops, as
+     * spec/generate-vectors.mjs measures it.
      */
-    private fun menuFloor(regular: Boolean, dark: Boolean, tint: FloatArray?): Float {
+    private fun menuFloor(regular: Boolean, dark: Boolean, tint: FloatArray?, text: FloatArray? = null): Float {
         val label = menuForeground(tint, regular, dark)
+        val ink = text ?: label
         val steps = List(6) { it / 5f }
         var lowest = Float.MAX_VALUE
         for (r in steps) for (g in steps) for (b in steps) {
             var rgb = materialColor(floatArrayOf(r, g, b), regular, dark)
             if (tint != null) rgb = tintColor(rgb, tint, regular)
             rgb = legibilityColor(rgb, dark, MENU_LEGIBILITY)
-            lowest = minOf(lowest, contrastRatio(rgb, label), contrastRatio(highlighted(rgb, label), label))
+            lowest = minOf(lowest, contrastRatio(rgb, ink), contrastRatio(highlighted(rgb, label), ink))
         }
         return lowest
     }

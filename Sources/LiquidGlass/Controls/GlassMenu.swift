@@ -17,10 +17,12 @@ import SwiftUI
 /// Untinted menus, Regular or Clear, keep at least 5.2:1 contrast over any
 /// backdrop in both appearances, highlighted items included; menus tinted
 /// with the system colors, as they resolve in either appearance, keep at
-/// least 5.0:1. Very light tints (pure yellow, lime, white) can fall below
+/// least 5.0:1. Very light tints (pure yellow and white) can fall below
 /// 4.5:1 over a white backdrop in dark appearance: tint a menu with a
-/// deeper color, or not at all. Tap outside, press Escape, or choose an
-/// item to dismiss; the arrow keys and Return navigate the items.
+/// deeper color, or not at all. Destructive items are drawn in
+/// ``GlassOptics/menuDestructive(dark:)``, a red that keeps at least 5.0:1
+/// in light appearance and 4.5:1 in dark. Tap outside, press Escape, or
+/// choose an item to dismiss; the arrow keys and Return navigate the items.
 ///
 /// ```swift
 /// GlassMenu(icon: "ellipsis", label: "More") {
@@ -190,13 +192,19 @@ public struct GlassMenuItem: View {
     @State private var id = UUID()
     @State private var hovering = false
     @Environment(\.glassMenuPanel) private var panel
+    @Environment(\.glassMenuDestructive) private var destructiveColor
     @Environment(\.isEnabled) private var isEnabled
 
     /// Creates an item.
     /// - Parameters:
-    ///   - role: `.destructive` draws the item's title and icon in red. Its
-    ///     highlight, like every item's, mixes the menu's label color into
-    ///     the glass, not red, as system menus do.
+    ///   - role: `.destructive` draws the item's title, icon and checkmark
+    ///     in a red that keeps the menu's floor on its backed glass,
+    ///     ``GlassOptics/menuDestructive(dark:)``: `#560D0A` on a light menu
+    ///     (at least 5.0:1) and `#FFEEED` on a dark one (at least 4.5:1;
+    ///     system red falls to about 1.3:1 there at worst). Its highlight,
+    ///     like every item's, mixes the menu's
+    ///     label color into the glass, not red. In the system menu fallback
+    ///     the system draws it.
     ///   - checked: `true` or `false` for an item that shows a choice, with
     ///     a checkmark when it is `true`; `nil` (the default) for a command.
     ///   - action: Runs when the item is chosen; the menu then closes.
@@ -245,11 +253,12 @@ public struct GlassMenuItem: View {
                 }
                 .font(GlassMenuMetrics.font)
                 // Items draw in the panel's foreground, the menu's label
-                // color (`GlassOptics.menuForeground`); a destructive item is
-                // red. `.primary` keeps the inherited style, where
-                // `.foreground` would reset it to the system label color
-                // (black or white at 85% on macOS, and never the tint's).
-                .foregroundStyle(role == .destructive ? AnyShapeStyle(Color.red) : AnyShapeStyle(HierarchicalShapeStyle.primary))
+                // color (`GlassOptics.menuForeground`); a destructive item in
+                // the panel's destructive red (`GlassOptics.menuDestructive`).
+                // `.primary` keeps the inherited style, where `.foreground`
+                // would reset it to the system label color (black or white
+                // at 85% on macOS, and never the tint's).
+                .foregroundStyle(role == .destructive ? AnyShapeStyle(destructiveColor) : AnyShapeStyle(HierarchicalShapeStyle.primary))
                 .opacity(isEnabled ? 1 : 0.4)
                 .padding(.horizontal, GlassMenuMetrics.itemPadding)
                 .frame(minHeight: GlassMenuMetrics.itemHeight)

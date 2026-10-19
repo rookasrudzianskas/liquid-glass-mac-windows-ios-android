@@ -349,25 +349,26 @@ the appearance's foreground for every tint (a blue menu in light appearance gets
 alone calls for white). A highlighted item (the pointer over it, keyboard focus or a press) mixes that color into the
 glass at 8% (`GlassOptics.MenuHighlight`).
 
-Untinted menus, Regular or Clear, keep at least 5.2:1 over any backdrop in both appearances, highlighted items
-included: white labels over white in dark appearance contrast least, 5.36:1 on a highlighted Regular item and 5.24:1
-on a Clear one (6.51:1 and 6.35:1 on plain items, where plain Regular glass gave 1.8:1), and `#111113` labels over
-black in light keep 7.54:1 and 6.71:1. Menus tinted with the platform's system colors keep at least 5.0:1, highlighted
-rows included (5.07:1 at worst, the Apple dark-appearance yellow `#FFD60A` on a highlighted dark Regular item over
-white); Windows accent colors stay above 5.6:1 (5.64:1 for gold, `#FFB900`). Very light tints are not covered: over a
-white backdrop in dark appearance a highlighted item on a pure yellow menu falls to 4.37:1 and on a white one to
-4.13:1, so tint menus with a deeper color, or not at all. The fallback material paints the backing over its veil or
-tint fill at the opacity that keeps the labels at least as legible as on the shader's glass where they contrast least
+Untinted menus, Regular or Clear, keep at least 5.2:1 over any backdrop in both appearances, highlighted items included:
+white labels over white in dark appearance contrast least, 5.36:1 on a highlighted Regular item and 5.24:1 on a Clear
+one (6.51:1 and 6.35:1 on plain items, where plain Regular glass gave 1.8:1), and `#111113` labels over black in light
+keep 7.54:1 and 6.71:1. Menus tinted with the platform's system colors keep at least 5.0:1, highlighted rows included
+(5.07:1 at worst, the Apple dark-appearance yellow `#FFD60A` on a highlighted dark Regular item over white); Windows
+accent colors stay above 5.6:1 (5.64:1 for gold, `#FFB900`). Very light tints are not covered: over a white backdrop in
+dark appearance a highlighted item on a pure yellow menu falls to 4.37:1 and on a white one to 4.13:1, so tint menus
+with a deeper color, or not at all. There is no destructive item style (the Apple and Android menus draw destructive
+items in `#560D0A` on light menus and `#FFEEED` on dark ones, which keep 5.0:1 and 4.5:1); an item given its own
+`Foreground` is not covered. The fallback material paints the backing over its veil or tint fill at the opacity that
+keeps the labels at least as legible as on the shader's glass where they contrast least
 (`GlassFallback.LegibilityOpacity`, 0.59 to 0.63 untinted), so its floors are the shader's or a little higher: 5.37:1
 and 5.24:1 for Regular and Clear in dark appearance, 7.56:1 and 6.75:1 in light, 5.11:1 over the system colors. The
 opaque material (transparency effects off, `ReduceTransparency`, or a menu outside a scene, which opens in a popup)
-paints the backing over its fill at the same opacity, so it keeps those floors as well: on a tinted menu its fill is
-the fallback's tint fill (5.11:1 over the system colors, 5.64:1 over the Windows accents), and untinted menus keep
-12.6:1 on the reduced-transparency fill. Shortcut text (`InputGestureText`) is drawn in the label's color, so every
-floor here holds for it too. The trigger and every other glass surface draw without the backing, and the trigger keeps
-its tint's own foreground. The
-backing is part of the menu, not an option: `GlassOptics.MenuLegibility` (0.6), `GlassOptics.MenuHighlight` (0.08) and
-`GlassPalette.LegibilityBacking` give its values.
+paints the backing over its fill at the same opacity, so it keeps those floors as well: on a tinted menu its fill is the
+fallback's tint fill (5.11:1 over the system colors, 5.64:1 over the Windows accents), and untinted menus keep 12.6:1 on
+the reduced-transparency fill. Shortcut text (`InputGestureText`) is drawn in the label's color, so every floor here
+holds for it too. The trigger and every other glass surface draw without the backing, and the trigger keeps its tint's
+own foreground. The backing is part of the menu, not an option: `GlassOptics.MenuLegibility` (0.6),
+`GlassOptics.MenuHighlight` (0.08) and `GlassPalette.LegibilityBacking` give its values.
 
 ```xml
 <lg:GlassMenu Header="Sort" Placement="Bottom">

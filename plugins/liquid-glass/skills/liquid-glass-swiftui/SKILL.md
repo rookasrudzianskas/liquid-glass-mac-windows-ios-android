@@ -308,8 +308,9 @@ GlassScene {
   foreground untinted, or on a tinted menu white or `#111113` by contrast with the tint mixed toward the backing. So
   untinted menus, Regular or Clear, light or dark, keep at least 5.2:1 over any backdrop, even plain white or black,
   highlighted items included, and menus tinted with a system color (either appearance's variant) at least 5.0:1. Very
-  light tints (pure yellow, lime, white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper
-  color or not at all.
+  light tints (pure yellow and white) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper
+  color or not at all. Destructive items (`role: .destructive`) take `GlassOptics.menuDestructive(dark:)`, `#560D0A`
+  on light menus (at least 5.0:1) and `#FFEEED` on dark ones (at least 4.5:1).
 - Clear over imagery; Regular for compact panels with short text (quick settings, now playing), menus and any bar
   over scrolling text (`GlassProgressiveBlur` blurs only the backdrop; glass above it still refracts the sharp text).
 - A surface's `material` applies to that surface only; it does not cascade to controls inside it. Set defaults for a
@@ -357,12 +358,12 @@ GlassScene {
   `GlassButton` beside the toolbar. Do not wrap a toolbar in a `GlassSurface` or give its items `.liquidGlass`.
 - Keep toolbars, tab bars and menus in the scene's foreground: outside a scene they draw the fallback material and a
   `GlassMenu` falls back to the system `Menu`. Let the scene cover the window so menus have room.
-- Menu items need no backing of your own: the panel's legibility backing and label color keep their text at 5.2:1
-  or more over any backdrop untinted, 5.0:1 tinted with a system color, and a highlighted item mixes its label color
-  into the glass at 8%. A menu panel opens below its trigger with trailing edges aligned, flips above
-  when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never scrolls:
-  a menu that fits on neither side runs past the scene's bottom edge. Keep menus short (about 8 items or fewer);
-  there are no submenus (a `GlassMenu` inside a panel never opens).
+- Menu items need no backing of your own: the panel's legibility backing and label color keep their text at 5.2:1 or
+  more over any backdrop untinted, 5.0:1 tinted with a system color (destructive items 5.0:1 light, 4.5:1 dark), and a
+  highlighted item mixes its label color into the glass at 8%. A menu panel opens below its trigger with trailing
+  edges aligned, flips above when it does not fit below but fits above, and keeps 8 pt from the scene's left and right
+  edges. It never scrolls: a menu that fits on neither side runs past the scene's bottom edge. Keep menus short (about
+  8 items or fewer); there are no submenus (a `GlassMenu` inside a panel never opens).
 - Put only `GlassMenuItem`, `GlassMenuDivider` and `ForEach` of them in a menu. The panel renders in the scene's
   overlay with the scene's environment, so `.environment(model)`, `.glassAppearance`, `.disabled` or `.font` set
   between the scene and the menu do not reach its items (a custom row reading an environment object injected there

@@ -7697,6 +7697,18 @@
    ]
   },
   "highlight": 0.08,
+  "destructive": {
+   "light": [
+    0.337255,
+    0.05098,
+    0.039216
+   ],
+   "dark": [
+    1,
+    0.933333,
+    0.929412
+   ]
+  },
   "cases": [
    {
     "color": [
@@ -7893,7 +7905,10 @@
    "darkOverWhite": 6.511648,
    "lightOverBlack": 8.742397,
    "untintedWithHighlight": 5.241933,
-   "systemTintsWithHighlight": 5.069905
+   "systemTintsWithHighlight": 5.069905,
+   "destructiveLightWithHighlight": 5.121941,
+   "destructiveDarkWithHighlight": 4.66899,
+   "destructiveSystemTintsWithHighlight": 4.515764
   }
  },
  "rimOverlay": [

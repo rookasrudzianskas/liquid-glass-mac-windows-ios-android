@@ -104,6 +104,10 @@ private struct GlassToolbarItemKey: EnvironmentKey {
     static let defaultValue = false
 }
 
+private struct GlassMenuDestructiveKey: EnvironmentKey {
+    static let defaultValue = GlassForeground.destructive(dark: false)
+}
+
 private struct GlassOverlayAvailableKey: EnvironmentKey {
     static let defaultValue = false
 }
@@ -132,6 +136,13 @@ extension EnvironmentValues {
         set { self[GlassToolbarItemKey.self] = newValue }
     }
 
+    /// The color of a destructive menu item drawn over this glass
+    /// (``GlassOptics/menuDestructive(dark:)`` on the side of its labels).
+    var glassMenuDestructive: Color {
+        get { self[GlassMenuDestructiveKey.self] }
+        set { self[GlassMenuDestructiveKey.self] = newValue }
+    }
+
     /// Whether a scene above can present glass popups such as menus.
     var glassOverlayAvailable: Bool {
         get { self[GlassOverlayAvailableKey.self] }
@@ -145,6 +156,13 @@ enum GlassForeground {
     static let dark = Color.white
 
     static func color(dark: Bool) -> Color { dark ? Self.dark : Self.light }
+
+    /// A destructive menu item's red (``GlassOptics/menuDestructive(dark:)``):
+    /// `#FFEEED` where the labels are white, `#560D0A` where they are dark.
+    static func destructive(dark: Bool) -> Color {
+        let c = GlassOptics.menuDestructive(dark: dark)
+        return Color(.sRGB, red: c.x, green: c.y, blue: c.z)
+    }
 
     /// The label color on glass tinted with `tint` (gamma-encoded sRGB):
     /// white or the light glass's `#111113`, whichever has the higher WCAG

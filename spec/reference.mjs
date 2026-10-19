@@ -209,6 +209,16 @@ export const MENU_LEGIBILITY = 0.6;
 /** A highlighted menu row mixes its label color into the glass by this amount. */
 export const MENU_HIGHLIGHT = 0.08;
 
+/**
+ * Label color of a destructive menu item (§3): a red that keeps the floor on the backed glass. Light, #560D0A (system
+ * red #FF3B30 darkened to about 9% of its linear light): at least 5.0:1. Dark, #FFEEED (white mixed 9% toward the dark
+ * system red #FF453A): at least 4.5:1, since over a white backdrop the backed dark glass is a mid gray that no
+ * saturated red contrasts with.
+ */
+export function menuDestructive(dark) {
+  return dark ? [0xff / 255, 0xee / 255, 0xed / 255] : [0x56 / 255, 0x0d / 255, 0x0a / 255];
+}
+
 /** The solid backing of the legibility mix: #F5F5F7 light, #1C1C1E dark. */
 export function legibilityBacking(dark) {
   return dark ? [0x1c / 255, 0x1c / 255, 0x1e / 255] : [0xf5 / 255, 0xf5 / 255, 0xf7 / 255];

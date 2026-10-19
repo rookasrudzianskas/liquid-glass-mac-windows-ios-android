@@ -98,18 +98,27 @@ struct GlassForegroundStyle: ViewModifier {
         // Only the colors are used, and they don't depend on the size.
         let style = environment.glassStyle(options, defaultMaterial: defaultMaterial, restingSize: .zero)
         let explicit = (options.appearance ?? environment.glassAppearance) != .automatic
+        let whiteLabels = whiteLabels(style)
         content
             .transformEnvironment(\.colorScheme) { scheme in
                 if explicit { scheme = style.dark ? .dark : .light }
             }
-            .foregroundStyle(foreground(style))
+            .foregroundStyle(whiteLabels ? GlassForeground.dark : GlassForeground.light)
+            // A destructive menu item's red, on the side of the labels: the
+            // light red where they are white (`GlassOptics.menuDestructive`).
+            .environment(\.glassMenuDestructive, GlassForeground.destructive(dark: whiteLabels))
     }
 
-    private func foreground(_ style: GlassRenderStyle) -> Color {
+    /// Whether the labels are white: on dark glass, or for contrast with a
+    /// tint (mixed toward the backing on menus).
+    private func whiteLabels(_ style: GlassRenderStyle) -> Bool {
         if let tint = style.tint {
-            return GlassForeground.onTint(tint, material: style.material, dark: style.dark, legibility: legibility)
+            return GlassOptics.menuForeground(
+                tint: SIMD3(Double(tint.x), Double(tint.y), Double(tint.z)), material: style.material, dark: style.dark,
+                legibility: legibility
+            ).x > 0.5
         }
-        return GlassForeground.color(dark: style.dark)
+        return style.dark
     }
 }
 

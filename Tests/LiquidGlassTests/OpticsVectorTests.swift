@@ -199,6 +199,41 @@ final class OpticsVectorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(tinted, 5.0)
     }
 
+    /// Destructive items (`legibility.destructive`): `#560D0A` on light
+    /// menus keeps at least 5.0:1 and `#FFEEED` on dark ones at least 4.5:1
+    /// over the grid, Regular and Clear, untinted and on the system tints,
+    /// plain rows and rows highlighted with the menu's label color.
+    func testMenuDestructive() {
+        let legibility = Vectors.object("legibility")
+        let colors = legibility["destructive"] as? [String: Any] ?? [:]
+        assertClose(GlassOptics.menuDestructive(dark: false).array, colors.doubles("light"), accuracy: tolerance, "light destructive")
+        assertClose(GlassOptics.menuDestructive(dark: true).array, colors.doubles("dark"), accuracy: tolerance, "dark destructive")
+        let worst = legibility["worstCase"] as? [String: Any] ?? [:]
+        func floor(dark: Bool, tints: [SIMD3<Double>?]) -> Double {
+            let red = GlassOptics.menuDestructive(dark: dark)
+            return tints.flatMap { tint in
+                [GlassMaterial.regular, .clear].flatMap { material in
+                    let label = GlassOptics.menuForeground(tint: tint, material: material, dark: dark)
+                    return MenuWorstCase.backdrops.map { backdrop in
+                        var rgb = GlassOptics.materialColor(backdrop, material: material, dark: dark)
+                        if let tint { rgb = GlassOptics.tintColor(rgb, tint: tint, material: material) }
+                        let glass = GlassOptics.legibilityColor(rgb, dark: dark, amount: GlassOptics.menuLegibility)
+                        let highlighted = glass + (label - glass) * GlassOptics.menuHighlight
+                        return min(contrastRatio(glass, red), contrastRatio(highlighted, red))
+                    }
+                }
+            }.min() ?? 0
+        }
+        let light = floor(dark: false, tints: [nil]), dark = floor(dark: true, tints: [nil])
+        let tinted = min(floor(dark: false, tints: MenuWorstCase.systemTints), floor(dark: true, tints: MenuWorstCase.systemTints))
+        assertClose(light, worst.double("destructiveLightWithHighlight"), accuracy: tolerance, "light destructive items")
+        assertClose(dark, worst.double("destructiveDarkWithHighlight"), accuracy: tolerance, "dark destructive items")
+        assertClose(tinted, worst.double("destructiveSystemTintsWithHighlight"), accuracy: tolerance, "destructive items on the system tints")
+        XCTAssertGreaterThanOrEqual(light, 5.0)
+        XCTAssertGreaterThanOrEqual(dark, 4.5)
+        XCTAssertGreaterThanOrEqual(tinted, 4.5)
+    }
+
     func testRimOverlay() {
         let cases = Vectors.cases("rimOverlay")
         XCTAssertEqual(cases.count, 328)

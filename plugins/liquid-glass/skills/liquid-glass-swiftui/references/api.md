@@ -686,15 +686,18 @@ label. Untinted menus, Regular or Clear, in both appearances, keep at least 5.2:
 included (5.24:1 at worst, Clear in dark appearance over white; 6.51:1 white over white on dark Regular without the
 highlight, 8.74:1 `#111113` over black in light); menus tinted with the system colors, as they resolve in either
 appearance, keep at least 5.0:1 (5.07:1 at worst, the dark-appearance `.yellow` on a highlighted item of dark Regular
-over white; 5.26:1 for the light-appearance colors). Very light tints (pure yellow, lime, white) can fall below 4.5:1
-over white in dark appearance: tint menus with a deeper color or not at all. No other surface has the backing. The
-panel opens below the trigger with trailing edges aligned (the left edges, right to left) and 8 pt from it, flips
-above when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It never
-scrolls: a menu that fits on neither side runs past the scene's bottom edge. A highlighted item (hovered, focused or
-pressed) mixes the label color into the glass at 8% (`GlassOptics.menuHighlight`). Tap outside, press Escape (or the
-VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping disabled items.
-The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the system `Menu` with
-the same items (checked items become toggles there).
+over white; 5.26:1 for the light-appearance colors). Very light tints (pure yellow and white, 4.37:1 and 4.13:1 at
+worst) can fall below 4.5:1 over white in dark appearance: tint menus with a deeper color or not at all. Destructive
+items keep a floor of their own: their title, icon and checkmark take `GlassOptics.menuDestructive(dark:)`, `#560D0A`
+(system red darkened) on a light menu, at least 5.0:1, and `#FFEEED` (white with a trace of red) on a dark one, at
+least 4.5:1, highlighted items included (system red itself falls to about 1.3:1 at worst). No other surface has the
+backing. The panel opens below the trigger with trailing edges aligned (the left edges, right to left) and 8 pt from
+it, flips above when it does not fit below but fits above, and keeps 8 pt from the scene's left and right edges. It
+never scrolls: a menu that fits on neither side runs past the scene's bottom edge. A highlighted item (hovered,
+focused or pressed) mixes the label color into the glass at 8% (`GlassOptics.menuHighlight`). Tap outside, press
+Escape (or the VoiceOver escape gesture), or choose an item to dismiss; up/down arrows and Return navigate, skipping
+disabled items. The panel draws in the enclosing scene's overlay; outside a `GlassScene` the menu falls back to the
+system `Menu` with the same items (checked items become toggles there).
 
 ```swift
 public struct GlassMenu<Label: View, Content: View>: View {
@@ -741,8 +744,9 @@ extension GlassMenu where Label == SwiftUI.Label<Text, Image?> {
 /// An item of a GlassMenu. Outside a glass panel (the system menu fallback) it is a plain button, or a Toggle
 /// when `checked` is set. A disabled item (`.disabled(true)`) dims and is skipped by the arrow keys and Return.
 public struct GlassMenuItem: View {
-    /// - role: `.destructive` draws the item's title and icon in red. Its highlight, like every item's, mixes the
-    ///   menu's label color into the glass, not red, as system menus do.
+    /// - role: `.destructive` draws the item's title, icon and checkmark in a red that keeps the menu's floor,
+    ///   `GlassOptics.menuDestructive(dark:)`: `#560D0A` on a light menu (at least 5.0:1), `#FFEEED` on a dark one
+    ///   (at least 4.5:1). Its highlight, like every item's, mixes the menu's label color into the glass, not red.
     /// - checked: `true` or `false` for an item that shows a choice, with a checkmark when it is `true`;
     ///   `nil` (the default) for a command.
     /// - action: Runs when the item is chosen; the menu then closes.
@@ -1015,6 +1019,7 @@ public enum GlassOptics {
     public static func legibilityColor(_ c: SIMD3<Double>, dark: Bool, amount: Double) -> SIMD3<Double>  // mix(c, backing, amount)
     public static func menuForeground(tint: SIMD3<Double>?, material: GlassMaterial, dark: Bool,
                                       legibility: Double = menuLegibility) -> SIMD3<Double>  // menu label: #111113 or white
+    public static func menuDestructive(dark: Bool) -> SIMD3<Double>             // destructive item: #560D0A light, #FFEEED dark
 
     // Rim light (premultiplied RGBA)
     public static func rimOverlay(distance d: Double, nx: Double, ny: Double, dark: Bool, pixel: Double, tint: SIMD3<Double>? = nil) -> SIMD4<Double>
@@ -1065,7 +1070,7 @@ Fixed by the library (sizes scale with Dynamic Type where noted).
 | `GlassSlider` height, thumb, lifted growth per side, lens refraction | 44, 36 × 24, 5 × 4, 5 | 28, 20 × 16, 2.5 × 2, 5 |
 | `GlassSwitch` track, thumb, lifted growth per side, lens refraction | 63 × 28, 37 × 24, 10 × 6.5, 7.75 | 54 × 24, 32 × 20, 9 × 5.5, 7.75 |
 | `GlassMenu` item height, padding, panel inset, min width, check column | 44, 16, 8, 220, 16 | 28, 8, 4, 160, 12 |
-| `GlassMenu` panel legibility backing (mix, light, dark) | 0.6 times the open progress, `#F5F5F7`, `#1C1C1E`; untinted menu text (Regular or Clear) at 5.2:1 or more over any backdrop, system-tinted menu text (either appearance) at 5.0:1 or more, highlighted items included | same |
+| `GlassMenu` panel legibility backing (mix, light, dark) | 0.6 times the open progress, `#F5F5F7`, `#1C1C1E`; untinted menu text (Regular or Clear) at 5.2:1 or more over any backdrop, system-tinted menu text (either appearance) at 5.0:1 or more, highlighted items included; destructive items (`#560D0A` light, `#FFEEED` dark) at 5.0:1 and 4.5:1 or more | same |
 | Highlight of pressed / hovered / focused items | foreground at 8% (menus: the label color, `menuForeground`) | same |
 | Glass foreground color (surface and button content, bar and menu items) | `#111113` light, white dark; on a tint, whichever of the two contrasts more (menu items: with the tint mixed toward the backing) | same |
 
