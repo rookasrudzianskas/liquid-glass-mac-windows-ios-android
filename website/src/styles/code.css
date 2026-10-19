@@ -112,6 +112,12 @@
   text-indent: calc((var(--indent, 0) + 2) * -1ch);
 }
 
+/* A flag stays whole: a line breaks before --ignore-missing, never after its dashes or
+   at its own hyphen. */
+.code--wrap .code__flag {
+  white-space: nowrap;
+}
+
 .code__caption {
   padding: 10px 16px 12px;
   border-top: 1px solid var(--code-line);

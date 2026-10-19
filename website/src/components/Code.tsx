@@ -52,11 +52,19 @@ export interface Highlighted {
   lang?: string;
 }
 
+// A command-line flag: one or two dashes and its name, after a space or at the start of a line.
+const FLAG = /(^|\s)(--?[A-Za-z0-9][\w-]*)/g;
+
+/** Break opportunities after a slash between two other characters (a path or URL). */
+const slashBreaks = (text: string) => text.replace(/([^/\s])\/(?=[^/\s])/g, "$1/<wbr>");
+
 /**
  * Code that wraps instead of scrolling sideways (install commands, whose package names
  * and versions sit at the ends of long lines): each line carries its indentation, so a
- * wrapped line continues two columns in from its own start (code.css), and a path or URL
- * may break after a slash. Only the markup changes; Copy copies the code as written.
+ * wrapped line continues two columns in from its own start (code.css), a path or URL
+ * may break after a slash, and a flag (--ignore-missing, -c) never breaks, inside it or
+ * after its dashes (.code__flag). Only the markup changes, in text and never inside a
+ * tag, so the text is the code as written and Copy copies exactly that.
  */
 function wrappable(html: string) {
   return html
@@ -68,11 +76,24 @@ function wrappable(html: string) {
       const text = line.slice(at).replace(/<[^>]*>/g, "");
       const indent = /^ */.exec(text)?.[0].length ?? 0;
       const head = line.slice(0, at) + `<span class="line" style="--indent:${indent}">`;
-      // Break opportunities after a slash between two other characters, in text only.
+      // Whether the text so far ends in a space (or nothing), which a flag must follow.
+      let spaced = true;
       const rest = line
         .slice(at + '<span class="line">'.length)
         .split(/(<[^>]*>)/)
-        .map((part) => (part.startsWith("<") ? part : part.replace(/([^/\s])\/(?=[^/\s])/g, "$1/<wbr>")))
+        .map((part) => {
+          if (part.startsWith("<") || !part) return part;
+          let out = "";
+          let from = 0;
+          for (const { index = 0, 1: lead = "", 2: flag = "" } of part.matchAll(FLAG)) {
+            if (index === 0 && !lead && !spaced) continue;
+            const start = index + lead.length;
+            out += slashBreaks(part.slice(from, start)) + `<span class="code__flag">${flag}</span>`;
+            from = start + flag.length;
+          }
+          spaced = /\s$/.test(part);
+          return out + slashBreaks(part.slice(from));
+        })
         .join("");
       return head + rest;
     })
