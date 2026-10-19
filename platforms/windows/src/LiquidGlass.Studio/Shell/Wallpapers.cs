@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows;
 using System.Windows.Media.Imaging;
 
 namespace LiquidGlass.Studio.Shell;
@@ -15,6 +16,13 @@ internal static class Wallpapers
     private static readonly Dictionary<string, BitmapImage> Cache = new(StringComparer.Ordinal);
 
     public static IReadOnlyList<string> All { get; } = new[] { Dunes, Ocean, Aurora, Midnight };
+
+    /// <summary>
+    /// How a page aligns its wallpaper, which is taller than the page in a landscape window: in dark appearance its
+    /// deep lower part lies under the dark glass, so the white labels on it stay legible (every wallpaper darkens
+    /// toward the bottom); in light appearance its bright top lies under the light glass and its dark labels.
+    /// </summary>
+    public static VerticalAlignment Alignment(bool dark) => dark ? VerticalAlignment.Bottom : VerticalAlignment.Top;
 
     /// <summary>The 2048-pixel wallpaper, decoded once.</summary>
     public static BitmapImage Get(string name)

@@ -26,7 +26,11 @@ public partial class HeroPage : StudioPageBase
     }
 
     /// <inheritdoc />
-    public override void SetDark(bool dark) => Wallpaper.Source = Wallpapers.Get(dark ? Wallpapers.Midnight : Wallpapers.Dunes);
+    public override void SetDark(bool dark)
+    {
+        Wallpaper.Source = Wallpapers.Get(dark ? Wallpapers.Midnight : Wallpapers.Dunes);
+        Wallpaper.VerticalAlignment = Wallpapers.Alignment(dark);
+    }
 
     private void PlaceCard()
     {

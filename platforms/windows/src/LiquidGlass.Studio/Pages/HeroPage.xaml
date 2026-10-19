@@ -13,7 +13,7 @@
                        IsInteractive="True" Cursor="SizeAll" AutomationProperties.Name="Liquid Glass card">
         <StackPanel lg:GlassScene.Material="Clear">
           <TextBlock Text="Liquid Glass" Style="{StaticResource Studio.Display}" />
-          <TextBlock Style="{StaticResource Studio.Body}" Opacity="0.78" Margin="0,8,0,22"
+          <TextBlock Style="{StaticResource Studio.Body}" Margin="0,8,0,22"
                      Text="Refraction, frost and light from one optical model, drawn by a pixel shader in WPF. Drag the card around: the glass follows, stretches and settles." />
           <StackPanel Orientation="Horizontal">
             <lg:GlassButton Content="Get started" Size="Large" Tint="#0A84FF" Cursor="Hand" />

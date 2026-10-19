@@ -7,7 +7,6 @@
     <Style x:Key="Label" TargetType="TextBlock">
       <Setter Property="FontSize" Value="13" />
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Opacity" Value="0.75" />
       <Setter Property="Margin" Value="2,14,0,8" />
     </Style>
     <Style x:Key="Chip" TargetType="lg:GlassButton">
@@ -36,7 +35,7 @@
     <Canvas x:Name="Stage" Margin="0,0,340,0">
       <lg:GlassSurface x:Name="Lens" Width="340" Height="220" Radius="40" IsInteractive="True" Cursor="SizeAll"
                        Material="Clear" AutomationProperties.Name="Lens">
-        <TextBlock Text="Drag the lens" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85" />
+        <TextBlock Text="Drag the lens" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </lg:GlassSurface>
     </Canvas>
 
@@ -44,7 +43,7 @@
                      Material="Regular" Radius="28" Padding="22,12,22,22">
       <StackPanel lg:GlassScene.Material="Clear">
         <TextBlock Text="Materials lab" Style="{StaticResource Studio.Title}" Margin="2,8,0,2" />
-        <TextBlock Text="Every option of the optical model, live." Style="{StaticResource Studio.Body}" Opacity="0.7" Margin="2,0,0,4" />
+        <TextBlock Text="Every option of the optical model, live." Style="{StaticResource Studio.Body}" Margin="2,0,0,4" />
 
         <TextBlock Text="Material" Style="{StaticResource Label}" />
         <lg:GlassTabBar x:Name="MaterialPicker" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Material">
@@ -61,13 +60,13 @@
 
         <Grid>
           <TextBlock Text="Refraction" Style="{StaticResource Label}" />
-          <TextBlock Text="{Binding Value, ElementName=RefractionSlider, StringFormat=N0}" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" Opacity="0.75" />
+          <TextBlock Text="{Binding Value, ElementName=RefractionSlider, StringFormat=N0}" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" />
         </Grid>
         <lg:GlassSlider x:Name="RefractionSlider" Minimum="0" Maximum="120" Value="60" SmallChange="1" LargeChange="10" AutomationProperties.Name="Refraction" />
 
         <Grid>
           <TextBlock Text="Corner radius" Style="{StaticResource Label}" />
-          <TextBlock x:Name="RadiusLabel" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" Opacity="0.75" />
+          <TextBlock x:Name="RadiusLabel" HorizontalAlignment="Right" FontSize="13" Margin="0,14,0,8" />
         </Grid>
         <lg:GlassSlider x:Name="RadiusSlider" Minimum="0" Maximum="110" Value="40" SmallChange="1" LargeChange="10" AutomationProperties.Name="Corner radius" />
 

@@ -13,7 +13,11 @@ public partial class ControlsPage : StudioPageBase
     }
 
     /// <inheritdoc />
-    public override void SetDark(bool dark) => Wallpaper.Source = Wallpapers.Get(dark ? Wallpapers.Aurora : Wallpapers.Ocean);
+    public override void SetDark(bool dark)
+    {
+        Wallpaper.Source = Wallpapers.Get(dark ? Wallpapers.Aurora : Wallpapers.Ocean);
+        Wallpaper.VerticalAlignment = Wallpapers.Alignment(dark);
+    }
 
     private void OnSort(object sender, RoutedEventArgs e)
     {
