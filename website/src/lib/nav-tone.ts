@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { RefObject } from "react";
+import { flushSync } from "react-dom";
 
 /**
  * What the fixed nav bar sits over. A glass stage registers itself with the tone of the
@@ -27,8 +28,11 @@ export function registerNavTone(el: Element, tone: Tone) {
  * The tone under `bar`, or undefined before the first measurement (on the server and in
  * the first client render, so the prerendered HTML and hydration agree). The root of an
  * IntersectionObserver is shrunk to the one-pixel line through the bar's middle, so
- * scrolling costs nothing until a stage's edge crosses that line; changes are applied
- * once per frame.
+ * scrolling costs nothing until a stage's edge crosses that line. When stages register
+ * or leave (a load, a client-side navigation, a new backdrop), the next frame measures
+ * them itself before it paints, where the observer's first entries would arrive only
+ * after a frame had painted the previous tone; the new tone is committed in that frame
+ * (flushSync), so a page is never painted with another page's palette.
  */
 export function useNavTone(bar: RefObject<HTMLElement | null>): NavTone | undefined {
   const [tone, setTone] = useState<NavTone>();
@@ -36,46 +40,56 @@ export function useNavTone(bar: RefObject<HTMLElement | null>): NavTone | undefi
     if (typeof IntersectionObserver === "undefined") return;
     const covering = new Set<Element>();
     const observed = new Set<Element>();
-    // Observed, but their first entry has not arrived: until it does, the tone stays as it
-    // is, so a new observer (or the next page's stage) never flashes the page's palette.
-    const waiting = new Set<Element>();
     let observer: IntersectionObserver | null = null;
+    let line = 36;
+    // Sources changed since the last frame: measure them all rather than wait for entries.
+    let stale = true;
+    let current: NavTone | undefined;
     let frame = 0;
     const apply = () => {
       frame = 0;
-      if (waiting.size) return;
+      if (stale) {
+        stale = false;
+        covering.clear();
+        for (const el of sources.keys()) {
+          const r = el.getBoundingClientRect();
+          // Any overlap with the line, edges included, as the observer counts it.
+          if ((r.width || r.height) && r.top <= line + 1 && r.bottom >= line) covering.add(el);
+        }
+      }
       let next: NavTone = "none";
       for (const [el, t] of sources) if (covering.has(el)) next = t;
-      setTone(next);
+      if (next === current) return;
+      current = next;
+      flushSync(() => setTone(next));
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(apply);
-    };
-    const observe = (el: Element) => {
-      observed.add(el);
-      waiting.add(el);
-      observer?.observe(el);
     };
     const sync = () => {
       for (const el of observed)
         if (!sources.has(el)) {
           observer?.unobserve(el);
           observed.delete(el);
-          waiting.delete(el);
           covering.delete(el);
         }
-      for (const el of sources.keys()) if (!observed.has(el)) observe(el);
+      for (const el of sources.keys())
+        if (!observed.has(el)) {
+          observed.add(el);
+          observer?.observe(el);
+        }
+      stale = true;
       schedule();
     };
     const build = () => {
       const rect = bar.current?.getBoundingClientRect();
-      const line = Math.round(rect && rect.height ? rect.top + rect.height / 2 : 36);
+      line = Math.round(rect && rect.height ? rect.top + rect.height / 2 : 36);
       const below = Math.max(0, window.innerHeight - line - 1);
       observer?.disconnect();
       observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
-            waiting.delete(entry.target);
+            if (!sources.has(entry.target)) continue;
             if (entry.isIntersecting) covering.add(entry.target);
             else covering.delete(entry.target);
           }
@@ -84,7 +98,6 @@ export function useNavTone(bar: RefObject<HTMLElement | null>): NavTone | undefi
         { rootMargin: `-${line}px 0px -${below}px 0px` },
       );
       observed.clear();
-      waiting.clear();
       sync();
     };
     build();

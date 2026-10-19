@@ -26,9 +26,6 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.12),
     0 0 0 1px var(--line),
     0 10px 30px rgba(0, 0, 0, 0.08);
-  transition:
-    background-color 0.3s,
-    box-shadow 0.3s;
 }
 
 /* The bar's secondary labels are deeper than the page's (base.css), which with its fill
@@ -39,12 +36,13 @@
   --fg-3: var(--nav-fg-3);
 }
 
-/* The labels change color with the bar, at the same pace. */
-.nav :is(.nav__brand, .nav__name-sub, .nav__link, .nav__search, .nav__kbd, .icon-button, .nav__sheet-link) {
-  transition:
-    color 0.3s,
-    background-color 0.3s,
-    border-color 0.3s;
+/* A change of palette (the tone under the bar, or the theme) is a step: the fill and
+   every label change in the same frame. A cross-fade between the palettes passes through
+   greys over which no label holds 4.5:1 (midway the links reach 2.0:1 at best, with the
+   label colour switched where both palettes do equally well), so only the hover pills
+   fade, holding more contrast on the way than at rest. */
+.nav :is(.nav__link, .nav__search, .icon-button, .nav__sheet-link) {
+  transition: background-color 0.2s;
 }
 
 [data-theme="dark"] .nav:not([data-tone="light"]) .nav__bar,

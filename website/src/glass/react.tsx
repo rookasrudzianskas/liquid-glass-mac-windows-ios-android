@@ -170,7 +170,8 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
 
-  useEffect(() => {
+  // Registered as the stage commits, so the nav measures it in the frame that first paints it.
+  useIsoLayoutEffect(() => {
     const root = rootRef.current;
     return root && navTone ? registerNavTone(root, navTone) : undefined;
   }, [navTone]);
