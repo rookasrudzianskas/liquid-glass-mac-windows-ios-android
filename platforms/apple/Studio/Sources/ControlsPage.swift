@@ -48,8 +48,21 @@ struct ControlsPage: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            // `-scroll end` opens the page scrolled to its end, the menus
+            // clear of the tab bar; `-scroll 0.8` at that fraction of the
+            // way (screenshots).
+            .defaultScrollAnchor(Self.launchAnchor)
             .modifier(ScrollEdge())
         }
+    }
+
+    /// Where the page opens: the `-scroll` launch argument, `end` or a
+    /// fraction of the scrollable height; the top by default.
+    private static var launchAnchor: UnitPoint {
+        let value = UserDefaults.standard.string(forKey: "scroll")
+        if value == "end" { return .bottom }
+        guard let fraction = value.flatMap(Double.init) else { return .top }
+        return UnitPoint(x: 0.5, y: min(1, max(0, fraction)))
     }
 
     /// From this width the page lays out in two columns.

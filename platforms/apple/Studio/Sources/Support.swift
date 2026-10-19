@@ -14,6 +14,10 @@ enum Wallpaper: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 
+    /// A small copy for pickers: the full image shrunk about 13 times on the
+    /// fly would alias its thin rim lines.
+    var thumbnail: Image { Image("\(rawValue)-thumb") }
+
     /// The wallpaper filling the space it is offered.
     var view: some View {
         Image(rawValue)
@@ -66,8 +70,17 @@ struct SectionHeader: View {
             .font(.footnote.weight(.semibold))
             .textCase(.uppercase)
             .kerning(0.6)
-            .foregroundStyle(.white.opacity(0.9))
-            .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+            // A soft haze, as under the status bar, keeps the header readable
+            // where it crosses a bright band of the wallpaper.
+            .background {
+                Capsule()
+                    .fill(.black.opacity(0.38))
+                    .padding(.horizontal, -16)
+                    .padding(.vertical, -10)
+                    .blur(radius: 8)
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)
             .accessibilityAddTraits(.isHeader)

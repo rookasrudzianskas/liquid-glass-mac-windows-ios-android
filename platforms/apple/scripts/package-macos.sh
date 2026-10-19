@@ -9,12 +9,26 @@ out="$root/artifacts/apple"
 app="$products/Liquid Glass Studio.app"
 [ -d "$app" ] || { echo "missing $app" >&2; exit 1; }
 mkdir -p "$out"
+# LICENSE and NOTICE.md (the Glass HQ copyright and permission notice of the
+# ported optical model, which its MIT License asks for in all copies) go in
+# the app's Resources, before signing, and at the top of the zip.
+for file in LICENSE NOTICE.md; do
+  cp "$root/$file" "$app/Contents/Resources/$file"
+done
 codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
+stage="$(mktemp -d -t liquid-glass-macos.XXXXXX)"
+trap 'rm -rf "$stage"' EXIT
+ditto --norsrc --noextattr --noqtn "$app" "$stage/Liquid Glass Studio.app"
+cp "$root/LICENSE" "$root/NOTICE.md" "$stage/"
 rm -f "$out/LiquidGlassStudio-macOS.zip"
 # No resource forks, extended attributes or quarantine: the zip holds no
 # AppleDouble (._*) or __MACOSX entries.
-ditto -c -k --norsrc --noextattr --noqtn --keepParent "$app" "$out/LiquidGlassStudio-macOS.zip"
+ditto -c -k --norsrc --noextattr --noqtn "$stage" "$out/LiquidGlassStudio-macOS.zip"
+listing="$(unzip -Z1 "$out/LiquidGlassStudio-macOS.zip")"
+for entry in LICENSE NOTICE.md "Liquid Glass Studio.app/Contents/Resources/LICENSE" "Liquid Glass Studio.app/Contents/Resources/NOTICE.md"; do
+  grep -qxF "$entry" <<<"$listing" || { echo "LiquidGlassStudio-macOS.zip: $entry is missing" >&2; exit 1; }
+done
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 cat > "$out/README.txt" <<TEXT
 Liquid Glass Studio $version for macOS 14 or later (Apple silicon and Intel)
@@ -33,6 +47,8 @@ Applications, run:
 
   xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"
 
-MIT License.
+MIT License: see LICENSE and NOTICE.md in the zip (also in the app's
+Contents/Resources), which carry the notice of the Glass HQ library the
+optical model is ported from.
 TEXT
 ls -l "$out"

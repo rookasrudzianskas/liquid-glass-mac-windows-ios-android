@@ -126,7 +126,7 @@ struct LabPage: View {
                 Button {
                     settings.wallpaper = wallpaper
                 } label: {
-                    Image(wallpaper.rawValue)
+                    wallpaper.thumbnail
                         .resizable()
                         .scaledToFill()
                         .frame(width: 52, height: 36)

@@ -101,6 +101,23 @@ final class StudioUITests: XCTestCase {
         XCTAssertTrue(waitUntil { toggle.value as? String == "0" }, "switch did not turn off")
     }
 
+    /// Opened scrolled to its end (`-scroll end`), the page shows its last
+    /// rows clear of the floating tab bar's fade: the Slider and switch card
+    /// with every switch, and the menus.
+    func testControlsScrolledToTheEnd() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-page", "controls", "-appearance", "dark", "-scroll", "end"]
+        app.launch()
+        let sort = app.buttons["Sort: Newest"]
+        XCTAssertTrue(sort.waitForExistence(timeout: 5))
+        settle(1)
+        let tab = app.buttons["Controls"].firstMatch
+        XCTAssertLessThan(sort.frame.maxY, tab.frame.minY - 40, "the menus are not clear of the tab bar's fade")
+        let airDrop = app.switches["AirDrop"]
+        XCTAssertLessThan(airDrop.frame.maxY, sort.frame.minY, "the last switch is not above the menus")
+        snap("controls-end")
+    }
+
     func testMenuInScrollViewChangesSelection() {
         let app = launch("controls")
         let sort = app.buttons["Sort: Newest"]

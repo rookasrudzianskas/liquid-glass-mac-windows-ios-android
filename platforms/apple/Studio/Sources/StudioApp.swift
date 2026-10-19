@@ -9,7 +9,7 @@ struct LiquidGlassStudioApp: App {
         }
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1180, height: 820)
+        .defaultSize(width: 1180, height: 900)
         #endif
     }
 }
@@ -71,8 +71,11 @@ struct StudioRoot: View {
     }
 
     private var tabBar: some View {
-        // Over the scrolling stories the bars frost, so text never shows through.
-        GlassTabBar(selection: $page, material: page == .blur ? .regular : nil) {
+        // Every wallpaper darkens toward the bottom, so over them the bar is
+        // dark glass, as on Android and in Hello Glass: its labels read in
+        // either appearance. Over the scrolling stories the bar frosts, so
+        // text never shows through, and follows the app's appearance.
+        GlassTabBar(selection: $page, material: page == .blur ? .regular : nil, appearance: page == .blur ? nil : .dark) {
             GlassTab("Hero", systemImage: "sparkles", value: StudioPage.hero)
             GlassTab("Controls", systemImage: "slider.horizontal.3", value: StudioPage.controls)
             GlassTab("Lab", systemImage: "drop", value: StudioPage.lab)

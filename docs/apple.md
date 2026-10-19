@@ -410,15 +410,17 @@ The demo app, in [`platforms/apple/Studio`](../platforms/apple/Studio), runs on 
 3. **Materials lab:** live material, appearance, refraction, radius, tint and wallpaper controls for a draggable lens, on a Regular glass panel with Regular pickers.
 4. **Progressive blur:** a `GlassScrollView` of stories with blurred top and bottom edges under a Regular toolbar, with a Filter menu of story categories.
 
+The floating tab bar is dark glass over the wallpapers, which all darken toward the bottom, so its labels read in either appearance; over the stories it is Regular glass in the app's appearance. Section headers drawn on a wallpaper sit on a soft dark haze.
+
 <p align="center">
-  <img src="images/apple/ios-controls.png" width="32%" alt="Controls: glass buttons in every size, icon buttons, a toolbar, sliders and switches over a wallpaper, above a glass tab bar on iPhone">
+  <img src="images/apple/ios-controls.png" width="32%" alt="Controls, scrolled down: icon buttons, a toolbar, sliders and switches and a segmented tab bar over a wallpaper, above a glass tab bar on iPhone">
   <img src="images/apple/ios-lab.png" width="32%" alt="Materials lab: a draggable Clear glass card over the Dunes wallpaper, with material, appearance, refraction, radius, tint and wallpaper controls on iPhone">
   <img src="images/apple/ios-blur.png" width="32%" alt="Progressive blur: a journal of stories scrolling under blurred edges, with Regular glass toolbar buttons and a tab bar on iPhone">
 </p>
 
 ![Liquid Glass Studio on macOS](images/apple/macos-controls.png)
 
-Open `platforms/apple/Studio/LiquidGlassStudio.xcodeproj` in Xcode, pick the *LiquidGlassStudio* scheme and run on an iOS Simulator or *My Mac*; both build with the project's ad-hoc signing. To run on an iPhone or iPad, select the *LiquidGlassStudio* target, open **Signing & Capabilities**, turn on **Automatically manage signing** and choose your team (the project's manual ad-hoc identity can't sign for devices). On iPhone the Studio runs in portrait; on iPad and Mac in any orientation and window size. Launch arguments `-page hero|controls|lab|blur` and `-appearance automatic|light|dark` choose where it starts; `-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES` shows it right to left. A prebuilt macOS build is on the website's downloads page. Unzip it and move *Liquid Glass Studio* to Applications first. It is ad-hoc signed and not notarized, so macOS blocks its first launch: open it once, then open System Settings › Privacy & Security and click Open Anyway (on macOS 14, Control-click › Open also works). Or, once it is in Applications, run `xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"`.
+Open `platforms/apple/Studio/LiquidGlassStudio.xcodeproj` in Xcode, pick the *LiquidGlassStudio* scheme and run on an iOS Simulator or *My Mac*; both build with the project's ad-hoc signing. To run on an iPhone or iPad, select the *LiquidGlassStudio* target, open **Signing & Capabilities**, turn on **Automatically manage signing** and choose your team (the project's manual ad-hoc identity can't sign for devices). On iPhone the Studio runs in portrait; on iPad and Mac in any orientation and window size. Launch arguments `-page hero|controls|lab|blur` and `-appearance automatic|light|dark` choose where it starts, and `-scroll end` or a fraction of the way down, such as `-scroll 0.76` (the iPhone Controls shot above), where the Controls page opens; `-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES` shows it right to left. A prebuilt macOS build is on the website's downloads page. Unzip it and move *Liquid Glass Studio* to Applications first. It is ad-hoc signed and not notarized, so macOS blocks its first launch: open it once, then open System Settings › Privacy & Security and click Open Anyway (on macOS 14, Control-click › Open also works). Or, once it is in Applications, run `xattr -dr com.apple.quarantine "/Applications/Liquid Glass Studio.app"`.
 
 The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen); after adding files run `platforms/apple/scripts/generate-project.sh`. The app icon is drawn by `platforms/apple/Studio/Scripts/make-app-icon.swift`.
 
@@ -433,7 +435,8 @@ xcodebuild test -scheme LiquidGlass -destination 'platform=iOS Simulator,name=iP
 xcodebuild test -project platforms/apple/Studio/LiquidGlassStudio.xcodeproj -scheme LiquidGlassStudio \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 
-# Release build of the macOS app, ad-hoc signed and zipped into artifacts/apple/
+# Release build of the macOS app, ad-hoc signed and zipped into artifacts/apple/, with LICENSE and NOTICE.md in the
+# app's Resources and at the top of the zip
 xcodebuild build -project platforms/apple/Studio/LiquidGlassStudio.xcodeproj -scheme LiquidGlassStudio \
   -configuration Release -destination 'generic/platform=macOS' -derivedDataPath DerivedData
 platforms/apple/scripts/package-macos.sh DerivedData/Build/Products/Release
