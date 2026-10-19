@@ -118,6 +118,23 @@
   white-space: nowrap;
 }
 
+/* A name's own breaks are held back (Code.tsx breaks): a hyphen with the character after
+   it does not wrap, and the <wbr> after its "@" or before its "." is left out of layout,
+   so liquid-glass-engineering moves to the next line whole. CodeBlock frees them
+   (data-free) only in a name wider than the line, which would otherwise be cut at an
+   arbitrary character. */
+.code--wrap .code__hyphen {
+  white-space: nowrap;
+}
+
+.code--wrap .code__hyphen[data-free] {
+  white-space: inherit;
+}
+
+.code--wrap wbr.code__soft:not([data-free]) {
+  display: none;
+}
+
 .code__caption {
   padding: 10px 16px 12px;
   border-top: 1px solid var(--code-line);
