@@ -161,7 +161,9 @@ fun BoxScope.ControlsPage() {
             }
         }
 
-        Spacer(Modifier.height(TabBarClearance))
+        // A little more than the tab bar covers: scrolled to the end, the menu row sits well clear of the bar, and on a
+        // phone the clip line under the status bar falls between rows instead of through the tinted buttons.
+        Spacer(Modifier.height(TabBarClearance + 4.dp))
         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }

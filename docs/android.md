@@ -4,9 +4,9 @@ Native Liquid Glass for Android: refraction, Clear and Regular materials, rim li
 
 <p align="center">
   <img src="images/android/hero-dark.png" width="24%" alt="Hero: a frosted glass card over the Aurora wallpaper, with a floating toolbar and tab bar">
-  <img src="images/android/controls-light.png" width="24%" alt="Controls, scrolled to the end: glass icon buttons, sliders and switches on a frosted card, a segmented tab bar and a menu trigger above the floating tab bar">
+  <img src="images/android/controls-light.png" width="24%" alt="Controls, scrolled to the end, over the Ocean wallpaper: glass icon buttons, sliders and switches on a frosted card, a segmented tab bar and a menu trigger above the floating tab bar">
   <img src="images/android/menu-dark.png" width="24%" alt="A Regular glass menu grown out of its toolbar button, its glass mixed 60% toward a solid dark backing so the white labels read over the wallpaper">
-  <img src="images/android/blur-light.png" width="24%" alt="A scrolling journal under progressive edge blur and a glass toolbar">
+  <img src="images/android/blur-light.png" width="24%" alt="A journal scrolled partway: a headline blurring under the glass toolbar at the top edge and a story image blurring into the bottom edge under the tab bar">
 </p>
 
 | | |
