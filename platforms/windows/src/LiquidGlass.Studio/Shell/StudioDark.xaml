@@ -9,7 +9,7 @@
   <SolidColorBrush x:Key="Studio.ContentStroke" Color="#19000000" />
   <RadialGradientBrush x:Key="Studio.SectionHaze">
     <GradientStop Color="#73000000" Offset="0" />
-    <GradientStop Color="#66000000" Offset="0.6" />
+    <GradientStop Color="#66000000" Offset="0.75" />
     <GradientStop Color="#00000000" Offset="1" />
   </RadialGradientBrush>
 </ResourceDictionary>
