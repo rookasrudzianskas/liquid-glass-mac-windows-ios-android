@@ -66,9 +66,9 @@ export default function Skills() {
                 <TerminalIcon size={18} /> Claude Code
               </h3>
               <p className="install-card__body">Add the marketplace and install the plugin from inside Claude Code:</p>
-              {samples.pluginInstall ? <CodeBlock sample={samples.pluginInstall} title="Claude Code" /> : null}
+              {samples.pluginInstall ? <CodeBlock sample={samples.pluginInstall} title="Claude Code" wrap /> : null}
               <p className="install-card__body">Or from your shell:</p>
-              {samples.pluginShell ? <CodeBlock sample={samples.pluginShell} title="Terminal" /> : null}
+              {samples.pluginShell ? <CodeBlock sample={samples.pluginShell} title="Terminal" wrap /> : null}
             </article>
             <article className="install-card">
               <h3 className="install-card__title">
@@ -77,7 +77,7 @@ export default function Skills() {
               <p className="install-card__body">
                 Unzip the skills into <code>~/.claude/skills/</code> for Claude Code, or <code>~/.agents/skills/</code> for OpenAI Codex and other Agent Skills tools. Project-level folders work too.
               </p>
-              {samples.skillsManual ? <CodeBlock sample={samples.skillsManual} title="Terminal" /> : null}
+              {samples.skillsManual ? <CodeBlock sample={samples.skillsManual} title="Terminal" wrap /> : null}
             </article>
             <article className="install-card">
               <h3 className="install-card__title">

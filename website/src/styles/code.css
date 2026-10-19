@@ -93,6 +93,25 @@
   min-width: 100%;
 }
 
+/* Wrapping code (CodeBlock wrap, for install commands): nothing scrolls sideways, and a
+   wrapped line continues two columns in from where its own text starts (--indent is its
+   leading spaces), so it reads as the same line. */
+.code--wrap pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.code--wrap pre code {
+  width: auto;
+}
+
+.code--wrap .line {
+  display: inline-block;
+  width: 100%;
+  padding-left: calc((var(--indent, 0) + 2) * 1ch);
+  text-indent: calc((var(--indent, 0) + 2) * -1ch);
+}
+
 .code__caption {
   padding: 10px 16px 12px;
   border-top: 1px solid var(--code-line);

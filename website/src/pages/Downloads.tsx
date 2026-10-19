@@ -175,7 +175,7 @@ export default function Downloads() {
                 </h3>
                 {p.install.map(({ key, title }) => {
                   const sample = samples[key];
-                  return sample ? <CodeBlock key={key} sample={sample} title={title} /> : null;
+                  return sample ? <CodeBlock key={key} sample={sample} title={title} wrap /> : null;
                 })}
                 <p className="dl-note">{p.note}</p>
               </div>
@@ -229,7 +229,7 @@ export default function Downloads() {
               <a href="/downloads/manifest.json">manifest.json</a>.
             </p>
           </div>
-          {samples.verify ? <CodeBlock sample={samples.verify} title="Terminal" /> : null}
+          {samples.verify ? <CodeBlock sample={samples.verify} title="Terminal" wrap /> : null}
         </section>
 
         {!anyAvailable ? <p className="dl-note">Builds are published here as each platform is released.</p> : null}
