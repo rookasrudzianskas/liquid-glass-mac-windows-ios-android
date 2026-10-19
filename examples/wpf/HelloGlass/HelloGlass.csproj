@@ -5,6 +5,8 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
+    <!-- The release this example ships with; keep app.manifest's assemblyIdentity version in step. -->
+    <Version>1.0.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The executable's icon, which the window's title bar and the taskbar show too. -->
     <ApplicationIcon>Assets\HelloGlass.ico</ApplicationIcon>
