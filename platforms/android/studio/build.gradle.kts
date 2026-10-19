@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.util.zip.ZipFile
 
@@ -70,6 +71,16 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+// The release classes are compiled from scratch, as the library's are (see liquidglass/build.gradle.kts): an
+// incremental compile can emit different Compose stability code than a full one, and the APK would then depend
+// on which files the last compile happened to recompile.
+afterEvaluate {
+    tasks.named<KotlinCompile>("compileReleaseKotlin") {
+        incremental = false
+        inputs.property("compiledFromScratch", true)
     }
 }
 

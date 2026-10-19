@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 
@@ -142,6 +143,22 @@ kotlin {
     explicitApi()
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
+    }
+}
+
+// The release classes (the AAR's classes.jar, so the Maven and JitPack publications, and the Studio's release
+// build) are compiled from scratch, never incrementally. An incremental compile recompiles only the changed files
+// and reads the module's other classes from its previous output, and the Compose compiler, treating those classes
+// as external, emits different stability code than a full compile. The released 1.0.1 AAR (sha1 68c31ce1) came
+// from such a compile of GlassMenu.kt alone, which reads GlassOverlay.$stable at run time and passes 0 instead of
+// 6 in four $changed arguments, so it differs from the clean build of the tag that JitPack serves (75d2bc2d). The
+// input property gives the task a build cache key of its own, so no output of an earlier incremental compile is
+// restored. The Kotlin plugin sets `incremental` when it configures the task, after any configureEach here, hence
+// afterEvaluate. Debug compiles stay incremental.
+afterEvaluate {
+    tasks.named<KotlinCompile>("compileReleaseKotlin") {
+        incremental = false
+        inputs.property("compiledFromScratch", true)
     }
 }
 
