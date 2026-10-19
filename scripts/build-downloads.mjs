@@ -12,8 +12,19 @@
 //   website/public/maven/                  static Maven repository for the Compose library
 //   website/public/nuget/                  static NuGet v3 feed for the WPF packages
 //
+// The feeds serve every version found in artifacts/ (index.json, registrations and maven-metadata.xml list them
+// all, sorted, with the newest as latest); downloads/ carries only the newest version of each package. A deployed
+// feed must keep every released version, but artifacts/ starts empty in a fresh clone or worktree, so the release
+// path (--restore-released, which website/scripts/deploy.sh passes, and --strict) first restores the packages of
+// every published GitHub release other than this version that are missing from artifacts/: the .nupkg assets of
+// the release, checked against its SHA256SUMS (and GitHub's asset digest), into artifacts/windows/nuget, and the
+// Maven files of the Compose library from the production site's /maven, checked against their .sha256 and .sha512
+// files and the Gradle module's file hashes, with the AAR checked against the release's SHA256SUMS, into
+// artifacts/android/maven. Restored files are only added, never overwritten, and get the release's publication
+// time as their modification time, so the feeds stay reproducible.
+//
 // Usage:
-//   node scripts/build-downloads.mjs [--strict] [--base-url <url>] [--root <dir>] [--out <dir>] [--quiet]
+//   node scripts/build-downloads.mjs [--strict] [--restore-released] [--base-url <url>] [--root <dir>] [--out <dir>] [--quiet]
 //
 // Guarantees:
 //   * Idempotent. Unchanged inputs give byte-identical outputs: zips come from a deterministic
@@ -22,15 +33,20 @@
 //   * Tolerant. A missing input becomes a manifest item with `available: false` and no link.
 //     --strict (the production deploy) exits non-zero when a *required* item is missing or a
 //     release check fails: the tree is committed and pushed, the release tag is on origin (the
-//     Swift package and JitPack resolve versions from tags), every skill is committed, and each
-//     NuGet package targets the frameworks its .csproj declares.
+//     Swift package and JitPack resolve versions from tags), every skill is committed, each
+//     NuGet package targets the frameworks its .csproj declares, and the feeds serve every
+//     published release and no other version than this one.
+//   * Fetches the GitHub releases only with --restore-released or --strict, never in the Website workflow or
+//     npm run build, whose feeds come from local files only. A release that cannot be listed, fetched or verified
+//     then fails the run.
 //   * Owns exactly three folders below the output folder (downloads/, maven/, nuget/) and
 //     removes files there that this run does not produce. Nothing else is ever deleted.
 //   * Never follows a symlink out of the input folder it was found in.
 //
 // Environment:
 //   LG_VERSION         release version (default 1.0.1); artifacts may report their own
-//   LG_SITE_URL        default for --base-url (default https://liquid-glass-engineering.vercel.app)
+//   LG_SITE_URL        default for --base-url, and the site --restore-released fetches earlier Maven files
+//                      from (default https://liquid-glass-engineering.vercel.app)
 //   LG_NUGET_IDS       optional comma-separated NuGet package ids that must all be present
 //   SOURCE_DATE_EPOCH  optional clock override (seconds) for generatedAt
 //
@@ -48,6 +64,7 @@ import zlib from "node:zlib";
 // -------------------------------------------------------------------------------------------
 
 const REPOSITORY_URL = "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android";
+const RELEASES_API_URL = "https://api.github.com/repos/rookasrudzianskas/liquid-glass-mac-windows-ios-android/releases";
 const DEFAULT_SITE_URL = "https://liquid-glass-engineering.vercel.app";
 const DEFAULT_VERSION = "1.0.1";
 
@@ -100,7 +117,11 @@ Collects artifacts/<platform>/ into <out>/downloads, <out>/maven and <out>/nuget
 Options:
   --strict           exit 1 (after writing) when a required item is missing or a release
                      check fails (clean, pushed tree; release tag on origin; committed
-                     skills; NuGet target frameworks matching the .csproj)
+                     skills; NuGet target frameworks matching the .csproj; feeds that
+                     serve every published release); implies --restore-released
+  --restore-released first add the packages of every published GitHub release (other
+                     than this version) that artifacts/ lacks, verified, so the feeds
+                     keep them; exit 1 when one cannot be fetched or verified
   --base-url <url>   absolute site URL used by the NuGet feed
                      (default: $LG_SITE_URL or ${DEFAULT_SITE_URL})
   --root <dir>       repository root (default: the folder above scripts/)
@@ -136,6 +157,7 @@ function fail(message, code = 2) {
 function parseArgs(argv) {
   const opts = {
     strict: false,
+    restoreReleased: false,
     quiet: false,
     help: false,
     baseUrl: process.env.LG_SITE_URL || DEFAULT_SITE_URL,
@@ -161,6 +183,9 @@ function parseArgs(argv) {
     switch (flag) {
       case "--strict":
         opts.strict = toggle();
+        break;
+      case "--restore-released":
+        opts.restoreReleased = toggle();
         break;
       case "--quiet":
       case "-q":
@@ -885,7 +910,9 @@ function collectAndroid(ctx) {
   // Maven repository is planned first: it can supply the AAR's version (and the AAR itself).
   const maven = collectMaven(ctx, mavenDir);
 
-  let aar = pickBest(aars, "android-aar");
+  // The newest version wins: an earlier release's AAR may still lie next to this one.
+  const byVersion = [...aars].sort((a, b) => compareVersionStrings(versionFromName(b.name) ?? "", versionFromName(a.name) ?? ""));
+  let aar = pickBest(aars, "android-aar", (e) => byVersion.indexOf(e));
   if (!aar && maven.aar) aar = maven.aar;
   const aarVersion = (aar && versionFromName(aar.name)) || maven.latest || ctx.version;
   const aarFile = `liquid-glass-compose-${aarVersion}.aar`;
@@ -974,10 +1001,22 @@ function collectMaven(ctx, dirEntry) {
     artifacts.set(key, artifact);
   }
 
+  // Each artifact's maven-metadata.xml is written from the versions in the tree, never copied: the one Gradle
+  // writes lists only the versions it found in its repository folder (in a fresh clone, just the one it built),
+  // and versions restored next to it would be missing from it. A version an input file lists without a pom here
+  // is reported, since the feed would drop it.
   const generated = new Map(); // rel -> Buffer
   for (const [key, artifact] of artifacts) {
     const rel = `${key}/maven-metadata.xml`;
-    if (inputs.has(rel)) continue;
+    const input = inputs.get(rel);
+    if (input) {
+      const text = fs.readFileSync(input.abs, "utf8");
+      const listed = [...(/<versions>([\s\S]*?)<\/versions>/.exec(text)?.[1] ?? "").matchAll(/<version>\s*([^<\s]+)\s*<\/version>/g)].map((m) => m[1]);
+      for (const v of listed) {
+        if (!artifact.poms.has(v)) warn(`${dirEntry.display}/${rel} lists ${v}, which has no pom in the tree: the feed leaves it out (--restore-released restores released versions)`);
+      }
+    }
+    for (const r of [rel, ...MAVEN_ALGOS.map((algo) => `${rel}.${algo}`)]) inputs.delete(r);
     const newestPomMs = Math.max(...artifact.poms.values());
     const xml = mavenMetadataXml(artifact.groupId, artifact.artifactId, [...artifact.poms.keys()], formatMavenTimestamp(newestPomMs));
     generated.set(rel, Buffer.from(xml, "utf8"));
@@ -1013,6 +1052,7 @@ function collectMaven(ctx, dirEntry) {
   const versions = [...(artifacts.get(key)?.poms.keys() ?? [])]
     .filter((v) => inputs.has(`${key}/${v}/${MAVEN_ARTIFACT}-${v}.pom`))
     .sort(compareVersionStrings);
+  ctx.mavenVersions = versions;
   result.latest = versions.at(-1) ?? null;
   if (result.latest) {
     const aar = inputs.get(`${key}/${result.latest}/${MAVEN_ARTIFACT}-${result.latest}.aar`);
@@ -1362,19 +1402,31 @@ function collectNuGet(ctx, dirEntry) {
     groups.get(pkg.idLower).push(pkg);
   }
   for (const list of groups.values()) list.sort((a, b) => compareNuGetVersions(a.version, b.version));
+  for (const pkg of byKey.values()) ctx.nugetFeed.set(`${pkg.idLower}/${pkg.verLower}`, pkg.entry.display);
 
-  // Downloads: every package (and symbol package) under its original file name.
-  for (const pkg of byKey.values()) planOutput(ctx, `downloads/${pkg.entry.name}`, { kind: "copy", src: pkg.entry.abs });
-  for (const sym of symbols) planOutput(ctx, `downloads/${sym.name}`, { kind: "copy", src: sym.abs });
+  // The feed serves every version; downloads/ (and SHA256SUMS) only the one each manifest item links
+  // (latest stable, else latest pre-release), with its symbol package, under the original file names.
+  const latestOf = (list) => {
+    const stable = list.filter((p) => !p.version.pre);
+    return (stable.length ? stable : list).at(-1);
+  };
+  const downloaded = new Set();
+  for (const list of groups.values()) {
+    const latest = latestOf(list);
+    planOutput(ctx, `downloads/${latest.entry.name}`, { kind: "copy", src: latest.entry.abs });
+    downloaded.add(`${latest.meta.id}.${latest.version.normalized}`.toLowerCase());
+  }
+  for (const sym of symbols) {
+    if (downloaded.has(sym.name.replace(/\.snupkg$/i, "").toLowerCase())) planOutput(ctx, `downloads/${sym.name}`, { kind: "copy", src: sym.abs });
+  }
 
   if (groups.size) planNuGetFeed(ctx, groups);
 
-  // Manifest items: one per package id (latest stable, else latest pre-release).
+  // Manifest items: one per package id.
   const expected = (process.env.LG_NUGET_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const items = [];
   for (const [idLower, list] of groups) {
-    const stable = list.filter((p) => !p.version.pre);
-    const latest = (stable.length ? stable : list).at(-1);
+    const latest = latestOf(list);
     items.push({
       id: `nuget-${idLower}`,
       name: `${latest.meta.id} (NuGet package)`,
@@ -1831,6 +1883,222 @@ function collectSkills(ctx) {
 }
 
 // -------------------------------------------------------------------------------------------
+// Earlier releases (--restore-released, --strict): the feeds keep every published version
+// -------------------------------------------------------------------------------------------
+
+const versionKey = (v) => (parseNuGetVersion(v)?.normalized ?? String(v)).toLowerCase();
+const releaseAssetUrl = (tag, name) => `${REPOSITORY_URL}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`;
+
+// GET with a timeout, retried twice after a network error or a 5xx answer; any other failure throws at once.
+async function download(url, { accept, timeoutMs = 60000 } = {}) {
+  let last = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "liquid-glass-build-downloads", ...(accept ? { Accept: accept } : {}) },
+        redirect: "follow",
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.ok) return Buffer.from(await res.arrayBuffer());
+      last = `HTTP ${res.status}`;
+      if (res.status < 500) break;
+    } catch (err) {
+      last = err.cause?.message ? `${err.message} (${err.cause.message})` : err.message;
+    }
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+  }
+  throw new Error(`${url}: ${last}`);
+}
+
+// Published (not draft) GitHub releases whose tag is a version.
+async function publishedReleases() {
+  const releases = [];
+  for (let page = 1; page <= 10; page++) {
+    const batch = JSON.parse((await download(`${RELEASES_API_URL}?per_page=100&page=${page}`, { accept: "application/vnd.github+json" })).toString("utf8"));
+    if (!Array.isArray(batch)) throw new Error(`${RELEASES_API_URL} did not answer with a list of releases`);
+    releases.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return releases.filter((r) => r && !r.draft && typeof r.tag_name === "string" && parseNuGetVersion(r.tag_name));
+}
+
+// sha256sum lines ("<hex>  <name>" or "<hex> *<name>") -> Map name -> hex.
+function parseSums(text) {
+  const sums = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\\?([0-9a-f]{64}) [ *](.+)$/i.exec(line);
+    if (m) sums.set(m[2], m[1].toLowerCase());
+  }
+  return sums;
+}
+
+// The SHA-256 a release asset must have: from the release's SHA256SUMS and GitHub's digest of the asset, which
+// must agree when both exist. Throws when neither exists.
+function expectedSha256(release, asset, sums) {
+  const listed = sums?.get(asset.name) ?? null;
+  const digest = /^sha256:([0-9a-f]{64})$/i.exec(String(asset.digest ?? ""))?.[1].toLowerCase() ?? null;
+  if (listed && digest && listed !== digest) throw new Error(`SHA256SUMS (${listed}) and GitHub (${digest}) disagree on ${asset.name}`);
+  if (!listed && !digest) throw new Error(`${asset.name} has no checksum (not in SHA256SUMS, no GitHub digest), so it cannot be verified`);
+  return listed ?? digest;
+}
+
+// Adds a verified file to artifacts/ (never over an existing one), dated at the release's publication time so
+// the feed entries it produces (registration `published`, maven-metadata lastUpdated) are reproducible.
+function addRestoredFile(ctx, dest, data, timeMs) {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  const tmp = tempPath(dest);
+  try {
+    fs.writeFileSync(tmp, data, { mode: 0o644 });
+    fs.utimesSync(tmp, new Date(timeMs), new Date(timeMs));
+    fs.renameSync(tmp, dest);
+  } catch (err) {
+    fs.rmSync(tmp, { force: true });
+    throw err;
+  }
+  ctx.restored.push(display(ctx, dest));
+}
+
+// The release's .nupkg assets, into artifacts/windows/nuget. A package already there must be the released file.
+async function restoreNuGet(ctx, release, sums, record, timeMs) {
+  const tag = release.tag_name;
+  const dir = path.join(ctx.artifacts, "windows", "nuget");
+  for (const asset of release.assets.filter((a) => /\.nupkg$/i.test(String(a.name)))) {
+    if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]*\.nupkg$/.test(asset.name)) throw new Error(`unexpected package name ${asset.name}`);
+    const want = expectedSha256(release, asset, sums);
+    const dest = path.join(dir, asset.name);
+    const existing = lstatOrNull(dest);
+    if (existing) {
+      if (!existing.isFile() || hashFile(dest).sha256 !== want) {
+        throw new Error(`${display(ctx, dest)} is not the ${asset.name} of the release (sha256 ${want}): replace it with the release's file`);
+      }
+    } else {
+      const data = await download(releaseAssetUrl(tag, asset.name));
+      const got = hashBuffer(data).sha256;
+      if (got !== want || (Number.isInteger(asset.size) && data.length !== asset.size)) throw new Error(`${asset.name} does not match its checksum (got sha256 ${got})`);
+      addRestoredFile(ctx, dest, data, timeMs);
+    }
+    const pkg = readPackage(ctx, { abs: dest, stat: fs.statSync(dest), display: display(ctx, dest) });
+    if (versionKey(pkg.version.normalized) !== versionKey(tag)) throw new Error(`${asset.name} holds version ${pkg.version.full}, not ${tag}`);
+    record.nuget.push({ id: pkg.meta.id, key: `${pkg.idLower}/${pkg.verLower}` });
+  }
+}
+
+// The Compose library's Maven files for a release that ships its AAR, into artifacts/android/maven. The release
+// holds the AAR only, so the files come from the production site's repository: the Gradle module and the pom
+// checked against their .sha256 and .sha512 files, every file the module names against the module's sizes and
+// hashes, and the module's AAR against the release's checksum.
+async function restoreMaven(ctx, release, sums, record, timeMs) {
+  const tag = release.tag_name;
+  const aarName = `${MAVEN_ARTIFACT}-${tag}.aar`;
+  const aarAsset = release.assets.find((a) => a.name === aarName);
+  if (!aarAsset) return;
+  record.maven = true;
+  const aarSha = expectedSha256(release, aarAsset, sums);
+  const rel = `${MAVEN_GROUP_PATH}/${MAVEN_ARTIFACT}/${tag}`;
+  const dir = path.join(ctx.artifacts, "android", "maven", ...rel.split("/"));
+  const pomName = `${MAVEN_ARTIFACT}-${tag}.pom`;
+  const moduleName = `${MAVEN_ARTIFACT}-${tag}.module`;
+  if (lstatOrNull(path.join(dir, pomName))) {
+    // Built or restored here before: it must be the released build.
+    const localAar = path.join(dir, aarName);
+    if (!lstatOrNull(localAar)?.isFile() || hashFile(localAar).sha256 !== aarSha) {
+      throw new Error(`${display(ctx, localAar)} is missing or is not the AAR of the release (sha256 ${aarSha})`);
+    }
+    return;
+  }
+  const base = `${ctx.releasedSite}/maven/${rel}/`;
+  const first = (buf) => buf.toString("utf8").trim().split(/\s+/)[0].toLowerCase();
+  const fetchChecked = async (name) => {
+    const [data, sha256, sha512] = await Promise.all([download(base + name), download(`${base}${name}.sha256`), download(`${base}${name}.sha512`)]);
+    const h = hashBuffer(data, ["sha256", "sha512"]);
+    if (first(sha256) !== h.sha256 || first(sha512) !== h.sha512) throw new Error(`${base}${name} does not match its .sha256 and .sha512 files`);
+    return data;
+  };
+
+  const moduleData = await fetchChecked(moduleName);
+  const module = JSON.parse(moduleData.toString("utf8"));
+  const component = module.component ?? {};
+  if (component.group !== MAVEN_GROUP_PATH.replace(/\//g, ".") || component.module !== MAVEN_ARTIFACT || component.version !== tag) {
+    throw new Error(`${base}${moduleName} describes ${component.group}:${component.module}:${component.version}`);
+  }
+  const files = new Map();
+  for (const variant of module.variants ?? []) {
+    for (const f of variant.files ?? []) {
+      if (typeof f.name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(f.name) || f.url !== f.name) throw new Error(`${moduleName} names an unexpected file ${f.name}`);
+      files.set(f.name, f);
+    }
+  }
+  if (String(files.get(aarName)?.sha256 ?? "").toLowerCase() !== aarSha) throw new Error(`${base}${moduleName} does not describe the AAR of the release (sha256 ${aarSha})`);
+
+  const out = new Map(); // name -> verified bytes; the pom goes last, since a version counts once its pom is there
+  for (const [name, f] of files) {
+    const data = await download(base + name);
+    const h = hashBuffer(data, ["sha256", "sha512"]);
+    if (data.length !== f.size || h.sha256 !== String(f.sha256).toLowerCase() || h.sha512 !== String(f.sha512).toLowerCase()) {
+      throw new Error(`${base}${name} does not match ${moduleName}`);
+    }
+    out.set(name, data);
+  }
+  const pom = await fetchChecked(pomName);
+  const pomText = pom.toString("utf8");
+  if (!pomText.includes(`<artifactId>${MAVEN_ARTIFACT}</artifactId>`) || !pomText.includes(`<version>${tag}</version>`)) throw new Error(`${base}${pomName} is not ${MAVEN_ARTIFACT} ${tag}`);
+  out.set(moduleName, moduleData);
+  out.set(pomName, pom);
+
+  for (const [name, data] of out) {
+    const dest = path.join(dir, name);
+    const st = lstatOrNull(dest);
+    if (st) {
+      if (st.isFile() && hashFile(dest).sha256 === hashBuffer(data).sha256) continue;
+      throw new Error(`${display(ctx, dest)} exists with other content: remove the incomplete ${tag} folder and run again`);
+    }
+    addRestoredFile(ctx, dest, data, timeMs);
+  }
+}
+
+// Fills ctx.released (one record per published release other than this version) and adds what artifacts/ lacks.
+// Returns the problems; any problem fails the run.
+async function restoreReleased(ctx) {
+  let releases;
+  try {
+    releases = await publishedReleases();
+  } catch (err) {
+    return [`could not list the published releases: ${err.message}`];
+  }
+  const problems = [];
+  ctx.released = [];
+  for (const release of releases) {
+    const tag = release.tag_name;
+    if (versionKey(tag) === versionKey(ctx.version)) continue;
+    const record = { tag, nuget: [], maven: false };
+    ctx.released.push(record);
+    release.assets = Array.isArray(release.assets) ? release.assets : [];
+    const timeMs = Date.parse(release.published_at ?? release.created_at ?? "") || ctx.nowMs;
+    try {
+      let sums = null;
+      const sumsAsset = release.assets.find((a) => a.name === "SHA256SUMS");
+      if (sumsAsset) {
+        const data = await download(releaseAssetUrl(tag, "SHA256SUMS"));
+        const digest = /^sha256:([0-9a-f]{64})$/i.exec(String(sumsAsset.digest ?? ""))?.[1].toLowerCase();
+        if (digest && hashBuffer(data).sha256 !== digest) throw new Error("SHA256SUMS does not match GitHub's digest of it");
+        sums = parseSums(data.toString("utf8"));
+      }
+      await restoreNuGet(ctx, release, sums, record, timeMs);
+      await restoreMaven(ctx, release, sums, record, timeMs);
+    } catch (err) {
+      problems.push(`release ${tag}: ${err.message}`);
+    }
+  }
+  const tags = ctx.released.map((r) => r.tag).join(", ") || "none";
+  if (ctx.restored.length) {
+    info(`Earlier releases (${tags}): restored ${ctx.restored.length} file(s) into artifacts/:`);
+    for (const file of ctx.restored) info(`  ${file}`);
+  } else if (!problems.length) info(`Earlier releases (${tags}): artifacts/ already has their packages`);
+  if (problems.length) info(`Earlier releases (${tags}): ${problems.length} could not be restored (listed at the end)`);
+  return problems;
+}
+
+// -------------------------------------------------------------------------------------------
 // Cleaning, producing, manifest
 // -------------------------------------------------------------------------------------------
 
@@ -2032,7 +2300,7 @@ function printSummary(ctx, manifest, removed) {
 // Main
 // -------------------------------------------------------------------------------------------
 
-function main() {
+async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
     process.stdout.write(`${USAGE}\n`);
@@ -2063,6 +2331,11 @@ function main() {
     items: [],
     stats: { written: 0, unchanged: 0 },
     nugetPackages: [], // { id, version, tfms, display } per published package id, for the release checks
+    nugetFeed: new Map(), // "<id>/<version>" (lowercase) -> input, every package the feed serves
+    mavenVersions: [], // the Compose library versions the Maven repository serves, oldest first
+    released: null, // with --restore-released: { tag, nuget: [{ id, key }], maven } per other published release
+    restored: [], // files --restore-released added to artifacts/
+    releasedSite: normalizeBaseUrl(process.env.LG_SITE_URL || DEFAULT_SITE_URL),
     uncommittedSkills: [],
     zipProblems: [], // app zips that would not extract cleanly with unzip, for the release checks
   };
@@ -2079,6 +2352,9 @@ function main() {
   }
 
   info(`Liquid Glass downloads ${version}: ${rootReal} -> ${out} (feed base ${ctx.base})`);
+
+  // 0. Earlier releases' packages into artifacts/ (the only network step besides the tag check), so the feeds keep them.
+  const restoreProblems = opts.restoreReleased || opts.strict ? await restoreReleased(ctx) : [];
 
   // 1. Plan every output (reads inputs only).
   collectApple(ctx);
@@ -2100,6 +2376,11 @@ function main() {
   printSummary(ctx, manifest, removed);
 
   let status = 0;
+  if (restoreProblems.length) {
+    const list = restoreProblems.map((p) => `  - ${p}`).join("\n");
+    process.stderr.write(`build-downloads: earlier releases could not be restored, so the feeds would drop them:\n${list}\n`);
+    status = 1;
+  }
   const missing = manifest.items.filter((i) => i.required && !i.available);
   if (missing.length) {
     const list = missing.map((i) => `  - ${i.id} (${i.name}): expected ${ctx.items.find((s) => s.id === i.id).hint}`).join("\n");
@@ -2174,6 +2455,30 @@ function releaseProblems(ctx, manifest, { network }) {
   // App zips extract cleanly with any unzip tool.
   problems.push(...ctx.zipProblems);
 
+  // The feeds keep every published release, and serve no version that is neither one nor this release (package.sh
+  // keeps earlier versions in artifacts/windows/nuget, so an unreleased build of an earlier version would linger).
+  if (ctx.released) {
+    const current = versionKey(ctx.version);
+    const released = new Set(ctx.released.map((r) => versionKey(r.tag)));
+    for (const r of ctx.released) {
+      for (const p of r.nuget) {
+        if (!ctx.nugetFeed.has(p.key)) problems.push(`the NuGet feed would drop ${p.id} ${r.tag} (release ${r.tag}): it is not in artifacts/windows/nuget`);
+      }
+      if (r.maven && !ctx.mavenVersions.some((v) => versionKey(v) === versionKey(r.tag))) {
+        problems.push(`the Maven repository would drop ${MAVEN_ARTIFACT} ${r.tag} (release ${r.tag}): it is not in artifacts/android/maven`);
+      }
+    }
+    for (const [key, input] of ctx.nugetFeed) {
+      const v = key.slice(key.indexOf("/") + 1);
+      if (v !== current && !released.has(v)) problems.push(`${input} is version ${v}, neither ${ctx.version} nor a published release: delete it, or the feed serves it`);
+    }
+    for (const v of ctx.mavenVersions) {
+      if (versionKey(v) !== current && !released.has(versionKey(v))) {
+        problems.push(`artifacts/android/maven has ${MAVEN_ARTIFACT} ${v}, neither ${ctx.version} nor a published release: delete its folder, or the repository serves it`);
+      }
+    }
+  }
+
   // Every skill the website lists is committed, and the expected ones exist.
   for (const name of ctx.uncommittedSkills) problems.push(`skill ${name} is not committed (plugins/liquid-glass/skills/${name}/SKILL.md)`);
   for (const name of EXPECTED_SKILLS) {
@@ -2207,4 +2512,4 @@ function releaseProblems(ctx, manifest, { network }) {
   return problems;
 }
 
-process.exitCode = main();
+process.exitCode = await main();

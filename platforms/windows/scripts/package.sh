@@ -5,6 +5,9 @@
 #   LiquidGlassStudio-win-x64.zip                 framework-dependent (needs the .NET 10 Desktop Runtime, x64)
 #   LiquidGlassStudio-win-arm64.zip               framework-dependent (needs the .NET 10 Desktop Runtime, Arm64)
 #   LiquidGlassStudio-win-x64-self-contained.zip  single file, no runtime needed
+# <version> is Directory.Build.props' Version. Only that version's packages are replaced: the packages of earlier
+# versions stay in nuget/, because the website's NuGet feed is built from that folder and must keep serving every
+# released version (website/scripts/deploy.sh restores released packages a fresh clone lacks).
 # Every build is a continuous-integration build: deterministic, with source paths mapped to /_/ instead of this
 # machine's, and Source Link to the commit. Packages and zips carry LICENSE and NOTICE.md; the zips leave out PDBs
 # and the libraries' IntelliSense files. Runs on macOS, Linux or Windows (WPF builds anywhere with
@@ -18,10 +21,12 @@ work="$(mktemp -d -t liquid-glass-publish.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 ci=(-p:ContinuousIntegrationBuild=true)
 
-rm -rf "$out/nuget" "$out"/LiquidGlassStudio-*.zip
-mkdir -p "$out/nuget"
-"$dotnet" pack "$here/src/LiquidGlass.Core/LiquidGlass.Core.csproj" -c Release -o "$out/nuget" -v quiet "${ci[@]}"
-"$dotnet" pack "$here/src/LiquidGlass.Wpf/LiquidGlass.Wpf.csproj" -c Release -o "$out/nuget" -v quiet "${ci[@]}"
+version="$(sed -n 's#.*<Version>\([^<]*\)</Version>.*#\1#p' "$here/Directory.Build.props" | head -n 1)"
+[ -n "$version" ] || { echo "platforms/windows/Directory.Build.props has no <Version>" >&2; exit 1; }
+rm -f "$out"/nuget/*."$version".nupkg "$out"/nuget/*."$version".snupkg "$out"/LiquidGlassStudio-*.zip
+mkdir -p "$out/nuget" "$work/nuget"
+"$dotnet" pack "$here/src/LiquidGlass.Core/LiquidGlass.Core.csproj" -c Release -o "$work/nuget" -v quiet "${ci[@]}"
+"$dotnet" pack "$here/src/LiquidGlass.Wpf/LiquidGlass.Wpf.csproj" -c Release -o "$work/nuget" -v quiet "${ci[@]}"
 
 publish() {
   local name="$1"; shift
@@ -38,7 +43,11 @@ publish LiquidGlassStudio-win-x64-self-contained -r win-x64 --self-contained tru
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 
 # The release must not record this machine's paths.
-for package in "$out"/nuget/*.nupkg; do
+for package in "$work"/nuget/*.nupkg; do
+  case "$(basename "$package")" in
+    *."$version".nupkg) ;;
+    *) echo "$(basename "$package"): not version $version (Directory.Build.props)" >&2; exit 1 ;;
+  esac
   if unzip -p "$package" '*.dll' | LC_ALL=C grep -a -q "$repo"; then
     echo "$(basename "$package"): a library records the local path $repo" >&2
     exit 1
@@ -47,5 +56,7 @@ for package in "$out"/nuget/*.nupkg; do
     unzip -l "$package" "$file" > /dev/null || { echo "$(basename "$package"): $file is missing" >&2; exit 1; }
   done
 done
+
+mv -f "$work"/nuget/*.nupkg "$out/nuget/"
 
 ls -la "$out" "$out/nuget"
