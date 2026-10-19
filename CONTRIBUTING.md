@@ -27,12 +27,13 @@ Thanks for helping. Liquid Glass Engineering is one optical model in four places
 4. **Refresh the skills' copies** of the spec, `LICENSE` and `NOTICE.md`: `node scripts/sync-skill-references.mjs`. The copies are `skills/liquid-glass/references/optics.md`, everything in `skills/liquid-glass-port/references/`, and the `LICENSE` and `NOTICE.md` in the plugin folder and in every skill folder (all under `plugins/liquid-glass/`); never edit them directly. The other reference files (each platform skill's `api.md` and `recipes.md`, and the `liquid-glass` skill's `design.md`) are written by hand and change with the API or guidance they describe.
 5. **Update the guides** in `docs/` and the code samples in them.
 
-CI checks steps 2 and 4 on every pull request:
+CI checks steps 2 and 4 on every pull request, and that the release version agrees everywhere it is written (see [Releasing](#releasing)):
 
 ```sh
 node spec/generate-vectors.mjs && git diff --exit-code spec/vectors.json
 node scripts/sync-skill-references.mjs --check
 node scripts/check-plugin.mjs
+node scripts/set-version.mjs --check
 ```
 
 ## Tests per platform
@@ -100,6 +101,14 @@ By contributing you agree that your contributions are licensed under the [MIT Li
 
 For maintainers. A release is a semver tag without a `v` prefix (`1.0.0`): Swift Package Manager resolves versions from tags, and JitPack serves the tag name as the version. The release checks of `website/scripts/deploy.sh --strict` look for that tag on GitHub, so the tag is pushed before the website is deployed:
 
+0. Set the version: `node scripts/set-version.mjs <version>` writes it, and the apps' build number raised by one, into every place below, and `node scripts/set-version.mjs --check` (which CI runs) fails while they disagree. `--build <n>` sets the build number explicitly; it is one number for every app (Android's `versionCode`, Apple's `CURRENT_PROJECT_VERSION`).
+   - Android: `libraryVersion` in `platforms/android/liquidglass/build.gradle.kts`; `versionName` and `versionCode` in `platforms/android/studio/build.gradle.kts`; for the Compose Hello Glass, `versionName`, `versionCode` and the coordinate in a comment in `examples/compose/HelloGlass/app/build.gradle.kts`, `liquidGlass` in `examples/compose/HelloGlass/gradle/libs.versions.toml` and the coordinate in a comment in `examples/compose/HelloGlass/settings.gradle.kts`.
+   - Windows: `Version` in `platforms/windows/Directory.Build.props` (both packages and every assembly); the `assemblyIdentity` version (`x.y.z.0`) in `platforms/windows/src/LiquidGlass.Studio/app.manifest` and `examples/wpf/HelloGlass/app.manifest`; `Version` and the `LiquidGlassEngineering.Wpf` reference in `examples/wpf/HelloGlass/HelloGlass.csproj`.
+   - Apple: `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `platforms/apple/Studio/project.yml`, in the project file generated from it (`platforms/apple/Studio/LiquidGlassStudio.xcodeproj/project.pbxproj`) and in `examples/swiftui/HelloGlass/HelloGlass.xcodeproj/project.pbxproj` (Debug and Release in each project file).
+   - Skills, website and scripts: `version` in `plugins/liquid-glass/.claude-plugin/plugin.json`, `website/package.json` and `website/package-lock.json`; `DEFAULT_VERSION` (and its comment) in `scripts/build-downloads.mjs`, the version the downloads and feeds are built for; the two fallbacks in `website/scripts/content.mjs`.
+   - Repository: the version badge in `README.md` and the version placeholder in `.github/ISSUE_TEMPLATE/bug_report.yml`.
+
+   The script does not rewrite prose, so edit these by hand: the `PackageReleaseNotes` in `platforms/windows/Directory.Build.props`, and the install snippets and version mentions the script lists, in `README.md`, `docs/apple.md`, `docs/android.md`, `docs/windows.md`, the Hello Glass READMEs in `examples/` and the skills (`SKILL.md`, `references/api.md` and `references/recipes.md` under `plugins/liquid-glass/skills/`). `--check` also fails while an install coordinate in a Markdown file names another version, or the release notes do. `CHANGELOG.md`, the examples in this section and `SECURITY.md` keep earlier versions on purpose, and so does code kept for compatibility with an earlier release (the 1.0.0 `GlassSurfaceOptics` constructor). Commit the version change with the release's `CHANGELOG.md` section.
 1. `CHANGELOG.md` has the release date (`## [1.0.0] - YYYY-MM-DD`), committed and pushed to `main`, and the latest run of every workflow on `main` is green.
 2. Tag that commit and push the tag: `git tag -a 1.0.0 -m "Liquid Glass Engineering 1.0.0"` and `git push origin 1.0.0`.
 3. With the tagged commit checked out and a clean working tree, build the release artifacts into `artifacts/` with each platform's packaging commands ([Apple](docs/apple.md#building-and-testing), [Android](docs/android.md#building-and-testing), [Windows](docs/windows.md#building-and-testing)) and deploy the website with `website/scripts/deploy.sh --strict`. It restores the earlier releases' packages first (see below), so the checkout needs network access. Check that `https://liquid-glass-engineering.vercel.app/downloads/manifest.json` reports the tagged `commit` with `modified: false`, that every required download is available, and that `platforms/windows/scripts/check-feed.sh` passes (the feed lists this release's packages and still serves every earlier release).

@@ -12,6 +12,25 @@ on:
       - "scripts/sync-skill-references.mjs"
       - "scripts/check-plugin.mjs"
       - "scripts/build-downloads.mjs"
+      - "scripts/set-version.mjs"
+      # Where the release version is written (scripts/set-version.mjs), and the Markdown install snippets.
+      - "**/*.md"
+      - "platforms/android/liquidglass/build.gradle.kts"
+      - "platforms/android/studio/build.gradle.kts"
+      - "examples/compose/HelloGlass/app/build.gradle.kts"
+      - "examples/compose/HelloGlass/gradle/libs.versions.toml"
+      - "examples/compose/HelloGlass/settings.gradle.kts"
+      - "platforms/windows/Directory.Build.props"
+      - "platforms/windows/src/LiquidGlass.Studio/app.manifest"
+      - "examples/wpf/HelloGlass/app.manifest"
+      - "examples/wpf/HelloGlass/HelloGlass.csproj"
+      - "platforms/apple/Studio/project.yml"
+      - "platforms/apple/Studio/LiquidGlassStudio.xcodeproj/project.pbxproj"
+      - "examples/swiftui/HelloGlass/HelloGlass.xcodeproj/project.pbxproj"
+      - "website/package.json"
+      - "website/package-lock.json"
+      - "website/scripts/content.mjs"
+      - ".github/ISSUE_TEMPLATE/**"
       - ".github/workflows/spec.yml"
   pull_request:
     paths:
@@ -23,6 +42,25 @@ on:
       - "scripts/sync-skill-references.mjs"
       - "scripts/check-plugin.mjs"
       - "scripts/build-downloads.mjs"
+      - "scripts/set-version.mjs"
+      # Where the release version is written (scripts/set-version.mjs), and the Markdown install snippets.
+      - "**/*.md"
+      - "platforms/android/liquidglass/build.gradle.kts"
+      - "platforms/android/studio/build.gradle.kts"
+      - "examples/compose/HelloGlass/app/build.gradle.kts"
+      - "examples/compose/HelloGlass/gradle/libs.versions.toml"
+      - "examples/compose/HelloGlass/settings.gradle.kts"
+      - "platforms/windows/Directory.Build.props"
+      - "platforms/windows/src/LiquidGlass.Studio/app.manifest"
+      - "examples/wpf/HelloGlass/app.manifest"
+      - "examples/wpf/HelloGlass/HelloGlass.csproj"
+      - "platforms/apple/Studio/project.yml"
+      - "platforms/apple/Studio/LiquidGlassStudio.xcodeproj/project.pbxproj"
+      - "examples/swiftui/HelloGlass/HelloGlass.xcodeproj/project.pbxproj"
+      - "website/package.json"
+      - "website/package-lock.json"
+      - "website/scripts/content.mjs"
+      - ".github/ISSUE_TEMPLATE/**"
       - ".github/workflows/spec.yml"
   workflow_dispatch:
 
@@ -55,3 +93,14 @@ jobs:
           node-version: 22
       - name: Marketplace, plugin manifest, skill frontmatter, skill names and links
         run: node scripts/check-plugin.mjs
+
+  versions:
+    name: Release version agrees everywhere
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Every place that sets the version, the build numbers and the Markdown install snippets
+        run: node scripts/set-version.mjs --check
