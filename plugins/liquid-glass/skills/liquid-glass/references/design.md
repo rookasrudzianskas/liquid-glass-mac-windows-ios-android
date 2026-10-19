@@ -31,9 +31,9 @@ Avoid glass for:
 | | Clear | Regular |
 | --- | --- | --- |
 | Look | Transparent, vivid, the backdrop stays sharp and refracts at the rim | Frosted: blurred, lightened (light) or deepened (dark) backdrop |
-| Use over | Rich imagery, media, colorful art | Text, busy UI, unknown content |
+| Use over | Rich imagery, media, colorful art | Text, busy UI, varied content |
 | Best for | Small controls, tab bars over photos, media buttons | Menus, sheets, panels, cards with text, anything large |
-| Legibility | Depends on the backdrop: check it | Reliable |
+| Legibility | Depends on the backdrop: check it | Better than Clear over busy content, but not guaranteed: over plain white or black it can fall to about 2:1 (1.8:1 for white labels over white in dark appearance), so check contrast there. Menus add a legibility backing that keeps untinted menu labels at 5.2:1 or more |
 
 When in doubt, use Regular for anything holding more than a short label.
 
