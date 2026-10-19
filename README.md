@@ -5,7 +5,7 @@ Native Liquid Glass for iOS, macOS, Android and Windows: refraction, Clear and R
 <p align="center">
   <img src="docs/images/apple/ios-hero.png" height="320" alt="Liquid Glass Studio on iPhone: a Regular glass card, a toolbar and a tab bar over a wave wallpaper">
   <img src="docs/images/android/hero-dark.png" height="320" alt="Liquid Glass Studio on Android: a Regular glass card, a toolbar and a tab bar over the same wallpaper">
-  <img src="docs/images/windows/hero-light.png" height="320" alt="Liquid Glass Studio on Windows: the Hero page in light appearance">
+  <img src="docs/images/windows/hero-dark.png" height="320" alt="Liquid Glass Studio on Windows: the Hero page in dark appearance, a glass card, a toolbar and a tab bar over a wave wallpaper">
 </p>
 
 <p align="center">

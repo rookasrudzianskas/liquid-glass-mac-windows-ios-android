@@ -627,7 +627,8 @@ keeps the release set itself, the packages and all three Studio zips, as the `wi
 `feed` job compares those packages with the ones the project's NuGet feed serves (`feed.txt` in the report): the
 version, the target frameworks and the package sources of the commit each was packed from. The feed is deployed with
 the website, so that job fails without failing the run; `scripts/check-feed.sh` runs the same comparison against
-`artifacts/windows/nuget` before and after a deploy.
+`artifacts/windows/nuget` before and after a deploy, and also checks that the feed still lists every earlier release and
+serves it as the released file (the deploy restores them, see CONTRIBUTING's Releasing section).
 
 After editing `Shaders/*.fx` or `LiquidGlass.hlsli`, refresh `Shaders/Compiled/GlassSurface.ps` and `.sha256` from the
 workflow's fxc output; until then the library compiles the shader at run time.
