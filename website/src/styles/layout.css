@@ -31,14 +31,12 @@
     box-shadow 0.3s;
 }
 
-/* Over a glass stage (the stage under the line through the bar reports the tone of its
-   backdrop: lib/nav-tone.ts) the bar takes that tone's palette (base.css), a denser fill
-   and deeper secondary labels. Before hydration, a page that opens on a stage
-   (data-overlay) gets the same in the theme's palette, which is its stage's tone there. */
-.nav:is([data-tone="light"], [data-tone="dark"]) :is(.nav__bar, .nav__sheet),
-.nav[data-overlay]:not([data-tone]) :is(.nav__bar, .nav__sheet) {
-  --fg-3: var(--nav-fg-3-stage);
-  background: var(--nav-bg-stage);
+/* The bar's secondary labels are deeper than the page's (base.css), which with its fill
+   keeps them at 4.5:1 over anything. Over a glass stage (the stage under the line through
+   the bar reports the tone of its backdrop: lib/nav-tone.ts) the bar takes that tone's
+   palette (base.css); elsewhere, and before hydration, the theme's. */
+.nav :is(.nav__bar, .nav__sheet) {
+  --fg-3: var(--nav-fg-3);
 }
 
 /* The labels change color with the bar, at the same pace. */

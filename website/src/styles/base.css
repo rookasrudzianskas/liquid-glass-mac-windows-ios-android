@@ -55,11 +55,12 @@
   --glass-css-bg: rgba(255, 255, 255, 0.62);
   --glass-css-line: rgba(255, 255, 255, 0.75);
   --glass-css-shadow: rgba(0, 0, 0, 0.08);
-  --nav-bg: rgba(250, 250, 252, 0.72);
-  /* The bar over a glass stage: a denser fill and deeper secondary labels, so every
-     label holds 4.5:1 over the brightest and darkest parts of each backdrop. */
-  --nav-bg-stage: rgba(250, 250, 252, 0.84);
-  --nav-fg-3-stage: #58585d;
+  /* The nav bar and its phone menu: a frosted fill just dense enough that, with deeper
+     secondary labels, every label (the hovered Search too) holds 4.5:1 over any pixel
+     beneath it, pure black to pure white (screenshots, code, the glass stages and their
+     edges), in either palette. */
+  --nav-bg: rgba(250, 250, 252, 0.88);
+  --nav-fg-3: #58585d;
   --spectrum: linear-gradient(90deg, #12b5cb 0%, #4b6bff 35%, #8a4dff 60%, #ff4f9a 100%);
   /* The spectrum as text color: deeper stops keep every glyph at 4.5:1 or more on the light background. */
   --spectrum-text: linear-gradient(90deg, #0a7080 0%, #3a4bd6 35%, #6b2fd8 60%, #b8256a 100%);
@@ -96,9 +97,8 @@
   --glass-css-bg: rgba(40, 40, 46, 0.6);
   --glass-css-line: rgba(255, 255, 255, 0.22);
   --glass-css-shadow: rgba(0, 0, 0, 0.3);
-  --nav-bg: rgba(22, 22, 26, 0.66);
-  --nav-bg-stage: rgba(22, 22, 26, 0.8);
-  --nav-fg-3-stage: #aaaab0;
+  --nav-bg: rgba(22, 22, 26, 0.88);
+  --nav-fg-3: #aaaab0;
   color-scheme: dark;
 }
 
