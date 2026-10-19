@@ -637,6 +637,13 @@ a.doc-card:hover {
   white-space: normal;
 }
 
+/* Tables of four or more columns (the port matrix in COMPONENTS.md) need their width for
+   the names in them: with narrower cell padding the matrix fits the column beside the
+   table of contents at 1280 px, and still never breaks inside a name. */
+.prose table:has(th:nth-child(4)) :is(th, td) {
+  padding-inline: 8px;
+}
+
 .prose :is(td, th) > code {
   overflow-wrap: normal;
 }
