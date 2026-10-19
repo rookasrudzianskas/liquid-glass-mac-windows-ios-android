@@ -422,6 +422,32 @@ export default function Playground() {
   const tabsRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLElement>(null);
+  // When the settings scroll inside the panel, their bottom edge fades out while more
+  // is below (data-more, playground.css), and not once the last control is in view.
+  const panelBodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const body = panelBodyRef.current;
+    if (!body || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      body.toggleAttribute("data-more", body.scrollTop + body.clientHeight < body.scrollHeight - 1);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    body.addEventListener("scroll", schedule, { passive: true });
+    // The body changes size with the window; its content when a note or hint changes.
+    const observer = new ResizeObserver(schedule);
+    observer.observe(body);
+    for (const child of body.children) observer.observe(child);
+    return () => {
+      body.removeEventListener("scroll", schedule);
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [renderer.kind]);
   // The glass can be smaller than asked for (it never outgrows the free area): say the size it has.
   const glassRef = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState<{ w: number; h: number } | null>(null);
@@ -496,7 +522,7 @@ export default function Playground() {
           <span>Settings</span>
           <ChevronDownIcon size={18} />
         </button>
-        <div className="pg-panel__body">
+        <div ref={panelBodyRef} className="pg-panel__body">
           <div className="control" role="radiogroup" aria-label="Backdrop">
             <span className="control__label" aria-hidden="true">
               Backdrop
@@ -520,25 +546,27 @@ export default function Playground() {
               ))}
             </div>
           </div>
-          <Segmented
-            label="Material"
-            value={s.material}
-            options={[
-              { value: "clear", label: "Clear" },
-              { value: "regular", label: "Regular" },
-            ]}
-            onChange={(v) => set("material", v)}
-          />
-          <Segmented
-            label="Appearance"
-            value={s.appearance}
-            options={[
-              { value: "automatic", label: "Auto" },
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-            ]}
-            onChange={(v) => set("appearance", v)}
-          />
+          <div className="control-pair">
+            <Segmented
+              label="Material"
+              value={s.material}
+              options={[
+                { value: "clear", label: "Clear" },
+                { value: "regular", label: "Regular" },
+              ]}
+              onChange={(v) => set("material", v)}
+            />
+            <Segmented
+              label="Appearance"
+              value={s.appearance}
+              options={[
+                { value: "automatic", label: "Auto" },
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ]}
+              onChange={(v) => set("appearance", v)}
+            />
+          </div>
           <RefractionControl value={s.refraction} auto={autoRefraction} onChange={(v) => set("refraction", v)} />
           <Slider label="Corner radius" value={s.radius} min={0} max={120} disabled={s.capsule} onChange={(v) => set("radius", v)} />
           <div className="control-pair">

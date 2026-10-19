@@ -108,11 +108,20 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 18px 18px;
+  padding: 14px 18px 16px;
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 12px;
   scrollbar-width: thin;
+  /* A control focused from the keyboard scrolls into view above the fade. */
+  scroll-padding-block: 14px 44px;
+}
+
+/* More settings below: the bottom edge fades out (Playground.tsx sets data-more while
+   the last control is out of view), since the overlay scrollbar may be hidden. */
+.pg-panel__body[data-more] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
 }
 
 /* Two related controls side by side. */
@@ -407,7 +416,7 @@
 
 .backdrop-thumb {
   position: relative;
-  height: 46px;
+  height: 40px;
   border: 0;
   border-radius: 12px;
   background-size: cover;
