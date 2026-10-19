@@ -161,9 +161,9 @@ public partial class MaterialsPage : StudioPageBase
         image.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
         image.SetValue(Border.BorderThicknessProperty, new Thickness(1));
         image.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF)));
-        // The 2048-pixel wallpaper shrinks about 28 times into the chip: filtered at high quality, its thin rim lines stay
-        // continuous instead of breaking into specks.
-        var thumbnail = new ImageBrush(Wallpapers.Get(wallpaper)) { Stretch = Stretch.UniformToFill, Viewbox = new Rect(0.2, 0.25, 0.6, 0.5) };
+        // A thumbnail decoded small, filtered at high quality: the 2048-pixel wallpaper shrunk about 28 times into the chip
+        // broke its thin rim lines into specks.
+        var thumbnail = new ImageBrush(Wallpapers.Thumbnail(wallpaper)) { Stretch = Stretch.UniformToFill, Viewbox = new Rect(0.2, 0.25, 0.6, 0.5) };
         RenderOptions.SetBitmapScalingMode(thumbnail, BitmapScalingMode.HighQuality);
         thumbnail.Freeze();
         image.SetValue(Border.BackgroundProperty, thumbnail);
