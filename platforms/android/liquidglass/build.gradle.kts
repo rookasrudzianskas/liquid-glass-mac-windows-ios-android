@@ -165,6 +165,15 @@ dependencies {
 // passes the coordinates it serves under through GROUP / ARTIFACT / VERSION.
 val onJitPack = System.getenv("JITPACK") == "true"
 
+// JitPack rewrites the Gradle module metadata it serves: every file of every variant becomes
+// <artifact>-<version>.<extension>, dropping any classifier, so the sources and javadoc variants
+// name <artifact>-<version>.jar, a file JitPack does not serve, and variant-aware lookups of the
+// sources or javadoc fail; no file name survives that rewrite. On JitPack the build therefore writes
+// no .module (and the POM no published-with-gradle-metadata marker): Gradle reads the POM, which
+// carries the same api and runtime dependencies, and finds -sources.jar and -javadoc.jar by their
+// classifiers. The project's own Maven repository keeps its module metadata.
+tasks.withType<GenerateModuleMetadata>().configureEach { enabled = !onJitPack }
+
 publishing {
     publications {
         register<MavenPublication>("release") {
