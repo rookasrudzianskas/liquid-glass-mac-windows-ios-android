@@ -42,16 +42,16 @@
             <lg:GlassButton Content="Small" Size="Small" Margin="0,0,10,10" VerticalAlignment="Center" />
             <lg:GlassButton Content="Regular" Margin="0,0,10,10" VerticalAlignment="Center" />
             <lg:GlassButton Content="Large" Size="Large" Margin="0,0,22,10" VerticalAlignment="Center" />
-            <lg:GlassButton Content="Continue" Tint="#0A84FF" Margin="0,0,10,10" VerticalAlignment="Center" />
+            <lg:GlassButton Content="Continue" Tint="#0067C0" Margin="0,0,10,10" VerticalAlignment="Center" />
             <lg:GlassButton Content="Done" Tint="#30D158" Margin="0,0,10,10" VerticalAlignment="Center" />
-            <lg:GlassButton Content="Delete" Tint="#FF375F" Margin="0,0,10,10" VerticalAlignment="Center" />
+            <lg:GlassButton Content="Delete" Tint="#C42B1C" Margin="0,0,10,10" VerticalAlignment="Center" />
             <lg:GlassButton Content="Disabled" IsEnabled="False" Margin="0,0,10,10" VerticalAlignment="Center" />
           </WrapPanel>
           <WrapPanel Margin="0,4,0,0">
             <lg:GlassButton Style="{StaticResource Icon}" Size="Small" Content="&#xE734;" FontSize="11" AutomationProperties.Name="Favorite" />
             <lg:GlassButton Style="{StaticResource Icon}" Content="&#xE72D;" FontSize="14" AutomationProperties.Name="Share" />
             <lg:GlassButton Style="{StaticResource Icon}" Size="Large" Content="&#xE710;" FontSize="16" AutomationProperties.Name="Add" />
-            <lg:GlassButton Style="{StaticResource Icon}" Size="Large" Content="&#xE768;" FontSize="16" Tint="#0A84FF" AutomationProperties.Name="Play" />
+            <lg:GlassButton Style="{StaticResource Icon}" Size="Large" Content="&#xE768;" FontSize="16" Tint="#0067C0" AutomationProperties.Name="Play" />
             <lg:GlassButton Style="{StaticResource Icon}" Size="Large" Content="&#xEB52;" FontSize="16" Tint="#FF375F" AutomationProperties.Name="Love" />
           </WrapPanel>
         </StackPanel>

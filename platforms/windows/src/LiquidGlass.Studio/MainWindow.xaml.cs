@@ -145,6 +145,7 @@ public partial class MainWindow : Window
         ["Studio.NavHover"] = Brushes.Transparent,
         ["Studio.NavSelected"] = SystemColors.HighlightBrush,
         ["Studio.ContentStroke"] = SystemColors.WindowTextBrush,
+        ["Studio.SectionHaze"] = Brushes.Transparent,
     };
 
     private void ClipContent()

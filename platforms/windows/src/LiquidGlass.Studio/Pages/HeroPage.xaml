@@ -16,7 +16,7 @@
           <TextBlock Style="{StaticResource Studio.Body}" Margin="0,8,0,22"
                      Text="Refraction, frost and light from one optical model, drawn by a pixel shader in WPF. Drag the card around: the glass follows, stretches and settles." />
           <StackPanel Orientation="Horizontal">
-            <lg:GlassButton Content="Get started" Size="Large" Tint="#0A84FF" Cursor="Hand" />
+            <lg:GlassButton Content="Get started" Size="Large" Tint="#0067C0" Cursor="Hand" />
             <lg:GlassButton Content="Learn more" Size="Large" Margin="10,0,0,0" Cursor="Hand" />
           </StackPanel>
         </StackPanel>

@@ -24,11 +24,18 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <!-- Section headers sit on a soft haze, as on Apple platforms: a radial backing that fades out at its edges, dark
+       under the white headers of dark appearance and light under the dark ones of light appearance, so a header keeps
+       at least 4.5:1 where the glass behind it is bright. The padding gives the haze room around the text; the margin
+       keeps the text where it was. -->
   <Style x:Key="Studio.Section" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource Studio.TextFont}" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Margin" Value="2,0,0,10" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Padding" Value="10,3" />
+    <Setter Property="Margin" Value="-8,-3,0,7" />
+    <Setter Property="Background" Value="{DynamicResource Studio.SectionHaze}" />
   </Style>
 
   <Style x:Key="Studio.Body" TargetType="TextBlock">

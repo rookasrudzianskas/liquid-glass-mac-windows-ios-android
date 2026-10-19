@@ -46,13 +46,14 @@
         <TextBlock Text="Every option of the optical model, live." Style="{StaticResource Studio.Body}" Margin="2,0,0,4" />
 
         <TextBlock Text="Material" Style="{StaticResource Label}" />
-        <lg:GlassTabBar x:Name="MaterialPicker" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Material">
+        <!-- Regular pickers, as on Apple platforms: frosted, they stay legible where the panel crosses a bright band. -->
+        <lg:GlassTabBar x:Name="MaterialPicker" Material="Regular" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Material">
           <lg:GlassTabBarItem Content="Clear" />
           <lg:GlassTabBarItem Content="Regular" />
         </lg:GlassTabBar>
 
         <TextBlock Text="Appearance" Style="{StaticResource Label}" />
-        <lg:GlassTabBar x:Name="AppearancePicker" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Lens appearance">
+        <lg:GlassTabBar x:Name="AppearancePicker" Material="Regular" SelectedIndex="0" HorizontalAlignment="Left" AutomationProperties.Name="Lens appearance">
           <lg:GlassTabBarItem Content="Window" />
           <lg:GlassTabBarItem Content="Light" />
           <lg:GlassTabBarItem Content="Dark" />
