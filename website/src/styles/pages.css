@@ -115,6 +115,13 @@
   color: var(--fg-2);
 }
 
+/* The paragraphs inline code measures (Code.tsx InlineCode, code.css). */
+.dl-note,
+.dl-feeds,
+.install-card__body {
+  container-type: inline-size;
+}
+
 .dl-note code,
 .dl-feeds code,
 .install-card__body code {

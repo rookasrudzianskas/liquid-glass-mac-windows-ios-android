@@ -246,12 +246,10 @@ export function CodeBlock({ sample, title, caption, className, wrap = false }: {
 }
 
 /**
- * Where inline code in prose (a URL, a path, a call, a coordinate) may break besides its
- * spaces and hyphens, as indices of the characters a break follows: after a slash between
- * two other characters (a URL's "://" included), after a colon or a dot between a name
- * and a letter or digit, and after an opening parenthesis with something in it. So
- * overflow-wrap: anywhere cuts only a segment wider than the column. A short XML prefix
- * (<lg:) keeps its name.
+ * Where inline code (a URL, a path, a call, a command line) may break besides its spaces,
+ * as indices of the characters a break follows: after a slash between two other
+ * characters (a URL's "://" included), after a colon or a dot between a name and a letter
+ * or digit, and after an opening parenthesis with something in it.
  */
 function inlineBreaks(c: string[]) {
   const at = new Set<number>();
@@ -259,20 +257,171 @@ function inlineBreaks(c: string[]) {
   for (let i = 1; i < c.length - 1; i++) {
     const [prev, ch, next] = [c[i - 1], c[i], c[i + 1]];
     if (space(prev) || space(next)) continue;
-    if (ch === "/" ? next !== "/" : ch === "(" ? name(prev) && next !== ")" : ch === "." ? (name(prev) || prev === ")") && /[A-Za-z_]/.test(next ?? "") : ch === ":" && (name(prev) || prev === ")") && name(next)) {
-      // <lg:Name and x:Name: the prefix stays with the name.
-      if (ch === ":" && /(^|[\s<{])[A-Za-z]{1,3}$/.test(c.slice(Math.max(0, i - 5), i).join(""))) continue;
-      at.add(i);
-    }
+    if (ch === "/" ? next !== "/" : ch === "(" ? name(prev) && next !== ")" : ch === "." ? (name(prev) || prev === ")") && /[A-Za-z_]/.test(next ?? "") : ch === ":" && (name(prev) || prev === ")") && name(next)) at.add(i);
   }
   return at;
 }
 
-/** HTML-escaped inline code text with a <wbr> at each of its breaks (inlineBreaks). */
-export function inlineCodeHtml(escaped: string) {
+/**
+ * Inline code this long or shorter, with what is glued to it, fits a line of its own in
+ * every column the site sets for prose at 320 px (the narrowest, the home page's 222 px
+ * paragraph, holds 24 such characters and a period), so it never breaks.
+ */
+const ALWAYS_FITS = 24;
+/** The widest advance of the code font (Menlo and DejaVu Sans Mono 0.6021em, SF Mono 0.6001) at 0.86em, in em of the text around it (code.css). */
+const CODE_CHAR = 0.6021 * 0.86;
+/** Inter's advances, in em, of the characters text glues to code (no line break between them); anything else counts as 1em. */
+const GLUE: Record<string, number> = { ".": 0.277, ",": 0.277, ":": 0.277, ";": 0.289, "!": 0.276, "?": 0.513, ")": 0.354, "(": 0.354, "]": 0.354, "[": 0.354, "}": 0.419, "{": 0.419, "/": 0.355, "-": 0.455, "'": 0.292, "\u2019": 0.249, "\u201c": 0.424, "\u201d": 0.424, '"': 0.455 };
+/** The width of text glued to code, in characters of the code font. */
+const glueChars = (text: string) => [...text].reduce((sum, ch) => sum + (GLUE[ch] ?? 1), 0) / CODE_CHAR;
+/** A piece this short alone on a line reads as debris ("aar", "-"). */
+const SHORT = 4;
+
+const escapeChar = (ch: string) => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : ch);
+
+/**
+ * Inline code's markup, all inline spans and <wbr>s, so its text, a selection's copy and
+ * find in page are the code as written. Code that is ALWAYS_FITS characters or fewer,
+ * counting the text glued to it (`before` and `after`: an opening bracket, a closing
+ * comma or bracket, which no line break separates from it) as the characters of code it
+ * is as wide as, is whole (class "whole": it does not wrap). Longer code carries
+ * data-fit, that width in characters to the nearest quarter ("31", "31.75"), and does
+ * not wrap while the line is that wide (a container query on its paragraph, list or
+ * heading, in em: code.css), so it moves to the next line whole whenever it fits a line
+ * of its own. Only in a narrower column does it break, and then each of its pieces keeps
+ * whole the same way while it fits: a word (a word of four characters or fewer belongs to
+ * its neighbour, so "YES" stays with its flag and "{}" with its call), and a segment of a
+ * word between its breaks (inlineBreaks); a part of four characters or fewer joins its
+ * neighbour while the two are ALWAYS_FITS or shorter or can break at a hyphen
+ * (spec/OPTICS.md never leaves "md" alone), and otherwise keeps its break, so the rest is
+ * not cut inside a word ("app:" before surface_type="texture_view"). So it breaks at a
+ * space or after a slash, colon, dot or opening parenthesis, at a hyphen only inside a
+ * segment wider than the column, never after a flag's dashes, and inside a word only
+ * where the word is wider than the column, never within its last five characters.
+ */
+function chipMarkup(units: string[], c: string[], before = "", after = ""): { fit?: string; html: string } {
+  const n = c.length;
+  const [glueBefore, glueAfter] = [glueChars(before), glueChars(after)];
+  if (n + glueBefore + glueAfter <= ALWAYS_FITS) return { html: units.join("") };
+  const at = inlineBreaks(c);
+  const words: [number, number][] = [];
+  for (let i = 0; i < n; ) {
+    if (space(c[i])) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < n && !space(c[j])) j++;
+    words.push([i, j]);
+    i = j;
+  }
+  // A word of four characters or fewer goes with the word before it (the first, with the next).
+  for (let w = 0; w < words.length && words.length > 1; ) {
+    const [s, e] = words[w] ?? [0, 0];
+    if (e - s > SHORT) {
+      w++;
+      continue;
+    }
+    const lo = w > 0 ? w - 1 : w;
+    words.splice(lo, 2, [words[lo]?.[0] ?? 0, words[lo + 1]?.[1] ?? 0]);
+    w = 0;
+  }
+  // A flag (--name, -c) at the start of a word: no break inside it, and its dashes and
+  // first character stay together even when it has to be cut.
+  const head = new Map<number, number>();
+  for (const [s, e] of words) {
+    const flag = /^(-+)[A-Za-z0-9][\w-]*/.exec(c.slice(s, e).join(""));
+    if (!flag) continue;
+    for (let k = s; k < s + flag[0].length; k++) at.delete(k);
+    head.set(s, s + (flag[1]?.length ?? 1) + 1);
+  }
+  const hyphenated = (from: number, to: number) => c.slice(from + 1, to - 1).some((ch, k) => ch === "-" && word(c[from + k]) && word(c[from + k + 2]));
+  const segments = words.map(([s, e]) => {
+    const parts: [number, number][] = [];
+    let from = s;
+    for (let k = s; k < e - 1; k++)
+      if (at.has(k)) {
+        parts.push([from, k + 1]);
+        from = k + 1;
+      }
+    parts.push([from, e]);
+    for (let p = 0; p < parts.length && parts.length > 1; ) {
+      const [a, b] = parts[p] ?? [0, 0];
+      const joined =
+        b - a <= SHORT &&
+        [p + 1, p - 1].some((q) => {
+          const lo = Math.min(p, q);
+          const [x, y] = [parts[lo], parts[lo + 1]];
+          if (q < 0 || q >= parts.length || !x || !y || (y[1] - x[0] > ALWAYS_FITS && !hyphenated(x[0], y[1]))) return false;
+          parts.splice(lo, 2, [x[0], y[1]]);
+          return true;
+        });
+      p = joined ? 0 : p + 1;
+    }
+    return parts;
+  });
+  const kept = new Set(segments.flatMap((parts) => parts.slice(0, -1).map(([, b]) => b - 1)));
+  // The wrappers of each character, outermost first, and their tags.
+  const path: string[][] = c.map(() => []);
+  const tags = new Map<string, string>();
+  const fit = (from: number, to: number) => {
+    const width = to - from + (from === 0 ? glueBefore : 0) + (to === n ? glueAfter : 0);
+    return width <= ALWAYS_FITS ? null : `${Math.max(to - from, Math.round(width * 4) / 4)}`;
+  };
+  const breaksInside = (from: number, to: number) => c.slice(from, to).some((ch) => !/[A-Za-z0-9_]/.test(ch));
+  const wrap = (id: string, from: number, to: number, whole = false) => {
+    const k = whole ? null : fit(from, to);
+    tags.set(id, k ? `<span data-fit="${k}">` : '<span class="whole">');
+    for (let i = from; i < to; i++) path[i]?.push(id);
+  };
+  words.forEach(([s, e], wi) => {
+    if ((s !== 0 || e !== n) && breaksInside(s, e)) wrap(`w${wi}`, s, e);
+    const parts = segments[wi] ?? [];
+    parts.forEach(([a, b], pi) => {
+      if (parts.length > 1 && breaksInside(a, b)) wrap(`s${wi}.${pi}`, a, b);
+      // A run of the segment without spaces that may be wider than a column: its last
+      // five characters, and a flag's dashes with its first character, stay together.
+      for (let r = a; r < b; ) {
+        let z = r;
+        while (z < b && !space(c[z])) z++;
+        if (z - r > ALWAYS_FITS) {
+          const h = head.get(r);
+          if (h) wrap(`h${r}`, r, h, true);
+          wrap(`t${r}`, z - 5, z, true);
+        }
+        r = z + 1;
+      }
+    });
+  });
+  let html = "";
+  let open: string[] = [];
+  const enter = (to: string[]) => {
+    let same = 0;
+    while (same < open.length && same < to.length && open[same] === to[same]) same++;
+    html += "</span>".repeat(open.length - same);
+    for (const id of to.slice(same)) html += tags.get(id) ?? "<span>";
+    open = to;
+  };
+  for (let i = 0; i < n; i++) {
+    const here = path[i] ?? [];
+    enter(here);
+    html += units[i] ?? "";
+    if (!kept.has(i)) continue;
+    const next = path[i + 1] ?? [];
+    let same = 0;
+    while (same < here.length && same < next.length && here[same] === next[same]) same++;
+    enter(here.slice(0, same));
+    html += "<wbr>";
+  }
+  enter([]);
+  return { fit: fit(0, n) ?? undefined, html };
+}
+
+/** The <code> element of HTML-escaped inline code, with its markup (chipMarkup). */
+function inlineCodeElement(escaped: string, before: string, after: string) {
   const units = escaped.match(UNITS) ?? [];
-  const at = inlineBreaks(units.map(decode));
-  return units.map((u, i) => (at.has(i) ? `${u}<wbr>` : u)).join("");
+  const chip = chipMarkup(units, units.map(decode), before, after);
+  return `<code${chip.fit ? ` data-fit="${chip.fit}"` : ' class="whole"'}>${chip.html}</code>`;
 }
 
 /** The length in characters of HTML-escaped text without its tags, spaces trimmed. */
@@ -297,11 +446,17 @@ function chipBreaks(inner: string) {
   }, "");
 }
 
+/** The text glued to inline code on one side, no line break between them (a closing comma or bracket, an opening bracket), from the HTML beside it. */
+function gluedText(html: string, after: boolean) {
+  const run = after ? /^[^\s<]*/.exec(html.replace(/^(<[^>]*>)+/, ""))?.[0] : /[^\s>]*$/.exec(html.replace(/(<[^>]*>)+$/, ""))?.[0];
+  return (run?.match(UNITS) ?? []).map(decode).join("");
+}
+
 /**
- * Prose HTML with breaks in its inline code (inlineCodeHtml) outside code blocks and
- * tables, and after the slash between two chips (UIViewRepresentable/NSViewRepresentable),
+ * Prose HTML with its inline code marked up (chipMarkup) outside code blocks and tables,
+ * and a break after the slash between two chips (UIViewRepresentable/NSViewRepresentable),
  * and in tables (whose code content.mjs marks) without a break that leaves a short
- * fragment alone on a line (chipBreaks). Text-only: what a selection copies is unchanged.
+ * fragment alone on a line (chipBreaks). Markup only: what a selection copies is unchanged.
  */
 export function proseCodeBreaks(html: string) {
   return html
@@ -311,23 +466,24 @@ export function proseCodeBreaks(html: string) {
         ? part.startsWith("<table")
           ? part.replace(/<code>((?:[^<]|<wbr>)*)<\/code>/g, (_m, inner: string) => `<code>${chipBreaks(inner)}</code>`)
           : part
-        : part.replace(/<code>([^<]*)<\/code>/g, (_m, text: string) => `<code>${inlineCodeHtml(text)}</code>`).replaceAll("</code>/<code>", "</code>/<wbr><code>"),
+        : part
+            .replace(/<code>([^<]*)<\/code>/g, (m, text: string, offset: number, whole: string) => {
+              const before = gluedText(whole.slice(Math.max(0, offset - 40), offset), false);
+              return inlineCodeElement(text, before, gluedText(whole.slice(offset + m.length, offset + m.length + 40), true));
+            })
+            .replace(/<\/code>\/<code/g, "</code>/<wbr><code"),
     )
     .join("");
 }
 
-/** Inline code with a break opportunity (<wbr>) at each of its breaks (inlineBreaks). */
-export function InlineCode({ text }: { text: string }) {
+/**
+ * Inline code in a page (chipMarkup); `glued` is the text right after it with no break
+ * between (a closing period or bracket).
+ */
+export function InlineCode({ text, glued = "" }: { text: string; glued?: string }) {
   const chars = [...text];
-  const at = inlineBreaks(chars);
-  const parts: ReactNode[] = [];
-  let from = 0;
-  for (const i of [...at].sort((a, b) => a - b)) {
-    parts.push(chars.slice(from, i + 1).join(""), <wbr key={i} />);
-    from = i + 1;
-  }
-  parts.push(chars.slice(from).join(""));
-  return <code>{parts}</code>;
+  const chip = chipMarkup(chars.map(escapeChar), chars, "", glued);
+  return chip.fit ? <code data-fit={chip.fit} dangerouslySetInnerHTML={{ __html: chip.html }} /> : <code className="whole">{text}</code>;
 }
 
 /** A one-line command with a copy button. */

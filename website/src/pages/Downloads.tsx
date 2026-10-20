@@ -111,7 +111,7 @@ const PLATFORMS = [
     note: (
       <>
         JitPack also serves the library, built from the {packages.version} release tag: add <InlineCode text={'maven("https://jitpack.io")'} /> and depend on{" "}
-        <InlineCode text={`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:${packages.version}`} />. JitPack builds each version on its first request, which can take a few
+        <InlineCode text={`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:${packages.version}`} glued="." />. JitPack builds each version on its first request, which can take a few
         minutes.
       </>
     ),
@@ -127,7 +127,7 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        Or download both <code>.nupkg</code> files below (the WPF package depends on <InlineCode text={nugetCore} />) into one folder and add that folder as a local package source.
+        Or download both <code>.nupkg</code> files below (the WPF package depends on <InlineCode text={nugetCore} glued=")" />) into one folder and add that folder as a local package source.
       </>
     ),
   },

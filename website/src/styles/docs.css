@@ -528,9 +528,15 @@ a.doc-card:hover {
   font-weight: 680;
 }
 
-/* Inline code breaks at the <wbr>s after its slashes, colons, dots and parentheses
-   (Code.tsx proseCodeBreaks); overflow-wrap only cuts a segment wider than the column.
-   Each line of a wrapped chip keeps its own padding and rounded ends. */
+/* Inline code moves to the next line whole while it fits a line of its own, and breaks
+   only where it is wider (Code.tsx chipMarkup, code.css): each paragraph, list and
+   heading of the prose is the container its code measures; overflow-wrap only cuts a
+   segment wider than the column. Each line of a wrapped chip keeps its own padding and
+   rounded ends. */
+.prose :is(p, ul, ol, h2, h3, h4):not(.prose-toc *) {
+  container-type: inline-size;
+}
+
 .prose :not(pre) > code {
   padding: 0.14em 0.4em;
   border-radius: 6px;
