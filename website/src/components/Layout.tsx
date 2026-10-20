@@ -156,9 +156,10 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
   }, []);
   const sheetRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  // Over a glass stage the bar takes the palette of the stage's backdrop (layout.css).
+  // Over a glass stage the bar takes the palette of the stage's backdrop (data-tone, set by useNavTone; layout.css).
+  const navRef = useRef<HTMLElement>(null);
   const barRef = useRef<HTMLElement>(null);
-  const tone = useNavTone(barRef);
+  useNavTone(navRef, barRef);
   useEffect(() => {
     if (!open) return;
     // Escape closes; focus inside the sheet goes back to the toggle instead of falling to <body>.
@@ -186,7 +187,7 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
   }, [open]);
 
   return (
-    <header className="nav" data-overlay={overlay ? "" : undefined} data-tone={tone} data-scrolled={scrolled ? "" : undefined} data-open={open ? "" : undefined}>
+    <header ref={navRef} className="nav" data-overlay={overlay ? "" : undefined} data-scrolled={scrolled ? "" : undefined} data-open={open ? "" : undefined}>
       <nav ref={barRef} className="nav__bar" aria-label="Primary">
         <Link href="/" className="nav__brand" aria-label="Liquid Glass Engineering, home">
           <LogoMark size={26} />

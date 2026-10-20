@@ -414,7 +414,8 @@ export default function Playground() {
   // the fallback for the chosen one. Grid and type are drawn in the appearance's colors.
   const [shownBackdrop, setShownBackdrop] = useState<BackdropSpec | null>(null);
   const visible = shownBackdrop ?? backdrop;
-  const navTone = !visible ? undefined : visible.kind === "wallpaper" ? wallpaperTone(visible.name) : appearance;
+  // The tone of what the stage shows, the fallback included (it renders once ready).
+  const navTone = visible ? (visible.kind === "wallpaper" ? wallpaperTone(visible.name) : appearance) : ready && s.backdrop !== "grid" && s.backdrop !== "type" ? wallpaperTone(s.backdrop) : undefined;
   const current = CODE_TABS.find((t) => t.id === tab) ?? CODE_TABS[0];
   const source = useMemo(() => (current ? current.make(s) : ""), [current, s]);
   const html = useMemo(() => (current ? highlight(source, current.lang) : ""), [source, current]);
