@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { CSSProperties, HTMLAttributes, ReactNode, RefObject } from "react";
 import { defaultRefraction, pressScale, springStep, springs } from "@lg/reference";
 import type { SpringState } from "@lg/reference";
@@ -44,8 +45,11 @@ export interface GlassStageProps {
   transition?: number;
   onRenderer?: (kind: RendererKind, reason?: string) => void;
   /**
-   * Called when a backdrop starts to show (its cross-fade begins), so what is drawn over
-   * the stage can follow the backdrop on screen rather than the one just asked for.
+   * Called when a backdrop takes over the stage: in the frame that first draws it at half
+   * its weight or more (its cross-fade's midpoint, the first frame without one), with the
+   * update committed before that frame paints, so what is drawn over the stage (the hero
+   * copy's tone, the nav bar's palette through navTone) follows the backdrop that
+   * dominates the screen, in the same frame, rather than the one just asked for.
    */
   onBackdrop?: (spec: BackdropSpec) => void;
   /** The tone of what the stage shows: the nav bar takes its palette while over the stage. */
@@ -135,14 +139,19 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
     if (!scene || !backdrop) return;
     let cancelled = false;
     const canvas = canvasRef.current;
+    // Runs in the scene's frame callback (setBackdrop), never inside a React commit, and
+    // also after this effect is gone: it reports what the stage shows.
+    const report = () => {
+      const show = backdropCallback.current;
+      if (show) flushSync(() => show(backdrop));
+    };
     const controller = loadBackdrop(backdrop, canvas, appearance, (image) => {
       if (cancelled) return;
-      if (backdrop.kind === "canvas" && !first.current) scene.refreshBackdrop(image);
-      else scene.setBackdrop(image, first.current ? 0 : transition);
+      if (backdrop.kind === "canvas" && !first.current) scene.refreshBackdrop(image, report);
+      else scene.setBackdrop(image, first.current ? 0 : transition, report);
       first.current = false;
       shown.current = image;
       paintFlat();
-      backdropCallback.current?.(backdrop);
     });
     return () => {
       cancelled = true;

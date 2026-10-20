@@ -81,6 +81,10 @@ export class GlassScene {
   private maxDpr: number;
   private backdrop: BackdropImage | null = null;
   private fade: { from: number; start: number; duration: number } | null = null;
+  /** How far the running cross-fade is (eased, 0 to 1). */
+  private mix = 0;
+  /** Called once the backdrop last set dominates what is drawn (setBackdrop). */
+  private shown: (() => void) | null = null;
   private destroyed = false;
 
   constructor(root: HTMLElement, canvas: HTMLCanvasElement, options: SceneOptions) {
@@ -199,6 +203,9 @@ export class GlassScene {
 
   private fail(reason: string) {
     this.renderer = null;
+    // The fallback draws the last backdrop set at once: no cross-fade to wait for.
+    this.fade = null;
+    this.mix = 0;
     this.setKind("css", reason);
   }
 
@@ -236,28 +243,50 @@ export class GlassScene {
     }
   }
 
-  /** Show an image as the backdrop, optionally cross-fading from the current one. */
-  setBackdrop(image: BackdropImage, transition = 0) {
+  /**
+   * Show an image as the backdrop, optionally cross-fading from the current one. `shown`
+   * runs in the frame callback of the first frame that draws the new image at half its
+   * weight or more (the cross-fade's midpoint; the next frame without a cross-fade),
+   * after drawing it and before that frame paints, so what the page changes for the new
+   * backdrop paints in the same frame as the backdrop it belongs to. A cross-fade still
+   * running when another image arrives first settles on the image that dominates it, so
+   * the stage never steps back to a backdrop already reported as gone.
+   */
+  setBackdrop(image: BackdropImage, transition = 0, shown?: () => void) {
     const r = this.renderer;
     this.backdrop = image;
-    if (!r) return;
-    if (transition > 0 && !this.reducedMotion && this.hasBackdrop) {
-      r.setImage(image, "b");
-      this.fade = { from: 0, start: -1, duration: transition };
-    } else {
-      r.setImage(image, "a");
-      r.setCrossfade(0);
-      this.fade = null;
+    this.shown = shown ?? null;
+    if (r) {
+      if (transition > 0 && !this.reducedMotion && this.hasBackdrop) {
+        if (this.fade && this.mix >= 0.5) r.commitCrossfade();
+        r.setImage(image, "b");
+        r.setCrossfade(0);
+        this.fade = { from: 0, start: -1, duration: transition };
+      } else {
+        r.setImage(image, "a");
+        r.setCrossfade(0);
+        this.fade = null;
+      }
+      this.mix = 0;
+      this.hasBackdrop = true;
     }
-    this.hasBackdrop = true;
     this.invalidate();
   }
 
-  /** Re-upload a canvas backdrop after drawing into it. */
-  refreshBackdrop(image: BackdropImage) {
+  /** Re-upload a canvas backdrop after drawing into it; it shows at once (`shown` as in setBackdrop). */
+  refreshBackdrop(image: BackdropImage, shown?: () => void) {
     this.backdrop = image;
-    this.renderer?.setImage(image, "a");
-    this.hasBackdrop = true;
+    this.shown = shown ?? this.shown;
+    const r = this.renderer;
+    if (r) {
+      r.setImage(image, "a");
+      if (this.fade) {
+        r.setCrossfade(0);
+        this.fade = null;
+        this.mix = 0;
+      }
+      this.hasBackdrop = true;
+    }
     this.invalidate();
   }
 
@@ -313,6 +342,16 @@ export class GlassScene {
   private tick = (now: number) => {
     this.frame = 0;
     if (this.destroyed) return;
+    this.draw(now);
+    // After drawing, so what the callback changes in the page paints with this frame.
+    const shown = this.shown;
+    if (shown && !this.destroyed && (!this.fade || this.mix >= 0.5)) {
+      this.shown = null;
+      shown();
+    }
+  };
+
+  private draw(now: number) {
     const dt = this.last ? Math.min(1 / 30, Math.max(0, (now - this.last) / 1000)) : 1 / 60;
     this.last = now;
     let animating = false;
@@ -324,9 +363,11 @@ export class GlassScene {
       const t = Math.min(1, (now - this.fade.start) / this.fade.duration);
       const eased = t * t * (3 - 2 * t);
       r.setCrossfade(eased);
+      this.mix = eased;
       if (t >= 1) {
         r.commitCrossfade();
         this.fade = null;
+        this.mix = 0;
       } else animating = true;
     }
 
@@ -356,7 +397,7 @@ export class GlassScene {
     this.dirty = false;
     if (animating) this.invalidate();
     else this.last = 0;
-  };
+  }
 
   private frames(): SurfaceFrame[] {
     const canvasRect = this.canvas.getBoundingClientRect();

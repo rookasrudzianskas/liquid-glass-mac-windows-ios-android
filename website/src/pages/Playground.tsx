@@ -410,7 +410,7 @@ export default function Playground() {
 
   const appearance = s.appearance === "automatic" ? theme : s.appearance;
   const backdrop: BackdropSpec | null = !mounted || !ready ? null : s.backdrop === "grid" || s.backdrop === "type" ? { kind: "canvas", pattern: s.backdrop } : { kind: "wallpaper", name: s.backdrop };
-  // The backdrop on screen (a new one shows once loaded), and before the stage draws one,
+  // The backdrop on screen (a new one takes over at its cross-fade's midpoint), and before the stage draws one,
   // the fallback for the chosen one. Grid and type are drawn in the appearance's colors.
   const [shownBackdrop, setShownBackdrop] = useState<BackdropSpec | null>(null);
   const visible = shownBackdrop ?? backdrop;

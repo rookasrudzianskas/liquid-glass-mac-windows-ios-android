@@ -51,8 +51,9 @@ export function WallpaperFallback({ light, dark }: { light: WallpaperName; dark:
 export function Hero() {
   const { theme, mounted } = useTheme();
   const [picked, setPicked] = useState<WallpaperName | null>(null);
-  // The wallpaper on screen: a newly picked one shows once it has loaded and its
-  // cross-fade starts, and the copy changes tone with it, not before.
+  // The wallpaper on screen: a newly picked one takes over once it has loaded and its
+  // cross-fade passes the midpoint, and the copy (and the nav bar over it) changes tone
+  // in that frame, not before.
   const [shown, setShown] = useState<WallpaperName | null>(null);
   const [material, setMaterial] = useState<Material>("regular");
   const [tint, setTint] = useState(0);
