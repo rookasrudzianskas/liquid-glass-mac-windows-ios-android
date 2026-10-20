@@ -34,11 +34,40 @@ export function registerNavTone(el: Element, tone: Tone) {
  * Before the app hydrates, keeps the nav bar's palette on the stage under it as
  * useNavTone does afterwards (a <script> in the prerendered head: head.ts). A stage
  * carries its tone in data-nav-tone (GlassStage) from the prerendered page on, and a
- * scroll, a layout change (where a link to a fragment lands) or the end of parsing
- * measures them; useNavTone stops it (window.lgNavToneStop) when it takes over. The
- * attribute is only set while a stage is under the bar.
+ * scroll, a layout change, the end of parsing and every frame while the page loads
+ * (watchLoadFrames) measure them; useNavTone stops it (window.lgNavToneStop) when it
+ * takes over. The attribute is only set while a stage is under the bar.
  */
-export const NAV_TONE_BOOT = `(function(){function u(){var h=document.querySelector(".nav"),b=h&&h.querySelector(".nav__bar");if(!b)return;var q=b.getBoundingClientRect(),y=Math.round(q.height?q.top+q.height/2:36),t="",s=document.querySelectorAll("[data-nav-tone]");for(var i=0;i<s.length;i++){var r=s[i].getBoundingClientRect();if((r.width||r.height)&&r.top<=y+1&&r.bottom>=y)t=s[i].getAttribute("data-nav-tone")}if(t){if(h.getAttribute("data-tone")!==t)h.setAttribute("data-tone",t)}else if(h.hasAttribute("data-tone"))h.removeAttribute("data-tone")}var o=typeof ResizeObserver=="function"?new ResizeObserver(u):null;if(o)o.observe(document.documentElement);addEventListener("scroll",u,{passive:true});document.addEventListener("DOMContentLoaded",u);window.lgNavToneStop=function(){if(o)o.disconnect();removeEventListener("scroll",u);document.removeEventListener("DOMContentLoaded",u)}})();`;
+export const NAV_TONE_BOOT = `(function(){function u(){var h=document.querySelector(".nav"),b=h&&h.querySelector(".nav__bar");if(!b)return;var q=b.getBoundingClientRect(),y=Math.round(q.height?q.top+q.height/2:36),t="",s=document.querySelectorAll("[data-nav-tone]");for(var i=0;i<s.length;i++){var r=s[i].getBoundingClientRect();if((r.width||r.height)&&r.top<=y+1&&r.bottom>=y)t=s[i].getAttribute("data-nav-tone")}if(t){if(h.getAttribute("data-tone")!==t)h.setAttribute("data-tone",t)}else if(h.hasAttribute("data-tone"))h.removeAttribute("data-tone")}var R=typeof ResizeObserver=="function"?ResizeObserver:null,o=R?new R(u):null,f=0,n=2;function w(){f=0;var r=new R(function(){r.disconnect();u()});r.observe(document.documentElement);if(document.readyState!="complete"||n--)f=requestAnimationFrame(w)}if(o){o.observe(document.documentElement);f=requestAnimationFrame(w)}addEventListener("scroll",u,{passive:true});document.addEventListener("DOMContentLoaded",u);window.lgNavToneStop=function(){if(o)o.disconnect();if(f)cancelAnimationFrame(f);removeEventListener("scroll",u);document.removeEventListener("DOMContentLoaded",u)}})();`;
+
+/**
+ * Runs `measure` after layout in every frame while the page loads, and in the two frames
+ * after its load event: a ResizeObserver delivers its first observation after the frame's
+ * layout and before it paints, so a fresh one each frame sees the scroll the browser
+ * applies there without a scroll event (that comes a frame later). Until the load event
+ * the browser scrolls a fragment's target back into view after every layout (a hard load
+ * of /#controls-slider-label lands in the Controls stage several frames after the first
+ * paint), so the frame that first shows the stage under the bar also shows the bar in
+ * its palette. NAV_TONE_BOOT does the same in its own words. Returns the cancel function.
+ */
+function watchLoadFrames(measure: () => void) {
+  if (typeof ResizeObserver === "undefined" || typeof requestAnimationFrame === "undefined") return () => {};
+  let frame = 0;
+  let after = 2;
+  const watch = () => {
+    frame = 0;
+    const once = new ResizeObserver(() => {
+      once.disconnect();
+      measure();
+    });
+    once.observe(document.documentElement);
+    if (document.readyState !== "complete" || after-- > 0) frame = requestAnimationFrame(watch);
+  };
+  frame = requestAnimationFrame(watch);
+  return () => {
+    if (frame) cancelAnimationFrame(frame);
+  };
+}
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -53,8 +82,11 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
  * (none on most pages, three rectangles on the home page) in its scroll event, which
  * runs before the frame that shows the new position paints; an IntersectionObserver whose
  * root is shrunk to the one-pixel line catches a stage edge that crosses it without a
- * scroll (a layout change above it), in the next frame. Before this runs, as the page
- * hydrates, NAV_TONE_BOOT does the same for the prerendered page.
+ * scroll (a layout change above it), in the next frame; and while the page loads every
+ * frame measures after its layout (watchLoadFrames), so the scroll the browser applies
+ * to keep a fragment's target in view paints with the palette of what it brings under
+ * the bar. Before this runs, as the page hydrates, NAV_TONE_BOOT does the same for the
+ * prerendered page.
  */
 export function useNavTone(nav: RefObject<HTMLElement | null>, bar: RefObject<HTMLElement | null>) {
   useIsoLayoutEffect(() => {
@@ -126,7 +158,9 @@ export function useNavTone(nav: RefObject<HTMLElement | null>, bar: RefObject<HT
     };
     window.addEventListener("resize", onResize, { passive: true });
     window.addEventListener("scroll", update, { passive: true });
+    const stopWatch = watchLoadFrames(update);
     return () => {
+      stopWatch();
       listeners.delete(sync);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", update);
