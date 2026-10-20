@@ -60,6 +60,7 @@
      beneath it, pure black to pure white (screenshots, code, the glass stages and their
      edges), in either palette. */
   --nav-bg: rgba(250, 250, 252, 0.88);
+  --nav-sheen: rgba(255, 255, 255, 0.75);
   --nav-fg-3: #58585d;
   --spectrum: linear-gradient(90deg, #12b5cb 0%, #4b6bff 35%, #8a4dff 60%, #ff4f9a 100%);
   /* The spectrum as text color: deeper stops keep every glyph at 4.5:1 or more on the light background. */
@@ -98,6 +99,7 @@
   --glass-css-line: rgba(255, 255, 255, 0.22);
   --glass-css-shadow: rgba(0, 0, 0, 0.3);
   --nav-bg: rgba(22, 22, 26, 0.88);
+  --nav-sheen: rgba(255, 255, 255, 0.09);
   --nav-fg-3: #aaaab0;
   color-scheme: dark;
 }

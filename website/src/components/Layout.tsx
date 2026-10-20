@@ -198,7 +198,7 @@ function Nav({ onSearch, overlay }: { onSearch: () => void; overlay: boolean }) 
         <ul className="nav__links" role="list">
           {NAV.map((item) => (
             <li key={item.href}>
-              <Link href={item.href} className="nav__link" data-active={isActive(path, item.href) ? "" : undefined}>
+              <Link href={item.href} className="nav__link" data-label={item.label} data-active={isActive(path, item.href) ? "" : undefined}>
                 {item.label}
               </Link>
             </li>
