@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CheckIcon, CopyIcon } from "./Icons";
 
@@ -55,50 +55,146 @@ export interface Highlighted {
 // A command-line flag: one or two dashes and its name, after a space or at the start of a line.
 const FLAG = /(^|\s)(--?[A-Za-z0-9][\w-]*)/g;
 
-const WORD = /[A-Za-z0-9]/;
-const word = (ch: string | undefined) => !!ch && WORD.test(ch);
-const breakable = (ch: string | undefined) => !!ch && ch !== "/" && !/\s/.test(ch);
-const SOFT = '<wbr class="code__soft">';
+const word = (ch: string | undefined) => !!ch && /[A-Za-z0-9]/.test(ch);
+const space = (ch: string | undefined) => !!ch && /\s/.test(ch);
+const breakable = (ch: string | undefined) => !!ch && ch !== "/" && !space(ch);
+
+// A unit of HTML-escaped text: an entity or one character.
+const UNITS = /&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);|[\s\S]/gu;
+const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" };
+/** The character an HTML-escaped unit of text (a character or an entity) stands for. */
+function decode(unit: string) {
+  if (unit.length === 1 || !unit.startsWith("&")) return unit;
+  const body = unit.slice(1, -1);
+  if (body.startsWith("#x")) return String.fromCodePoint(parseInt(body.slice(2), 16));
+  if (body.startsWith("#") && body !== "#39") return String.fromCodePoint(parseInt(body.slice(1), 10));
+  return NAMED[body] ?? unit;
+}
+
+interface Piece {
+  /** The wrappers the piece sits in, outermost first: "flag:3", "name:5", "part:5.1". */
+  path: string[];
+  /** The Shiki token (its opening tag) the piece belongs to. */
+  open: string;
+  raw: string;
+}
+
+const WRAPPER: Record<string, string> = { flag: "code__flag", name: "code__name", part: "code__part" };
 
 /**
- * Break opportunities in a line's text (HTML-escaped, between Shiki's tags; no entity
- * holds any of the characters looked at). Always: after a slash between two other
- * characters (a path or URL), after a URL's "://", and after a colon between letters or
- * digits (group:artifact:version). Held back until freeLongNames frees them: a hyphen
- * inside a name (.code__hyphen, a span around the hyphen and the character after it that
- * does not wrap, since the nearest element holding both characters decides), and a
- * <wbr> after "@" or before a "." that follows a letter or digit (wbr.code__soft, which
- * takes no part in layout until freed: a <wbr> breaks even inside a span that does not wrap).
+ * One line of wrapping code (the token spans of a Shiki line), with its break rules as
+ * markup only. The line splits into segments at its spaces and after its ordinary break
+ * opportunities, which get a <wbr>: after a slash between two other characters (a path
+ * or URL), after a URL's "://" and after a colon between letters or digits
+ * (group:artifact:version). A flag (--ignore-missing, -c) is a span that does not wrap.
+ * A segment that has breaks of its own (a hyphen between letters or digits, an "@", or a
+ * "." before a letter) is a name (.code__name, an inline block no wider than the line,
+ * code.css): the line breaks before it rather than inside it, so it moves to the next
+ * line whole, and only a name wider than the line wraps inside, first between its parts
+ * (each part up to an "@" or before such a "." is an inline block too, .code__part) and
+ * then at the hyphens of a part still wider than the line. Token spans are closed and
+ * reopened around the wrappers, so the text is the code as written.
  */
-function breaks(text: string) {
-  let out = "";
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i] ?? "";
-    const prev = text[i - 1];
-    const next = text[i + 1];
-    if (ch === "-" && word(prev) && word(next)) {
-      out += `<span class="code__hyphen">-${next}</span>`;
-      i++;
+function wrapLine(inner: string): string | null {
+  const tokens = [...inner.matchAll(/<span([^>]*)>([^<]*)<\/span>/g)];
+  if (tokens.map((m) => m[0]).join("") !== inner) return null;
+  const units: { raw: string; ch: string; open: string }[] = [];
+  for (const m of tokens)
+    for (const raw of (m[2] ?? "").match(UNITS) ?? []) units.push({ raw, ch: decode(raw), open: `<span${m[1] ?? ""}>` });
+  const c = units.map((u) => u.ch);
+  const text = c.join("");
+  // Flags, by character index (FLAG matches on the decoded text; entities are one unit).
+  const flagAt = new Map<number, number>();
+  const offsets: number[] = [];
+  let offset = 0;
+  for (const ch of c) offsets.push((offset += ch.length) - ch.length);
+  const byOffset = new Map(offsets.map((o, i) => [o, i]));
+  let flags = 0;
+  for (const m of text.matchAll(FLAG)) {
+    const start = byOffset.get((m.index ?? 0) + (m[1] ?? "").length);
+    const end = byOffset.get((m.index ?? 0) + m[0].length) ?? c.length;
+    if (start === undefined) continue;
+    flags++;
+    for (let i = start; i < end; i++) flagAt.set(i, flags);
+  }
+  const breakAfter = (i: number) => (c[i] === "/" && breakable(c[i + 1]) && (breakable(c[i - 1]) || (c[i - 1] === "/" && c[i - 2] === ":"))) || (c[i] === ":" && word(c[i - 1]) && word(c[i + 1]));
+  const pieces: (Piece | "wbr")[] = [];
+  const add = (path: string[], i: number) => pieces.push({ path, open: units[i]?.open ?? "", raw: units[i]?.raw ?? "" });
+  let names = 0;
+  for (let i = 0; i < c.length; ) {
+    if (space(c[i])) {
+      add([], i++);
       continue;
     }
-    if (ch === "." && word(prev) && /[A-Za-z]/.test(next ?? "")) out += SOFT;
-    out += ch;
-    if (ch === "/" && breakable(next) && (breakable(prev) || (prev === "/" && text[i - 2] === ":"))) out += "<wbr>";
-    else if (ch === ":" && word(prev) && word(next)) out += "<wbr>";
-    else if (ch === "@" && prev && next && !/[\s@]/.test(prev) && !/[\s@]/.test(next)) out += SOFT;
+    let end = i;
+    while (end < c.length && !space(c[end])) if (breakAfter(end++)) break;
+    // Parts start before a "." between a letter or digit and a letter, and after an "@" inside the segment.
+    const starts = [i];
+    let hyphen = false;
+    for (let k = i + 1; k < end; k++) {
+      if (c[k] === "." && word(c[k - 1]) && /[A-Za-z]/.test(c[k + 1] ?? "")) starts.push(k);
+      if (c[k - 1] === "@" && k - 1 > i && c[k] !== "@") starts.push(k);
+      if (c[k] === "-" && word(c[k - 1]) && word(c[k + 1])) hyphen = true;
+    }
+    const parts = new Set(starts);
+    const flagged = [...Array(end - i).keys()].some((k) => flagAt.has(i + k));
+    if (flagged || (parts.size === 1 && !hyphen)) {
+      for (let k = i; k < end; k++) add(flagAt.has(k) ? [`flag:${flagAt.get(k)}`] : [], k);
+    } else {
+      const name = `name:${++names}`;
+      let part = 0;
+      for (let k = i; k < end; k++) {
+        if (parts.has(k)) part++;
+        add(parts.size > 1 ? [name, `part:${names}.${part}`] : [name], k);
+      }
+    }
+    if (end < c.length && !space(c[end]) && breakAfter(end - 1)) pieces.push("wbr");
+    i = end;
   }
+  // Emit: each run of pieces in the same wrappers and token as one token span.
+  let out = "";
+  let open: string[] = [];
+  let run: Piece | null = null;
+  const flush = () => {
+    if (run) out += `${run.open}${run.raw}${run.open ? "</span>" : ""}`;
+    run = null;
+  };
+  const enter = (path: string[]) => {
+    let same = 0;
+    while (same < open.length && same < path.length && open[same] === path[same]) same++;
+    if (same === open.length && same === path.length) return;
+    flush();
+    out += "</span>".repeat(open.length - same);
+    for (const id of path.slice(same)) out += `<span class="${WRAPPER[id.split(":")[0] ?? ""]}">`;
+    open = path;
+  };
+  for (const piece of pieces) {
+    if (piece === "wbr") {
+      enter([]);
+      flush();
+      out += "<wbr>";
+      continue;
+    }
+    enter(piece.path);
+    if (run && run.open === piece.open) run.raw += piece.raw;
+    else {
+      flush();
+      run = { ...piece };
+    }
+  }
+  enter([]);
+  flush();
   return out;
 }
 
 /**
  * Code that wraps instead of scrolling sideways (install commands, whose package names
  * and versions sit at the ends of long lines): each line carries its indentation, so a
- * wrapped line continues two columns in from its own start (code.css), a flag
- * (--ignore-missing, -c) never breaks, inside it or after its dashes (.code__flag), and a
- * name (a package, host or plugin ID) breaks at a slash, a URL's "://" or a coordinate's
- * colon, and at its own "@", "." or hyphens only when it is wider than the line
- * (breaks, freeLongNames). Only the markup changes, in text and never inside a tag, so
- * the text is the code as written and Copy copies exactly that.
+ * wrapped line continues two columns in from its own start (code.css), a flag never
+ * breaks, inside it or after its dashes, and a name (a package, host or plugin ID) breaks
+ * inside only when it is wider than the line (wrapLine). It is all markup and CSS, the
+ * same in the prerendered page and after hydration, and only the markup changes, never
+ * the text, so the text is the code as written and Copy copies exactly that.
  */
 function wrappable(html: string) {
   return html
@@ -107,142 +203,26 @@ function wrappable(html: string) {
     .map((line) => {
       const at = line.indexOf('<span class="line">');
       if (at < 0) return line;
-      const text = line.slice(at).replace(/<[^>]*>/g, "");
+      const body = line.slice(at + '<span class="line">'.length);
+      const close = body.lastIndexOf("</span>", body.endsWith("</code></pre>") ? body.length - "</code></pre>".length - 1 : body.length - 1);
+      const inner = body.slice(0, close);
+      const tail = body.slice(close);
+      const text = inner.replace(/<[^>]*>/g, "");
       const indent = /^ */.exec(text)?.[0].length ?? 0;
-      const head = line.slice(0, at) + `<span class="line" style="--indent:${indent}">`;
-      // Whether the text so far ends in a space (or nothing), which a flag must follow.
-      let spaced = true;
-      const rest = line
-        .slice(at + '<span class="line">'.length)
-        .split(/(<[^>]*>)/)
-        .map((part) => {
-          if (part.startsWith("<") || !part) return part;
-          let out = "";
-          let from = 0;
-          for (const { index = 0, 1: lead = "", 2: flag = "" } of part.matchAll(FLAG)) {
-            if (index === 0 && !lead && !spaced) continue;
-            const start = index + lead.length;
-            out += breaks(part.slice(from, start)) + `<span class="code__flag">${flag}</span>`;
-            from = start + flag.length;
-          }
-          spaced = /\s$/.test(part);
-          return out + breaks(part.slice(from));
-        })
-        .join("");
-      return head + rest;
+      return `${line.slice(0, at)}<span class="line" style="--indent:${indent}">${wrapLine(inner) ?? inner}${tail}`;
     })
     .join("\n");
 }
 
-interface Name {
-  chars: { node: Text; at: number; ch: string; hyphen: Element | null; soft: Element | null }[];
-  held: Set<Element>;
-}
-
-/**
- * In wrapped code, frees the held-back breaks (breaks) of each name that would otherwise
- * be cut at an arbitrary character (overflow-wrap: anywhere): a name is the text between
- * two spaces or ordinary break opportunities. Its "@" and "." breaks go first, and if a
- * part between those is still cut, that part's hyphens; a name that fits keeps them all.
- */
-function freeLongNames(body: HTMLElement) {
-  for (const el of body.querySelectorAll("[data-free]")) el.removeAttribute("data-free");
-  const names: Name[] = [];
-  let name: Name | null = null;
-  let soft: Element | null = null;
-  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node instanceof Element) {
-      if (node.tagName !== "WBR") continue;
-      soft = node.classList.contains("code__soft") ? node : null;
-      if (soft) name?.held.add(soft);
-      else name = null;
-      continue;
-    }
-    const text = node as Text;
-    const parent = text.parentElement;
-    if (parent?.closest(".code__flag")) {
-      name = null;
-      continue;
-    }
-    const hyphen = parent?.closest(".code__hyphen") ?? null;
-    for (let at = 0; at < text.data.length; at++) {
-      const ch = text.data[at] ?? "";
-      if (/\s/.test(ch)) {
-        name = null;
-        soft = null;
-        continue;
-      }
-      if (!name) names.push((name = { chars: [], held: new Set() }));
-      name.chars.push({ node: text, at, ch, hyphen, soft });
-      if (hyphen) name.held.add(hyphen);
-      soft = null;
-    }
-  }
-  const range = document.createRange();
-  const top = (c: Name["chars"][number]) => {
-    range.setStart(c.node, c.at);
-    range.setEnd(c.node, c.at + 1);
-    const rects = range.getClientRects();
-    return rects[rects.length - 1]?.top ?? 0;
-  };
-  const held = names.filter((n) => n.held.size);
-  // Each round frees what the last one showed was needed; freeing can move later names.
-  for (let round = 0; round < 8; round++) {
-    let changed = false;
-    for (const n of held) {
-      // The part of the name each character is in: parts are separated by its soft breaks.
-      let part = 0;
-      const parts = n.chars.map((c) => (c.soft ? ++part : part));
-      const cut = new Set<number>();
-      let last: number | null = null;
-      n.chars.forEach((c, i) => {
-        const t = top(c);
-        const prev = n.chars[i - 1];
-        if (prev && last !== null && t > last + 1) {
-          const free = c.soft?.hasAttribute("data-free") || (prev.ch === "-" && prev.hyphen?.hasAttribute("data-free"));
-          if (!free) cut.add(parts[i] ?? 0);
-        }
-        last = t;
-      });
-      if (!cut.size) continue;
-      const softs = [...n.held].filter((el) => el.classList.contains("code__soft") && !el.hasAttribute("data-free"));
-      const targets = softs.length ? softs : n.chars.filter((c, i) => c.hyphen && cut.has(parts[i] ?? 0) && !c.hyphen.hasAttribute("data-free")).map((c) => c.hyphen as Element);
-      for (const el of targets) el.setAttribute("data-free", "");
-      if (targets.length) changed = true;
-    }
-    if (!changed) break;
-  }
-}
-
-const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
 /** A highlighted code block (HTML produced at build time by Shiki). */
 export function CodeBlock({ sample, title, caption, className, wrap = false }: { sample: Highlighted; title?: ReactNode; caption?: ReactNode; className?: string; wrap?: boolean }) {
-  const bodyRef = useRef<HTMLDivElement>(null);
-  // Wrapped code frees the breaks of its long names before it paints, and again when its width changes.
-  useIsoLayoutEffect(() => {
-    const body = bodyRef.current;
-    if (!wrap || !body?.querySelector(".code__hyphen, .code__soft")) return;
-    let width = -1;
-    const fit = () => {
-      if (body.clientWidth === width) return;
-      width = body.clientWidth;
-      freeLongNames(body);
-    };
-    fit();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(fit);
-    observer.observe(body);
-    return () => observer.disconnect();
-  }, [wrap, sample.html]);
   return (
     <figure className={`code${wrap ? " code--wrap" : ""}${className ? ` ${className}` : ""}`}>
       <div className="code__bar">
         <span className="code__lang">{title ?? sample.label ?? sample.lang}</span>
         <CopyButton text={sample.code} />
       </div>
-      <div ref={bodyRef} className="code__body" dangerouslySetInnerHTML={{ __html: wrap ? wrappable(sample.html) : sample.html }} />
+      <div className="code__body" dangerouslySetInnerHTML={{ __html: wrap ? wrappable(sample.html) : sample.html }} />
       {caption ? <figcaption className="code__caption">{caption}</figcaption> : null}
     </figure>
   );
