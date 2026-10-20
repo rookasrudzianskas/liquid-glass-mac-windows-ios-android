@@ -86,16 +86,18 @@ interface Piece {
  * markup only, every wrapper an inline span so the line's hanging indent (code.css) sets
  * each of its rows and find in page matches across them. The line splits into segments
  * at its spaces and after its ordinary break opportunities, which get a <wbr>: after a
- * slash between two other characters (a path or URL), after a URL's "://" and after a
- * colon between letters or digits (group:artifact:version). A flag (--ignore-missing,
- * -c) is a span that does not wrap. A segment that has breaks of its own (a hyphen
- * between letters or digits, an "@", or a "." before a letter) is a name (.code__name):
- * its parts, up to an "@" or before such a ".", are separated by a <wbr>, and data-k is
- * the columns it takes on a wrapped row of its own (its length, the line's indentation
- * and the 2 columns a wrapped row is indented by). While the snippet is that wide, the
- * name does not wrap and its <wbr>s are off (code.css, a container query), so the line
- * breaks before it and it moves to the next row whole; in a narrower snippet it breaks
- * between its parts, each part with a hyphen kept whole the same way while it fits
+ * slash between two other characters (a path or URL), after a URL's "://", after a
+ * colon between letters or digits (group:artifact:version) and after a call's opening
+ * parenthesis before its argument (implementation( before "androidx…", which is
+ * otherwise cut inside the word in a snippet narrower than the two). A flag
+ * (--ignore-missing, -c) is a span that does not wrap. A segment that has breaks of its
+ * own (a hyphen between letters or digits, an "@", or a "." before a letter) is a name
+ * (.code__name): its parts, up to an "@" or before such a ".", are separated by a <wbr>,
+ * and data-k is the columns it takes on a wrapped row of its own (its length, the line's
+ * indentation and the 2 columns a wrapped row is indented by). While the snippet is that
+ * wide, the name does not wrap and its <wbr>s are off (code.css, a container query), so
+ * the line breaks before it and it moves to the next row whole; in a narrower snippet it
+ * breaks between its parts, each part with a hyphen kept whole the same way while it fits
  * (.code__part), and then at the hyphens of a part that does not. The indentation and
  * the first character after it do not wrap (.code__lead), so no row holds only the
  * indentation. Token spans are closed and reopened around the wrappers, so the text is
@@ -125,7 +127,10 @@ function wrapLine(inner: string): string | null {
   }
   let indent = 0;
   while (c[indent] === " ") indent++;
-  const breakAfter = (i: number) => (c[i] === "/" && breakable(c[i + 1]) && (breakable(c[i - 1]) || (c[i - 1] === "/" && c[i - 2] === ":"))) || (c[i] === ":" && word(c[i - 1]) && word(c[i + 1]));
+  const breakAfter = (i: number) =>
+    (c[i] === "/" && breakable(c[i + 1]) && (breakable(c[i - 1]) || (c[i - 1] === "/" && c[i - 2] === ":"))) ||
+    (c[i] === ":" && word(c[i - 1]) && word(c[i + 1])) ||
+    (c[i] === "(" && word(c[i - 1]) && (c[i + 1] === '"' || word(c[i + 1])));
   const hyphenAt = (k: number) => c[k] === "-" && word(c[k - 1]) && word(c[k + 1]);
   const tags = new Map<string, string>([["lead", '<span class="code__lead">']]);
   // The indentation and the character after it (the whole flag, if a flag starts the line).
