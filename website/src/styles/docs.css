@@ -651,8 +651,9 @@ a.doc-card:hover {
 
 /* No chip leaves a fragment like "<lg:" on a line (Code.tsx chipBreaks). From 768 px up,
    where every table fits without them, no chip breaks before a short last part either
-   (LiquidGlassEngineering.Wpf stays whole); below it, where those breaks and a wrapped
-   chip's edges decide whether a table fits, its padding stays at its two ends (slice). */
+   (LiquidGlassEngineering.Wpf stays whole). Below it those breaks let three tables fit at
+   a few widths where they would otherwise scroll (88 widths from 413 to 548 px, listed in
+   chipBreaks), and a wrapped chip's padding stays at its two ends (slice). */
 @media (min-width: 768px) {
   .prose :is(td, th) > code > wbr.chip-tail {
     display: none;

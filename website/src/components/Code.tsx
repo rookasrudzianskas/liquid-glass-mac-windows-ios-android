@@ -282,8 +282,11 @@ const textLength = (html: string) => (html.replace(/<[^>]*>/g, "").trim().match(
  * A table's code chip without the breaks content.mjs marks that would leave a prefix of
  * four characters or fewer alone on a line ("<lg:" before GlassToolbarSpacer, "min"
  * before its argument list); a break before a short last part ("Wpf" after
- * LiquidGlassEngineering.) is a wbr.chip-tail, which only a phone-width column uses
- * (docs.css), where without it a table would no longer fit.
+ * LiquidGlassEngineering.) is a wbr.chip-tail, which only a column under 768 px uses
+ * (docs.css). It is what lets three tables fit at a few widths, where they would scroll
+ * without it (/docs/windows' Install table from 463 to 500 px and its GlassButton table
+ * from 413 to 454, /docs/android's options table from 541 to 548); elsewhere it only
+ * puts the short part on a line of its own when the column is narrower than the chip.
  */
 function chipBreaks(inner: string) {
   const parts = inner.split("<wbr>");
