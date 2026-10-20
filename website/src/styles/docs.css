@@ -531,8 +531,9 @@ a.doc-card:hover {
 /* Inline code moves to the next line whole while it fits a line of its own, and breaks
    only where it is wider (Code.tsx chipMarkup, code.css): each paragraph, list and
    heading of the prose is the container its code measures; overflow-wrap only cuts a
-   segment wider than the column. Each line of a wrapped chip keeps its own padding and
-   rounded ends. */
+   segment wider than the column. A chip that breaks keeps its padding and rounded ends
+   at its two ends only (slice): Chrome chooses a break without the padding a cloned
+   chip repeats there, so a cloned chip's background could run past the column. */
 .prose :is(p, ul, ol, h2, h3, h4):not(.prose-toc *) {
   container-type: inline-size;
 }
@@ -543,8 +544,6 @@ a.doc-card:hover {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
   font-size: 0.86em;
   overflow-wrap: anywhere;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
 }
 
 /* A table's first column names things (parameters, components): keep each name
@@ -659,17 +658,16 @@ a.doc-card:hover {
    where every table fits without them, no chip breaks before a short last part either
    (LiquidGlassEngineering.Wpf stays whole). Below it those breaks let three tables fit at
    a few widths where they would otherwise scroll (88 widths from 413 to 548 px, listed in
-   chipBreaks), and a wrapped chip's padding stays at its two ends (slice). */
+   chipBreaks), and a wrapped chip's padding stays at its two ends (slice), as in prose;
+   from 768 px up each line of a wrapped chip keeps its own padding and rounded ends. */
 @media (min-width: 768px) {
+  .prose :is(td, th) > code {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
   .prose :is(td, th) > code > wbr.chip-tail {
     display: none;
-  }
-}
-
-@media (max-width: 767.98px) {
-  .prose :is(td, th) > code {
-    -webkit-box-decoration-break: slice;
-    box-decoration-break: slice;
   }
 }
 
