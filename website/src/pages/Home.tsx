@@ -1,4 +1,4 @@
-import { Suspense, useRef } from "react";
+import { Suspense, useRef, useState } from "react";
 import screens from "../generated/screens.json";
 import { Link, REPO_URL } from "../router";
 import { Glass, GlassStage } from "../glass/react";
@@ -117,13 +117,20 @@ const CTA_WALLPAPER = { light: pick("ocean"), dark: pick("midnight") };
 function CallToAction() {
   const { theme, mounted } = useTheme();
   const name = CTA_WALLPAPER[theme];
+  // The wallpaper on screen: after a theme switch the new one takes over once it has
+  // loaded and its cross-fade passes the midpoint (onBackdrop), and the nav bar over the
+  // stage changes palette in that frame, as over the hero. Before the stage draws one,
+  // the CSS fallback shows the theme's.
+  const [shown, setShown] = useState<WallpaperName | null>(null);
+  const visible = mounted ? (shown ?? name) : null;
   return (
     <section className="section cta" aria-labelledby="cta-title">
       <GlassStage
         backdrop={mounted ? { kind: "wallpaper", name } : null}
         appearance={theme}
         className="cta__stage"
-        navTone={mounted ? wallpaperTone(name) : undefined}
+        onBackdrop={(spec) => spec.kind === "wallpaper" && setShown(spec.name)}
+        navTone={visible ? wallpaperTone(visible) : undefined}
         fallback={<WallpaperFallback light={CTA_WALLPAPER.light} dark={CTA_WALLPAPER.dark} />}
       >
         <Glass className="cta__card" material="regular" radius={40} interactive enterDelay={80}>
