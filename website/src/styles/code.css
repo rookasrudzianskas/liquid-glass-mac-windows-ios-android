@@ -118,17 +118,127 @@
   white-space: nowrap;
 }
 
-/* A name (a package, host or plugin ID with breaks of its own: Code.tsx wrapLine) is an
-   inline block no wider than the line, so the line breaks before it and it moves to the
-   next line whole; only a name wider than the line wraps inside, between its parts
-   (inline blocks too, up to an "@" or before a ".") and then at the hyphens of a part
-   still wider than the line. Text-only CSS: the prerendered page wraps as the hydrated
-   one does, at every width. */
-.code--wrap :is(.code__name, .code__part) {
-  display: inline-block;
-  max-width: 100%;
-  text-indent: 0;
+/* The indentation and the character after it do not wrap, so no row holds only the
+   indentation (a word too long for the first row is cut there instead). */
+.code--wrap .code__lead {
+  white-space: pre;
 }
+
+/* A name (a package, host or plugin ID with breaks of its own: Code.tsx wrapLine) moves
+   to the next row whole, and wraps inside only when it is wider than a row: data-k is
+   the columns it takes on a wrapped row of its own, and while the snippet's text is at
+   least that wide (a container query in ch, which the monospaced font makes exact) the
+   name does not wrap and the <wbr>s between its parts are off; in a narrower snippet it
+   breaks between its parts, each part with a hyphen kept whole the same way while it
+   fits, and then at the hyphens of a part that does not. Every wrapper is an inline span,
+   so each row starts where the line's hanging indent puts it and find in page matches
+   across them; the prerendered page wraps as the hydrated one does, at every width. The
+   rules cover 4 to 100 columns, the widest a snippet's text gets (at 320 px it is 25). */
+.code--wrap pre {
+  container-type: inline-size;
+}
+
+.code--wrap wbr {
+  display: var(--code-hold, inline);
+}
+
+@container (width >= 4ch) { .code--wrap [data-k="4"] { white-space: pre; --code-hold: none; } }
+@container (width >= 5ch) { .code--wrap [data-k="5"] { white-space: pre; --code-hold: none; } }
+@container (width >= 6ch) { .code--wrap [data-k="6"] { white-space: pre; --code-hold: none; } }
+@container (width >= 7ch) { .code--wrap [data-k="7"] { white-space: pre; --code-hold: none; } }
+@container (width >= 8ch) { .code--wrap [data-k="8"] { white-space: pre; --code-hold: none; } }
+@container (width >= 9ch) { .code--wrap [data-k="9"] { white-space: pre; --code-hold: none; } }
+@container (width >= 10ch) { .code--wrap [data-k="10"] { white-space: pre; --code-hold: none; } }
+@container (width >= 11ch) { .code--wrap [data-k="11"] { white-space: pre; --code-hold: none; } }
+@container (width >= 12ch) { .code--wrap [data-k="12"] { white-space: pre; --code-hold: none; } }
+@container (width >= 13ch) { .code--wrap [data-k="13"] { white-space: pre; --code-hold: none; } }
+@container (width >= 14ch) { .code--wrap [data-k="14"] { white-space: pre; --code-hold: none; } }
+@container (width >= 15ch) { .code--wrap [data-k="15"] { white-space: pre; --code-hold: none; } }
+@container (width >= 16ch) { .code--wrap [data-k="16"] { white-space: pre; --code-hold: none; } }
+@container (width >= 17ch) { .code--wrap [data-k="17"] { white-space: pre; --code-hold: none; } }
+@container (width >= 18ch) { .code--wrap [data-k="18"] { white-space: pre; --code-hold: none; } }
+@container (width >= 19ch) { .code--wrap [data-k="19"] { white-space: pre; --code-hold: none; } }
+@container (width >= 20ch) { .code--wrap [data-k="20"] { white-space: pre; --code-hold: none; } }
+@container (width >= 21ch) { .code--wrap [data-k="21"] { white-space: pre; --code-hold: none; } }
+@container (width >= 22ch) { .code--wrap [data-k="22"] { white-space: pre; --code-hold: none; } }
+@container (width >= 23ch) { .code--wrap [data-k="23"] { white-space: pre; --code-hold: none; } }
+@container (width >= 24ch) { .code--wrap [data-k="24"] { white-space: pre; --code-hold: none; } }
+@container (width >= 25ch) { .code--wrap [data-k="25"] { white-space: pre; --code-hold: none; } }
+@container (width >= 26ch) { .code--wrap [data-k="26"] { white-space: pre; --code-hold: none; } }
+@container (width >= 27ch) { .code--wrap [data-k="27"] { white-space: pre; --code-hold: none; } }
+@container (width >= 28ch) { .code--wrap [data-k="28"] { white-space: pre; --code-hold: none; } }
+@container (width >= 29ch) { .code--wrap [data-k="29"] { white-space: pre; --code-hold: none; } }
+@container (width >= 30ch) { .code--wrap [data-k="30"] { white-space: pre; --code-hold: none; } }
+@container (width >= 31ch) { .code--wrap [data-k="31"] { white-space: pre; --code-hold: none; } }
+@container (width >= 32ch) { .code--wrap [data-k="32"] { white-space: pre; --code-hold: none; } }
+@container (width >= 33ch) { .code--wrap [data-k="33"] { white-space: pre; --code-hold: none; } }
+@container (width >= 34ch) { .code--wrap [data-k="34"] { white-space: pre; --code-hold: none; } }
+@container (width >= 35ch) { .code--wrap [data-k="35"] { white-space: pre; --code-hold: none; } }
+@container (width >= 36ch) { .code--wrap [data-k="36"] { white-space: pre; --code-hold: none; } }
+@container (width >= 37ch) { .code--wrap [data-k="37"] { white-space: pre; --code-hold: none; } }
+@container (width >= 38ch) { .code--wrap [data-k="38"] { white-space: pre; --code-hold: none; } }
+@container (width >= 39ch) { .code--wrap [data-k="39"] { white-space: pre; --code-hold: none; } }
+@container (width >= 40ch) { .code--wrap [data-k="40"] { white-space: pre; --code-hold: none; } }
+@container (width >= 41ch) { .code--wrap [data-k="41"] { white-space: pre; --code-hold: none; } }
+@container (width >= 42ch) { .code--wrap [data-k="42"] { white-space: pre; --code-hold: none; } }
+@container (width >= 43ch) { .code--wrap [data-k="43"] { white-space: pre; --code-hold: none; } }
+@container (width >= 44ch) { .code--wrap [data-k="44"] { white-space: pre; --code-hold: none; } }
+@container (width >= 45ch) { .code--wrap [data-k="45"] { white-space: pre; --code-hold: none; } }
+@container (width >= 46ch) { .code--wrap [data-k="46"] { white-space: pre; --code-hold: none; } }
+@container (width >= 47ch) { .code--wrap [data-k="47"] { white-space: pre; --code-hold: none; } }
+@container (width >= 48ch) { .code--wrap [data-k="48"] { white-space: pre; --code-hold: none; } }
+@container (width >= 49ch) { .code--wrap [data-k="49"] { white-space: pre; --code-hold: none; } }
+@container (width >= 50ch) { .code--wrap [data-k="50"] { white-space: pre; --code-hold: none; } }
+@container (width >= 51ch) { .code--wrap [data-k="51"] { white-space: pre; --code-hold: none; } }
+@container (width >= 52ch) { .code--wrap [data-k="52"] { white-space: pre; --code-hold: none; } }
+@container (width >= 53ch) { .code--wrap [data-k="53"] { white-space: pre; --code-hold: none; } }
+@container (width >= 54ch) { .code--wrap [data-k="54"] { white-space: pre; --code-hold: none; } }
+@container (width >= 55ch) { .code--wrap [data-k="55"] { white-space: pre; --code-hold: none; } }
+@container (width >= 56ch) { .code--wrap [data-k="56"] { white-space: pre; --code-hold: none; } }
+@container (width >= 57ch) { .code--wrap [data-k="57"] { white-space: pre; --code-hold: none; } }
+@container (width >= 58ch) { .code--wrap [data-k="58"] { white-space: pre; --code-hold: none; } }
+@container (width >= 59ch) { .code--wrap [data-k="59"] { white-space: pre; --code-hold: none; } }
+@container (width >= 60ch) { .code--wrap [data-k="60"] { white-space: pre; --code-hold: none; } }
+@container (width >= 61ch) { .code--wrap [data-k="61"] { white-space: pre; --code-hold: none; } }
+@container (width >= 62ch) { .code--wrap [data-k="62"] { white-space: pre; --code-hold: none; } }
+@container (width >= 63ch) { .code--wrap [data-k="63"] { white-space: pre; --code-hold: none; } }
+@container (width >= 64ch) { .code--wrap [data-k="64"] { white-space: pre; --code-hold: none; } }
+@container (width >= 65ch) { .code--wrap [data-k="65"] { white-space: pre; --code-hold: none; } }
+@container (width >= 66ch) { .code--wrap [data-k="66"] { white-space: pre; --code-hold: none; } }
+@container (width >= 67ch) { .code--wrap [data-k="67"] { white-space: pre; --code-hold: none; } }
+@container (width >= 68ch) { .code--wrap [data-k="68"] { white-space: pre; --code-hold: none; } }
+@container (width >= 69ch) { .code--wrap [data-k="69"] { white-space: pre; --code-hold: none; } }
+@container (width >= 70ch) { .code--wrap [data-k="70"] { white-space: pre; --code-hold: none; } }
+@container (width >= 71ch) { .code--wrap [data-k="71"] { white-space: pre; --code-hold: none; } }
+@container (width >= 72ch) { .code--wrap [data-k="72"] { white-space: pre; --code-hold: none; } }
+@container (width >= 73ch) { .code--wrap [data-k="73"] { white-space: pre; --code-hold: none; } }
+@container (width >= 74ch) { .code--wrap [data-k="74"] { white-space: pre; --code-hold: none; } }
+@container (width >= 75ch) { .code--wrap [data-k="75"] { white-space: pre; --code-hold: none; } }
+@container (width >= 76ch) { .code--wrap [data-k="76"] { white-space: pre; --code-hold: none; } }
+@container (width >= 77ch) { .code--wrap [data-k="77"] { white-space: pre; --code-hold: none; } }
+@container (width >= 78ch) { .code--wrap [data-k="78"] { white-space: pre; --code-hold: none; } }
+@container (width >= 79ch) { .code--wrap [data-k="79"] { white-space: pre; --code-hold: none; } }
+@container (width >= 80ch) { .code--wrap [data-k="80"] { white-space: pre; --code-hold: none; } }
+@container (width >= 81ch) { .code--wrap [data-k="81"] { white-space: pre; --code-hold: none; } }
+@container (width >= 82ch) { .code--wrap [data-k="82"] { white-space: pre; --code-hold: none; } }
+@container (width >= 83ch) { .code--wrap [data-k="83"] { white-space: pre; --code-hold: none; } }
+@container (width >= 84ch) { .code--wrap [data-k="84"] { white-space: pre; --code-hold: none; } }
+@container (width >= 85ch) { .code--wrap [data-k="85"] { white-space: pre; --code-hold: none; } }
+@container (width >= 86ch) { .code--wrap [data-k="86"] { white-space: pre; --code-hold: none; } }
+@container (width >= 87ch) { .code--wrap [data-k="87"] { white-space: pre; --code-hold: none; } }
+@container (width >= 88ch) { .code--wrap [data-k="88"] { white-space: pre; --code-hold: none; } }
+@container (width >= 89ch) { .code--wrap [data-k="89"] { white-space: pre; --code-hold: none; } }
+@container (width >= 90ch) { .code--wrap [data-k="90"] { white-space: pre; --code-hold: none; } }
+@container (width >= 91ch) { .code--wrap [data-k="91"] { white-space: pre; --code-hold: none; } }
+@container (width >= 92ch) { .code--wrap [data-k="92"] { white-space: pre; --code-hold: none; } }
+@container (width >= 93ch) { .code--wrap [data-k="93"] { white-space: pre; --code-hold: none; } }
+@container (width >= 94ch) { .code--wrap [data-k="94"] { white-space: pre; --code-hold: none; } }
+@container (width >= 95ch) { .code--wrap [data-k="95"] { white-space: pre; --code-hold: none; } }
+@container (width >= 96ch) { .code--wrap [data-k="96"] { white-space: pre; --code-hold: none; } }
+@container (width >= 97ch) { .code--wrap [data-k="97"] { white-space: pre; --code-hold: none; } }
+@container (width >= 98ch) { .code--wrap [data-k="98"] { white-space: pre; --code-hold: none; } }
+@container (width >= 99ch) { .code--wrap [data-k="99"] { white-space: pre; --code-hold: none; } }
+@container (width >= 100ch) { .code--wrap [data-k="100"] { white-space: pre; --code-hold: none; } }
 
 .code__caption {
   padding: 10px 16px 12px;
