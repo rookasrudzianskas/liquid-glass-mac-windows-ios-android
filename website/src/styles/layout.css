@@ -45,13 +45,27 @@
   --fg-3: var(--nav-fg-3);
 }
 
-/* A change of palette (the tone under the bar, or the theme) is a step: the fill and
-   every label change in the same frame. A cross-fade between the palettes passes through
-   greys over which no label holds 4.5:1 (midway the links reach 2.0:1 at best, with the
-   label colour switched where both palettes do equally well), so only the hover pills
-   fade, holding more contrast on the way than at rest. */
+/* A change of palette (the tone under the bar, or the theme) is a step: the fill, every
+   label and every pill change in the same frame. A cross-fade between the palettes passes
+   through greys over which no label holds 4.5:1 (midway the links reach 2.0:1 at best,
+   with the label colour switched where both palettes do equally well). A pill is the
+   palette's label colour at a strength (--nav-pill), and only the strength fades, as the
+   pointer enters or leaves an item or the current page changes, so the resting Search
+   pill and the current page's pill take the new palette's colour in the frame the bar
+   does, and a hovered pill holds more contrast on the way than at rest. */
+@property --nav-pill {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
 .nav :is(.nav__link, .nav__search, .icon-button, .nav__sheet-link) {
-  transition: background-color 0.2s;
+  background: color-mix(in srgb, var(--fg) var(--nav-pill), transparent);
+  transition: --nav-pill 0.2s;
+}
+
+.nav .icon-button:hover {
+  --nav-pill: 7%;
 }
 
 [data-theme="dark"] .nav:not([data-tone="light"]) .nav__bar,
@@ -105,15 +119,12 @@
   color: var(--fg-2);
   font-size: 15px;
   font-weight: 540;
-  transition:
-    color 0.2s,
-    background-color 0.2s;
 }
 
 .nav__link:hover {
   color: var(--fg);
   text-decoration: none;
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  --nav-pill: 6%;
 }
 
 /* The current page's item is heavier and on a denser pill than a hovered one, in either
@@ -131,7 +142,7 @@
 .nav__link[data-active] {
   color: var(--fg);
   font-weight: 660;
-  background: color-mix(in srgb, var(--fg) 13%, transparent);
+  --nav-pill: 13%;
 }
 
 .nav__actions {
@@ -149,15 +160,14 @@
   margin-right: 4px;
   border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  --nav-pill: 6%;
   color: var(--fg-3);
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
 .nav__search:hover {
-  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  --nav-pill: 10%;
   color: var(--fg-2);
 }
 
@@ -201,13 +211,13 @@
 }
 
 .nav__sheet-link:hover {
-  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  --nav-pill: 7%;
   text-decoration: none;
 }
 
 .nav__sheet-link[data-active] {
   font-weight: 720;
-  background: color-mix(in srgb, var(--fg) 13%, transparent);
+  --nav-pill: 13%;
 }
 
 .theme-menu {
@@ -275,7 +285,7 @@
     padding: 0;
     justify-content: center;
     margin-right: 0;
-    background: transparent;
+    --nav-pill: 0%;
     color: var(--fg-2);
   }
 }
