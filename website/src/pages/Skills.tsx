@@ -1,7 +1,7 @@
 import skillsData from "../generated/skills.json";
 import downloads from "../generated/downloads.json";
 import code from "../generated/code.json";
-import { CodeBlock } from "../components/Code";
+import { CodeBlock, InlineCode } from "../components/Code";
 import type { Highlighted } from "../components/Code";
 import { REPO_URL } from "../router";
 import type { Head } from "../router";
@@ -75,7 +75,7 @@ export default function Skills() {
                 <BookIcon size={18} /> Copy the folders
               </h3>
               <p className="install-card__body">
-                Unzip the skills into <code>~/.claude/skills/</code> for Claude Code, or <code>~/.agents/skills/</code> for OpenAI Codex and other Agent Skills tools. Project-level folders work too.
+                Unzip the skills into <InlineCode text="~/.claude/skills/" /> for Claude Code, or <InlineCode text="~/.agents/skills/" /> for OpenAI Codex and other Agent Skills tools. Project-level folders work too.
               </p>
               {samples.skillsManual ? <CodeBlock sample={samples.skillsManual} title="Terminal" wrap /> : null}
             </article>
@@ -134,7 +134,7 @@ export default function Skills() {
             Docs for language models
           </h2>
           <p className="install-card__body">
-            The documentation is also published as plain text for agents that read it directly: <a href="/llms.txt">/llms.txt</a> is an index, <a href="/llms-full.txt">/llms-full.txt</a> holds every page, and each doc has a Markdown twin at <code>/docs/&lt;page&gt;.md</code>.
+            The documentation is also published as plain text for agents that read it directly: <a href="/llms.txt">/llms.txt</a> is an index, <a href="/llms-full.txt">/llms-full.txt</a> holds every page, and each doc has a Markdown twin at <InlineCode text="/docs/<page>.md" />.
             {data.hasAgentsMd ? (
               <>
                 {" "}

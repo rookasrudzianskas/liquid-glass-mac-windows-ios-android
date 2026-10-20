@@ -228,6 +228,88 @@ export function CodeBlock({ sample, title, caption, className, wrap = false }: {
   );
 }
 
+/**
+ * Where inline code in prose (a URL, a path, a call, a coordinate) may break besides its
+ * spaces and hyphens, as indices of the characters a break follows: after a slash between
+ * two other characters (a URL's "://" included), after a colon or a dot between a name
+ * and a letter or digit, and after an opening parenthesis with something in it. So
+ * overflow-wrap: anywhere cuts only a segment wider than the column. A short XML prefix
+ * (<lg:) keeps its name.
+ */
+function inlineBreaks(c: string[]) {
+  const at = new Set<number>();
+  const name = (ch: string | undefined) => word(ch) || ch === "_";
+  for (let i = 1; i < c.length - 1; i++) {
+    const [prev, ch, next] = [c[i - 1], c[i], c[i + 1]];
+    if (space(prev) || space(next)) continue;
+    if (ch === "/" ? next !== "/" : ch === "(" ? name(prev) && next !== ")" : ch === "." ? (name(prev) || prev === ")") && /[A-Za-z_]/.test(next ?? "") : ch === ":" && (name(prev) || prev === ")") && name(next)) {
+      // <lg:Name and x:Name: the prefix stays with the name.
+      if (ch === ":" && /(^|[\s<{])[A-Za-z]{1,3}$/.test(c.slice(Math.max(0, i - 5), i).join(""))) continue;
+      at.add(i);
+    }
+  }
+  return at;
+}
+
+/** HTML-escaped inline code text with a <wbr> at each of its breaks (inlineBreaks). */
+export function inlineCodeHtml(escaped: string) {
+  const units = escaped.match(UNITS) ?? [];
+  const at = inlineBreaks(units.map(decode));
+  return units.map((u, i) => (at.has(i) ? `${u}<wbr>` : u)).join("");
+}
+
+/** The length in characters of HTML-escaped text without its tags, spaces trimmed. */
+const textLength = (html: string) => (html.replace(/<[^>]*>/g, "").trim().match(UNITS) ?? []).length;
+
+/**
+ * A table's code chip without the breaks content.mjs marks that would leave a prefix of
+ * four characters or fewer alone on a line ("<lg:" before GlassToolbarSpacer, "min"
+ * before its argument list); a break before a short last part ("Wpf" after
+ * LiquidGlassEngineering.) is a wbr.chip-tail, which only a phone-width column uses
+ * (docs.css), where without it a table would no longer fit.
+ */
+function chipBreaks(inner: string) {
+  const parts = inner.split("<wbr>");
+  return parts.reduce((out, part, i) => {
+    if (i === 0) return part;
+    if (textLength(out) <= 4) return out + part;
+    return `${out}${textLength(parts.slice(i).join("")) <= 4 ? '<wbr class="chip-tail">' : "<wbr>"}${part}`;
+  }, "");
+}
+
+/**
+ * Prose HTML with breaks in its inline code (inlineCodeHtml) outside code blocks and
+ * tables, and after the slash between two chips (UIViewRepresentable/NSViewRepresentable),
+ * and in tables (whose code content.mjs marks) without a break that leaves a short
+ * fragment alone on a line (chipBreaks). Text-only: what a selection copies is unchanged.
+ */
+export function proseCodeBreaks(html: string) {
+  return html
+    .split(/(<table[\s\S]*?<\/table>|<pre[\s\S]*?<\/pre>)/)
+    .map((part, i) =>
+      i % 2
+        ? part.startsWith("<table")
+          ? part.replace(/<code>((?:[^<]|<wbr>)*)<\/code>/g, (_m, inner: string) => `<code>${chipBreaks(inner)}</code>`)
+          : part
+        : part.replace(/<code>([^<]*)<\/code>/g, (_m, text: string) => `<code>${inlineCodeHtml(text)}</code>`).replaceAll("</code>/<code>", "</code>/<wbr><code>"),
+    )
+    .join("");
+}
+
+/** Inline code with a break opportunity (<wbr>) at each of its breaks (inlineBreaks). */
+export function InlineCode({ text }: { text: string }) {
+  const chars = [...text];
+  const at = inlineBreaks(chars);
+  const parts: ReactNode[] = [];
+  let from = 0;
+  for (const i of [...at].sort((a, b) => a - b)) {
+    parts.push(chars.slice(from, i + 1).join(""), <wbr key={i} />);
+    from = i + 1;
+  }
+  parts.push(chars.slice(from).join(""));
+  return <code>{parts}</code>;
+}
+
 /** A one-line command with a copy button. */
 export function Command({ children, text }: { children?: ReactNode; text: string }) {
   return (

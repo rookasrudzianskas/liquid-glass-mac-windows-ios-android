@@ -1,7 +1,7 @@
 import downloads from "../generated/downloads.json";
 import code from "../generated/code.json";
 import packages from "../generated/packages.json";
-import { CodeBlock, CopyButton } from "../components/Code";
+import { CodeBlock, CopyButton, InlineCode } from "../components/Code";
 import type { Highlighted } from "../components/Code";
 import { Link, REPO_URL, SITE_URL } from "../router";
 import type { Head } from "../router";
@@ -95,7 +95,7 @@ const PLATFORMS = [
     install: [{ key: "spm", title: "Package.swift" }],
     note: (
       <>
-        In Xcode: <strong>File › Add Package Dependencies…</strong>, paste <code>{REPO_URL}</code> and choose <strong>Up to Next Major</strong> from {packages.version}.
+        In Xcode: <strong>File › Add Package Dependencies…</strong>, paste <InlineCode text={REPO_URL} /> and choose <strong>Up to Next Major</strong> from {packages.version}.
       </>
     ),
   },
@@ -110,8 +110,8 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        JitPack also serves the library, built from the {packages.version} release tag: add <code>maven(&quot;https://jitpack.io&quot;)</code> and depend on{" "}
-        <code>com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:{packages.version}</code>. JitPack builds each version on its first request, which can take a few
+        JitPack also serves the library, built from the {packages.version} release tag: add <InlineCode text={'maven("https://jitpack.io")'} /> and depend on{" "}
+        <InlineCode text={`com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:${packages.version}`} />. JitPack builds each version on its first request, which can take a few
         minutes.
       </>
     ),
@@ -127,7 +127,7 @@ const PLATFORMS = [
     ],
     note: (
       <>
-        Or download both <code>.nupkg</code> files below (the WPF package depends on <code>{nugetCore}</code>) into one folder and add that folder as a local package source.
+        Or download both <code>.nupkg</code> files below (the WPF package depends on <InlineCode text={nugetCore} />) into one folder and add that folder as a local package source.
       </>
     ),
   },
@@ -234,7 +234,7 @@ export default function Downloads() {
 
         {!anyAvailable ? <p className="dl-note">Builds are published here as each platform is released.</p> : null}
         <p className="dl-feeds">
-          Package feeds: Maven <code>{SITE_URL}/maven</code> · NuGet <code>{SITE_URL}/nuget/index.json</code>
+          Package feeds: Maven <InlineCode text={`${SITE_URL}/maven`} /> · NuGet <InlineCode text={`${SITE_URL}/nuget/index.json`} />
         </p>
       </div>
     </div>

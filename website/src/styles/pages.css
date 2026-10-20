@@ -123,6 +123,8 @@
   background: color-mix(in srgb, var(--fg) 7%, transparent);
   font-size: 0.86em;
   overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .dl-list {

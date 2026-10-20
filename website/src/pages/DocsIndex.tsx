@@ -2,6 +2,7 @@ import { Link } from "../router";
 import type { Head } from "../router";
 import { EXAMPLES, EXAMPLES_SUMMARY, groupedDocs, hasDoc } from "../docs";
 import { DocsSidebar } from "./Doc";
+import { InlineCode } from "../components/Code";
 import { ArrowRightIcon, BookIcon, GitHubIcon, LaptopIcon, AndroidIcon, WindowIcon, TerminalIcon } from "../components/Icons";
 
 const PLATFORM_CARDS = [
@@ -93,7 +94,7 @@ export default function DocsIndex() {
                   <span>
                     <span className="doc-list__title">{e.title}</span>
                     <span className="doc-list__desc">
-                      <code>{e.path}</code> · {e.platform}
+                      <InlineCode text={e.path} /> · {e.platform}
                     </span>
                   </span>
                 </a>

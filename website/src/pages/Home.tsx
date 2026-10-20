@@ -6,6 +6,7 @@ import { wallpaperNames, wallpaperTone } from "../glass/backdrop";
 import type { WallpaperName } from "../glass/backdrop";
 import { useTheme } from "../theme";
 import { Static } from "../components/Static";
+import { InlineCode } from "../components/Code";
 import { docHref } from "../docs";
 import type { Head } from "../router";
 import { Hero, WallpaperFallback } from "./home/Hero";
@@ -226,7 +227,7 @@ export default function Home() {
             <div>
               <h3 className="vectors__title">Tested against golden vectors</h3>
               <p className="vectors__body">
-                Every port reproduces <code>spec/vectors.json</code> in its unit tests: within 1e-4 on the CPU and 2e-3 for values read back from the GPU. The live glass on this page runs the canonical GLSL library unchanged.
+                Every port reproduces <InlineCode text="spec/vectors.json" /> in its unit tests: within 1e-4 on the CPU and 2e-3 for values read back from the GPU. The live glass on this page runs the canonical GLSL library unchanged.
               </p>
             </div>
             <div className="vectors__links">

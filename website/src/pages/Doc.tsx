@@ -4,7 +4,7 @@ import { Link, handleLinkClick, useRouter } from "../router";
 import type { Head, PageProps } from "../router";
 import { EXAMPLES, docs, groupedDocs } from "../docs";
 import type { DocPage } from "../docs";
-import { copyText } from "../components/Code";
+import { copyText, proseCodeBreaks } from "../components/Code";
 import { ArrowRightIcon, ChevronDownIcon, GitHubIcon } from "../components/Icons";
 import { useScrollRegions } from "../lib/scroll-regions";
 
@@ -131,6 +131,8 @@ export default function Doc({ data }: PageProps<Data>) {
   const { doc } = data;
   const { navigate } = useRouter();
   const ids = useMemo(() => doc.toc.map((t) => t.id), [doc]);
+  // Inline code breaks after a slash, colon, dot or parenthesis rather than inside a word.
+  const html = useMemo(() => proseCodeBreaks(doc.html), [doc]);
   const active = useActiveHeading(ids);
   const index = docs.findIndex((d) => d.slug === doc.slug);
   const prev = index > 0 ? docs[index - 1] : undefined;
@@ -226,7 +228,7 @@ export default function Doc({ data }: PageProps<Data>) {
         </header>
         {/* Rendered at build time from the repository's Markdown. */}
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div ref={proseRef} className="prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: doc.html }} />
+        <div ref={proseRef} className="prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: html }} />
         <nav className="docs__pager" aria-label="Previous and next">
           {prev ? (
             <Link href={`/docs/${prev.slug}`} className="docs__pager-link">

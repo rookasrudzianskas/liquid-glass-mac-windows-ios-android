@@ -528,12 +528,17 @@ a.doc-card:hover {
   font-weight: 680;
 }
 
+/* Inline code breaks at the <wbr>s after its slashes, colons, dots and parentheses
+   (Code.tsx proseCodeBreaks); overflow-wrap only cuts a segment wider than the column.
+   Each line of a wrapped chip keeps its own padding and rounded ends. */
 .prose :not(pre) > code {
   padding: 0.14em 0.4em;
   border-radius: 6px;
   background: color-mix(in srgb, var(--fg) 7%, transparent);
   font-size: 0.86em;
   overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 /* A table's first column names things (parameters, components): keep each name
@@ -642,6 +647,40 @@ a.doc-card:hover {
 
 .prose :is(td, th) > code {
   overflow-wrap: normal;
+}
+
+/* No chip leaves a fragment like "<lg:" on a line (Code.tsx chipBreaks). From 768 px up,
+   where every table fits without them, no chip breaks before a short last part either
+   (LiquidGlassEngineering.Wpf stays whole); below it, where those breaks and a wrapped
+   chip's edges decide whether a table fits, its padding stays at its two ends (slice). */
+@media (min-width: 768px) {
+  .prose :is(td, th) > code > wbr.chip-tail {
+    display: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .prose :is(td, th) > code {
+    -webkit-box-decoration-break: slice;
+    box-decoration-break: slice;
+  }
+}
+
+/* A table of four or more columns is set a size smaller with tighter chips, so the names
+   in a port matrix (a concept and its name on each platform) stay whole, and the
+   matrix's first column of text keeps 8em, enough for its labels to take at most three
+   lines, while the Concepts table in COMPONENTS.md still fits beside the table of
+   contents at 1280 px. */
+.prose table:has(thead th:nth-child(4)) {
+  font-size: 13.5px;
+}
+
+.prose table:has(thead th:nth-child(4)) :is(td, th) > code {
+  padding-inline: 0.3em;
+}
+
+.prose table:has(thead th:nth-child(4)):has(tbody td:nth-child(4) > code) td:first-child:not(:has(> code)) {
+  min-width: 8em;
 }
 
 .prose tr:last-child td {
