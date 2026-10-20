@@ -372,6 +372,13 @@ a.doc-card:hover {
   text-decoration: none;
 }
 
+/* The text beside the icon takes the rest of the row, so its description, the container
+   an example's path measures (Code.tsx InlineCode, code.css), spans the row: an
+   inline-size container takes no width from its text. */
+.doc-list__item > span {
+  flex: 1;
+}
+
 .doc-list__title {
   display: block;
   font-weight: 650;
@@ -382,6 +389,7 @@ a.doc-card:hover {
   margin-top: 2px;
   font-size: 15px;
   color: var(--fg-3);
+  container-type: inline-size;
 }
 
 /* Prose: rendered Markdown */
