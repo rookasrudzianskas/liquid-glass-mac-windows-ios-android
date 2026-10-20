@@ -10,18 +10,35 @@ export type Tone = "light" | "dark";
 export type NavTone = Tone | "none";
 
 const sources = new Map<Element, Tone>();
+// Stages that have unregistered: one that is unmounting is still in the document while
+// its layout effects clean up, with its data-nav-tone.
+const gone = new WeakSet<Element>();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 
 /** Register `el` as showing `tone`; returns the unregister function. */
 export function registerNavTone(el: Element, tone: Tone) {
   sources.set(el, tone);
+  gone.delete(el);
   emit();
   return () => {
-    if (sources.get(el) === tone) sources.delete(el);
+    if (sources.get(el) === tone) {
+      sources.delete(el);
+      gone.add(el);
+    }
     emit();
   };
 }
+
+/**
+ * Before the app hydrates, keeps the nav bar's palette on the stage under it as
+ * useNavTone does afterwards (a <script> in the prerendered head: head.ts). A stage
+ * carries its tone in data-nav-tone (GlassStage) from the prerendered page on, and a
+ * scroll, a layout change (where a link to a fragment lands) or the end of parsing
+ * measures them; useNavTone stops it (window.lgNavToneStop) when it takes over. The
+ * attribute is only set while a stage is under the bar.
+ */
+export const NAV_TONE_BOOT = `(function(){function u(){var h=document.querySelector(".nav"),b=h&&h.querySelector(".nav__bar");if(!b)return;var q=b.getBoundingClientRect(),y=Math.round(q.height?q.top+q.height/2:36),t="",s=document.querySelectorAll("[data-nav-tone]");for(var i=0;i<s.length;i++){var r=s[i].getBoundingClientRect();if((r.width||r.height)&&r.top<=y+1&&r.bottom>=y)t=s[i].getAttribute("data-nav-tone")}if(t){if(h.getAttribute("data-tone")!==t)h.setAttribute("data-tone",t)}else if(h.hasAttribute("data-tone"))h.removeAttribute("data-tone")}var o=typeof ResizeObserver=="function"?new ResizeObserver(u):null;if(o)o.observe(document.documentElement);addEventListener("scroll",u,{passive:true});document.addEventListener("DOMContentLoaded",u);window.lgNavToneStop=function(){if(o)o.disconnect();removeEventListener("scroll",u);document.removeEventListener("DOMContentLoaded",u)}})();`;
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -36,9 +53,8 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
  * (none on most pages, three rectangles on the home page) in its scroll event, which
  * runs before the frame that shows the new position paints; an IntersectionObserver whose
  * root is shrunk to the one-pixel line catches a stage edge that crosses it without a
- * scroll (a layout change above it), in the next frame. The prerendered nav carries no
- * tone, so the theme's palette shows until the first measurement, which runs as the page
- * hydrates.
+ * scroll (a layout change above it), in the next frame. Before this runs, as the page
+ * hydrates, NAV_TONE_BOOT does the same for the prerendered page.
  */
 export function useNavTone(nav: RefObject<HTMLElement | null>, bar: RefObject<HTMLElement | null>) {
   useIsoLayoutEffect(() => {
@@ -49,13 +65,19 @@ export function useNavTone(nav: RefObject<HTMLElement | null>, bar: RefObject<HT
     let line = 36;
     let frame = 0;
     // Any overlap with the line, edges included, as the observer counts it; the last
-    // registered stage that covers it wins.
+    // registered stage that covers it wins. A prerendered stage whose Suspense boundary
+    // has not hydrated yet has not registered: its data-nav-tone stands in for it.
+    const covers = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return (r.width || r.height) && r.top <= line + 1 && r.bottom >= line;
+    };
     const update = () => {
       let next: NavTone = "none";
-      for (const [el, tone] of sources) {
-        const r = el.getBoundingClientRect();
-        if ((r.width || r.height) && r.top <= line + 1 && r.bottom >= line) next = tone;
+      for (const el of document.querySelectorAll<HTMLElement>("[data-nav-tone]")) {
+        const tone = el.dataset.navTone;
+        if (!sources.has(el) && !gone.has(el) && (tone === "light" || tone === "dark") && covers(el)) next = tone;
       }
+      for (const [el, tone] of sources) if (covers(el)) next = tone;
       if (header.dataset.tone !== next) header.dataset.tone = next;
     };
     const onFrame = () => {
@@ -88,6 +110,7 @@ export function useNavTone(nav: RefObject<HTMLElement | null>, bar: RefObject<HT
       observed.clear();
       sync();
     };
+    (window as Window & { lgNavToneStop?: () => void }).lgNavToneStop?.();
     build();
     listeners.add(sync);
     // The line's distance from the bottom edge changes with the viewport's height.

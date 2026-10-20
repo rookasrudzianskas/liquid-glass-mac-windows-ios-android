@@ -52,7 +52,10 @@ export interface GlassStageProps {
    * dominates the screen, in the same frame, rather than the one just asked for.
    */
   onBackdrop?: (spec: BackdropSpec) => void;
-  /** The tone of what the stage shows: the nav bar takes its palette while over the stage. */
+  /**
+   * The tone of what the stage shows: the nav bar takes its palette while over the stage
+   * (lib/nav-tone.ts; data-nav-tone carries it in the prerendered page too).
+   */
   navTone?: Tone;
 }
 
@@ -188,7 +191,7 @@ export function GlassStage({ backdrop, appearance, className, style, children, f
   const value = useMemo(() => ({ scene, kind, appearance }), [scene, kind, appearance]);
 
   return (
-    <div ref={rootRef} className={`stage${className ? ` ${className}` : ""}`} style={style} data-renderer={kind}>
+    <div ref={rootRef} className={`stage${className ? ` ${className}` : ""}`} style={style} data-renderer={kind} data-nav-tone={navTone}>
       {fallback}
       <canvas ref={flatRef} className="stage__flat" aria-hidden="true" hidden={kind !== "css"} />
       <canvas ref={canvasRef} className="stage__canvas" aria-hidden="true" />

@@ -1,5 +1,6 @@
 import { SITE_URL } from "./router";
 import type { Head } from "./router";
+import { NAV_TONE_BOOT } from "./lib/nav-tone";
 
 export const SITE_NAME = "Liquid Glass Engineering";
 export const OG_IMAGE = `${SITE_URL}/og.png`;
@@ -10,7 +11,7 @@ export function fullTitle(head: Head) {
 
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Head tags for a prerendered page. */
+/** Head tags for a prerendered page, with the nav bar's palette until the app hydrates (NAV_TONE_BOOT). */
 export function headTags(head: Head) {
   const url = `${SITE_URL}${head.path === "/" ? "/" : head.path}`;
   const title = fullTitle(head);
@@ -32,6 +33,7 @@ export function headTags(head: Head) {
     `<meta name="twitter:title" content="${escape(title)}" />`,
     `<meta name="twitter:description" content="${escape(head.description)}" />`,
     `<meta name="twitter:image" content="${OG_IMAGE}" />`,
+    `<script>${NAV_TONE_BOOT}</script>`,
   ]
     .filter(Boolean)
     .join("\n    ");
