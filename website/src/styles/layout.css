@@ -20,15 +20,19 @@
   border-radius: 999px;
   /* Frosted rather than thinner: what shows through the dense fill is blurred further
      and its colour deepened, a crisp highlight runs along the top edge with a sheen that
-     fades out 14 px down, above every label, and a light inner rim sits inside the
-     hairline (the fill alone keeps every label at 4.5:1 over any pixel, base.css). */
-  background: linear-gradient(to bottom, var(--nav-sheen), transparent 14px) var(--nav-bg);
+     fades out 14 px down, a light inner rim sits inside the hairline, and in the light
+     palette a cool shade rises 14 px from the lower edge, which is darker, so the bar
+     reads as a lens; the sheen and the shade stay above and below every label, and the
+     fill alone keeps every label at 4.5:1 over any pixel (base.css). */
+  background:
+    linear-gradient(to bottom, var(--nav-sheen), transparent 14px),
+    linear-gradient(to top, var(--nav-shade), transparent 14px) var(--nav-bg);
   -webkit-backdrop-filter: blur(32px) saturate(2.4);
   backdrop-filter: blur(32px) saturate(2.4);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(24, 32, 64, 0.08),
     0 0 0 1px var(--line),
     0 10px 30px rgba(0, 0, 0, 0.09);
 }
