@@ -1,0 +1,12 @@
+
+Name                 : Microsoft Hyper-V Video
+DriverVersion        : 10.0.26100.1150
+AdapterRAM           : 
+VideoModeDescription : 1024 x 768 x 4294967296 colors
+
+
+Caption     : Microsoft Windows Server 2025 Datacenter
+Version     : 10.0.26100
+BuildNumber : 26100
+
+screen: {X=0,Y=0,Width=1920,Height=1080}

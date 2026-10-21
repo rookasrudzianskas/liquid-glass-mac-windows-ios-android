@@ -1,0 +1,5 @@
+LiquidGlassStudio-win-arm64.zip: 4767324 bytes, sha256 80024ee350b64e593e2e97a86d44231b81ebf70d391ad818057984ece69cc856
+LiquidGlassStudio-win-x64-self-contained.zip: 60657751 bytes, sha256 2fe9f644ac0f86f4cc67b356fd3f4a302cc603a4ba814655b3b500c04c42bee7
+LiquidGlassStudio-win-x64.zip: 4780254 bytes, sha256 44e13c2c59dcff79b7f8f562998584deb9638e00c24591daa1cf7a358916b3d3
+nuget\LiquidGlassEngineering.Core.1.0.2.nupkg: 63576 bytes, sha256 31f8cb7ba3628eb58d6139a8fddd6db4f5f52f19b70bb60b736c6b0ff8a644f7
+nuget\LiquidGlassEngineering.Wpf.1.0.2.nupkg: 386818 bytes, sha256 c50e739ac1eba2bcad867b899dacf23a8e64b8b941493c8712c3c9889acefeef

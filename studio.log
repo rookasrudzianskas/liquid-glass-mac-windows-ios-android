@@ -1,0 +1,22 @@
+hero-light: 1280x820
+hero-dark: 1280x820
+controls-light: 1280x820
+controls-dark: 1280x820
+materials-light: 1280x820
+materials-dark: 1280x820
+blur-light: 1280x820
+blur-dark: 1280x820
+hero-fallback-light: 1280x820
+controls-fallback-dark: 1280x820
+controls-menu-light: 1280x820; focused 'Sort by name' (button), ExpandCollapse Collapsed -> Expanded; 1 menu with 4 items; 3 element(s) named 'Sort by name'
+controls-menu-dark: 1280x820; focused 'Sort by name' (button), ExpandCollapse Collapsed -> Expanded; 1 menu with 4 items; 3 element(s) named 'Sort by name'
+controls-menu-fallback-dark: 1280x820; focused 'Sort by name' (button), ExpandCollapse Collapsed -> Expanded; 1 menu with 4 items; 3 element(s) named 'Sort by name'
+hero-press-light: 1280x820
+materials-contrast-light: 1280x820; 'Increase contrast' (toggle switch) toggled On
+hero-focus-dark: 1280x820; after the key, focus is on 'Forward' (button)
+hero-first-tab-light: 1280x820; first Tab lands on 'Hero' (list item)
+controls-contrast: contrast theme on (scheme '')
+controls-contrast: 1280x820
+controls-menu-contrast: contrast theme on (scheme 'High Contrast Black')
+controls-menu-contrast: 1280x820; after the key, focus is on 'Name' (menu item)
+

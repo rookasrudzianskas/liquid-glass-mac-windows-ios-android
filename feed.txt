@@ -1,0 +1,21 @@
+feed: https://liquid-glass-engineering.vercel.app/nuget/index.json
+
+LiquidGlassEngineering.Core 1.0.2, packed here from 452addb
+  feed: packed from 452addb, lib/ netstandard2.0
+  here: lib/ netstandard2.0
+  current
+
+LiquidGlassEngineering.Wpf 1.0.2, packed here from 452addb
+  feed: packed from 452addb, lib/ net10.0-windows7.0 net48 net8.0-windows7.0
+  here: lib/ net10.0-windows7.0 net48 net8.0-windows7.0
+  current
+
+Released versions:
+  LiquidGlassEngineering.Core 1.0.0: listed and the released file
+  LiquidGlassEngineering.Wpf 1.0.0: listed and the released file
+  LiquidGlassEngineering.Core 1.0.1: listed and the released file
+  LiquidGlassEngineering.Wpf 1.0.1: listed and the released file
+  LiquidGlassEngineering.Core 1.0.2: listed and the released file
+  LiquidGlassEngineering.Wpf 1.0.2: listed and the released file
+
+The feed serves these packages and every released version.

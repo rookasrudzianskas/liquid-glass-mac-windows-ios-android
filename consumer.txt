@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  Restored D:\a\_temp\consumer\Consumer.csproj (in 376 ms).
+  Consumer -> D:\a\_temp\consumer\bin\Release\net8.0-windows\Consumer.dll
+  Consumer -> D:\a\_temp\consumer\bin\Release\net10.0-windows\Consumer.dll
+  Consumer -> D:\a\_temp\consumer\bin\Release\net48\Consumer.exe
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.47
+net48: runs, shader Precompiled
+net8.0-windows: runs, shader Precompiled
+net10.0-windows: runs, shader Precompiled

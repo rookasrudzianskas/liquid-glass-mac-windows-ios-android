@@ -1,0 +1,6 @@
+LiquidGlassEngineering.Core.1.0.2.nupkg: [Content_Types].xml, icon.png, lib/netstandard2.0/LiquidGlass.Core.dll, lib/netstandard2.0/LiquidGlass.Core.xml, LICENSE, LiquidGlassEngineering.Core.nuspec, NOTICE.md, README.md
+  lib/netstandard2.0/LiquidGlass.Core.dll: embedded PDB, 19 sources under /_/
+LiquidGlassEngineering.Wpf.1.0.2.nupkg: [Content_Types].xml, icon.png, lib/net10.0-windows7.0/LiquidGlass.Wpf.dll, lib/net10.0-windows7.0/LiquidGlass.Wpf.xml, lib/net48/LiquidGlass.Wpf.dll, lib/net48/LiquidGlass.Wpf.xml, lib/net8.0-windows7.0/LiquidGlass.Wpf.dll, lib/net8.0-windows7.0/LiquidGlass.Wpf.xml, LICENSE, LiquidGlassEngineering.Wpf.nuspec, NOTICE.md, README.md
+  lib/net10.0-windows7.0/LiquidGlass.Wpf.dll: embedded PDB, 33 sources under /_/
+  lib/net48/LiquidGlass.Wpf.dll: embedded PDB, 33 sources under /_/
+  lib/net8.0-windows7.0/LiquidGlass.Wpf.dll: embedded PDB, 33 sources under /_/

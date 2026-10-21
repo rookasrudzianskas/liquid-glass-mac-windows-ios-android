@@ -1,0 +1,11 @@
+accessible names present: card 'Hello, Glass', 'Switch appearance', 'Profile', 'Get started', 'Learn more', 'Frosted', 'Sections', 'Home', 'Explore', 'Settings'
+images in the control view: 0, none without a name
+control elements without a name: tool bar (GlassToolbar)
+hello-glass-light: 946x693
+Frosted toggled Off
+hello-glass-clear-light: 946x693
+hello-glass-dark: 946x693
+Get started selects the Explore tab
+Profile selects the Settings tab
+closed with exit code 0
+
