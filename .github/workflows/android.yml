@@ -94,8 +94,10 @@ jobs:
   dependencies:
     name: Dependency graph (${{ matrix.build }})
     # GitHub does not read version catalogs, so each Gradle build (the library with the Studio, and the Hello Glass
-    # example) submits its resolved dependencies to the repository's dependency graph, where Dependabot alerts watch
-    # them. Pushes and manual runs only: a pull request's token cannot write the graph.
+    # example) submits the dependencies its release builds ship with (releaseRuntimeClasspath) to the repository's
+    # dependency graph, where Dependabot alerts watch them. The build toolchain's own classpath (the Android Gradle
+    # plugin and the Kotlin Gradle plugin with their transitive libraries) is not submitted: it never ships, and it is
+    # updated with the toolchain itself. Pushes and manual runs only: a pull request's token cannot write the graph.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -117,6 +119,7 @@ jobs:
           build-root-directory: ${{ matrix.build }}
           cache-provider: basic
           dependency-graph: generate-and-submit
+          dependency-graph-include-configurations: releaseRuntimeClasspath
 
   gpu:
     name: GPU rendering tests (emulator, API ${{ matrix.api-level }})
