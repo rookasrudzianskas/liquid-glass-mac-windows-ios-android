@@ -43,9 +43,25 @@ async function writeIfChanged(file, data) {
 const json = (v) => `${JSON.stringify(v, null, 2)}\n`;
 const toPosix = (p) => p.split(path.sep).join("/");
 const escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/** `text` without its tags (a "<", one or more other characters, the next ">"), removed until none is left. */
+function removeTags(text) {
+  let out = text;
+  let previous;
+  do {
+    previous = out;
+    out = out.replace(/<[^>]+>/g, "");
+  } while (out !== previous);
+  return out;
+}
+/**
+ * The text of HTML, still escaped: removeTags, and every "<" or ">" left over, which opens
+ * or closes no tag (a "<" with no ">" after it, the "<" of "<>", a lone ">"), escaped, so
+ * nothing in it is markup.
+ */
+const htmlText = (html) => removeTags(html).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/** The plain text of HTML (htmlText, its character references decoded): text, escaped wherever it goes back into HTML. */
 const stripTags = (html) =>
-  html
-    .replace(/<[^>]+>/g, "")
+  htmlText(html)
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
@@ -187,10 +203,8 @@ function summarize(text, max = 160) {
 
 function slugify(text) {
   return (
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/<[^>]+>/g, "")
+    removeTags(text.toLowerCase().trim())
+      // Any "<" or ">" removeTags leaves goes here, with every other character that is not a letter, digit, space, _ or -.
       .replace(/[^\p{L}\p{N}\s_-]/gu, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
