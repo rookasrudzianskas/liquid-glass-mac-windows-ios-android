@@ -34,7 +34,8 @@ function code(source: string, lang: Exclude<Lang, "xml">) {
 }
 
 function xml(source: string) {
-  const re = /(<!--[\s\S]*?-->)|(<\/?)([\w:.]+)|([\w:.]+)(=)("[^"]*")|(\/?>)|(\s+)|([^<\s]+)/g;
+  // A comment ends at the first --> or --!>, as an HTML parser ends it.
+  const re = /(<!--[\s\S]*?--!?>)|(<\/?)([\w:.]+)|([\w:.]+)(=)("[^"]*")|(\/?>)|(\s+)|([^<\s]+)/g;
   let out = "";
   let m: RegExpExecArray | null;
   while ((m = re.exec(source))) {
