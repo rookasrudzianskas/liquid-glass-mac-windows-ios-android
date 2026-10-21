@@ -141,6 +141,9 @@ const lineAt = (text, index) => text.slice(0, index).split("\n").length;
 const assemblyOf = (version) => `${version.split("-")[0]}.0`;
 // The release version a place holds (an assembly version 1.0.2.0 stands for 1.0.2).
 const asVersion = (place, value) => (place.kind === "assembly" ? value.replace(/\.0$/, "") : value);
+// A string as a pattern that matches it literally, every metacharacter (the backslash too) escaped: the previous
+// versions looked for below are whatever the places hold, which set mode does not check.
+const escapeRegExp = (s) => s.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
 // Every match of every place: { place, value, line }.
 const found = [];
@@ -264,7 +267,7 @@ for (const file of changed) console.log(`  ${file}`);
 const previous = versionTally.map(([v]) => v).filter((v) => v !== opts.version);
 const mentions = [];
 if (previous.length) {
-  const named = new RegExp(`(?<![\\d.])(?:${previous.map((v) => v.replace(/\./g, "\\.")).join("|")})(?![\\d]|\\.\\d)`);
+  const named = new RegExp(`(?<![\\d.])(?:${previous.map(escapeRegExp).join("|")})(?![\\d]|\\.\\d)`);
   for (const file of markdownFiles()) {
     readFileSync(join(opts.root, file), "utf8")
       .split("\n")
