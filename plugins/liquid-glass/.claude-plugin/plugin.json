@@ -1,6 +1,6 @@
 {
   "name": "liquid-glass",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Design and build Liquid Glass UI with Liquid Glass Engineering: SwiftUI (iOS, macOS), Jetpack Compose (Android), WPF (Windows), and porting the shared optical model.",
   "author": {
     "name": "Rokas Rudzianskas",

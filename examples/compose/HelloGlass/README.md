@@ -20,7 +20,7 @@ The smallest complete Liquid Glass app for Android: one screen, one Kotlin file 
 
 ## Run it
 
-Needs JDK 17 and the Android SDK. Set `ANDROID_HOME`, which covers both builds: inside this repository the example includes the library's own Gradle build from [`platforms/android`](../../../platforms/android), and that build looks for the SDK on its own. With `sdk.dir` instead, put it in both `examples/compose/HelloGlass/local.properties` and `platforms/android/local.properties`. The glass itself needs Android 13 (API 33) or newer; Android 7 to 12 draw the library's fallback material.
+Needs JDK 17 and the Android SDK (platforms 35 and 37: the library compiles against 35, the example against 37). Set `ANDROID_HOME`, which covers both builds: inside this repository the example includes the library's own Gradle build from [`platforms/android`](../../../platforms/android), and that build looks for the SDK on its own. With `sdk.dir` instead, put it in both `examples/compose/HelloGlass/local.properties` and `platforms/android/local.properties`. The glass itself needs Android 13 (API 33) or newer; Android 7 to 12 draw the library's fallback material.
 
 ```sh
 cd examples/compose/HelloGlass
@@ -37,7 +37,7 @@ The app depends on the library by its published coordinates, through the version
 ```toml
 # gradle/libs.versions.toml
 [versions]
-liquidGlass = "1.0.1"
+liquidGlass = "1.0.2"
 
 [libraries]
 liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-compose", version.ref = "liquidGlass" }
@@ -46,7 +46,7 @@ liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-comp
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation(libs.liquid.glass.compose) // or implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
+    implementation(libs.liquid.glass.compose) // or implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.2")
 }
 ```
 
@@ -73,6 +73,6 @@ dependencyResolutionManagement {
 }
 ```
 
-The repository serves the build of the `1.0.1` release.
+The repository serves the build of the `1.0.2` release.
 
-JitPack works too, as a secondary route: add `maven("https://jitpack.io")` and depend on `com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.1` (JitPack builds a version the first time it is requested, which can take a few minutes). The [Android guide](../../../docs/android.md#install) has every install route, including the plain AAR.
+JitPack works too, as a secondary route: add `maven("https://jitpack.io")` and depend on `com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.2` (JitPack builds a version the first time it is requested, which can take a few minutes). The [Android guide](../../../docs/android.md#install) has every install route, including the plain AAR.

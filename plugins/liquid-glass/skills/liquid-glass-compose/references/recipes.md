@@ -1,6 +1,6 @@
 # Recipes: Liquid Glass for Jetpack Compose
 
-Seven complete screens built with `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1`. Each file compiles on its own; paste it into an app module whose namespace is `com.example.glass`, so `R` resolves without an import. Or change the `package` line to yours; if it differs from your module's namespace, add `import <your.namespace>.R`.
+Seven complete screens built with `io.github.rookasrudzianskas:liquid-glass-compose:1.0.2`. Each file compiles on its own; paste it into an app module whose namespace is `com.example.glass`, so `R` resolves without an import. Or change the `package` line to yours; if it differs from your module's namespace, add `import <your.namespace>.R`.
 
 ## Contents
 
@@ -17,7 +17,7 @@ Seven complete screens built with `io.github.rookasrudzianskas:liquid-glass-comp
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
+    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.2")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material:material-icons-core") // Icons.Filled.* used below
     implementation("androidx.activity:activity-compose:1.9.3")      // setContent, enableEdgeToEdge

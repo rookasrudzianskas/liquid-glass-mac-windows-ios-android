@@ -74,7 +74,7 @@ the block below it:
   <RestoreAdditionalProjectSources>https://liquid-glass-engineering.vercel.app/nuget/index.json</RestoreAdditionalProjectSources>
 </PropertyGroup>
 <ItemGroup>
-  <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
+  <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.2" />
 </ItemGroup>
 ```
 
@@ -84,7 +84,7 @@ instead, as the [install instructions](../../../docs/windows.md#install) do, del
 
 ```powershell
 dotnet nuget add source https://liquid-glass-engineering.vercel.app/nuget/index.json -n liquid-glass
-dotnet add package LiquidGlassEngineering.Wpf --version 1.0.1
+dotnet add package LiquidGlassEngineering.Wpf --version 1.0.2
 ```
 
 The guide also shows a `nuget.config` that keeps the feed with your solution. The XAML namespace

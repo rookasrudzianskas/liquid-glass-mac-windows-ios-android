@@ -44,7 +44,7 @@
 //   * Never follows a symlink out of the input folder it was found in.
 //
 // Environment:
-//   LG_VERSION         release version (default 1.0.1); artifacts may report their own
+//   LG_VERSION         release version (default 1.0.2); artifacts may report their own
 //   LG_SITE_URL        default for --base-url, and the site --restore-released fetches earlier Maven files
 //                      from (default https://liquid-glass-engineering.vercel.app)
 //   LG_NUGET_IDS       optional comma-separated NuGet package ids that must all be present
@@ -66,7 +66,7 @@ import zlib from "node:zlib";
 const REPOSITORY_URL = "https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android";
 const RELEASES_API_URL = "https://api.github.com/repos/rookasrudzianskas/liquid-glass-mac-windows-ios-android/releases";
 const DEFAULT_SITE_URL = "https://liquid-glass-engineering.vercel.app";
-const DEFAULT_VERSION = "1.0.1";
+const DEFAULT_VERSION = "1.0.2";
 
 // Maven coordinates of the Compose library (groupId as a path, artifactId).
 const MAVEN_GROUP_PATH = "io/github/rookasrudzianskas";

@@ -12,7 +12,7 @@ plugins {
 
 val libraryGroup = "io.github.rookasrudzianskas"
 val libraryArtifact = "liquid-glass-compose"
-val libraryVersion = "1.0.1"
+val libraryVersion = "1.0.2"
 
 /** Repository root (two levels above this Gradle project), holding spec/ and artifacts/. */
 val repositoryRoot: File = rootProject.projectDir.resolve("../..").canonicalFile

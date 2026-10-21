@@ -43,7 +43,7 @@ dotnet add package LiquidGlassEngineering.Wpf
   <UseWPF>true</UseWPF>
 </PropertyGroup>
 <ItemGroup>
-  <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
+  <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.2" />
   <Resource Include="Assets\*.jpg" />                  <!-- backdrop images as WPF resources -->
 </ItemGroup>
 ```
@@ -504,7 +504,7 @@ buttons; the glass re-aligns by itself.
 
 ## Checklist
 
-- [ ] Feed added, `LiquidGlassEngineering.Wpf` 1.0.1 referenced, `xmlns:lg` declared, both `using` lines in C#
+- [ ] Feed added, `LiquidGlassEngineering.Wpf` 1.0.2 referenced, `xmlns:lg` declared, both `using` lines in C#
       (`LangVersion` latest on `net48`).
 - [ ] One `GlassScene` per glass region, in a bounded slot; its `Content` is the opaque backdrop; no glass inside
       `Content`.

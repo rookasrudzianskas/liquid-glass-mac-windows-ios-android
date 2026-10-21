@@ -1,6 +1,6 @@
-# API reference: liquid-glass-compose 1.0.1
+# API reference: liquid-glass-compose 1.0.2
 
-Every public declaration of `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1`, as declared in `platforms/android/liquidglass/src/main/kotlin/io/github/rookasrudzianskas/liquidglass/`. The library is built with `explicitApi()`, so this list is the whole surface: everything under `.internal` and `.optics` is `internal` and cannot be called.
+Every public declaration of `io.github.rookasrudzianskas:liquid-glass-compose:1.0.2`, as declared in `platforms/android/liquidglass/src/main/kotlin/io/github/rookasrudzianskas/liquidglass/`. The library is built with `explicitApi()`, so this list is the whole surface: everything under `.internal` and `.optics` is `internal` and cannot be called.
 
 All declarations live in one package:
 

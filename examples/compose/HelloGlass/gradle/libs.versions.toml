@@ -5,7 +5,7 @@ agp = "9.4.1"
 kotlin = "2.4.21"
 composeBom = "2026.09.00"
 activityCompose = "1.9.3"
-liquidGlass = "1.0.1"
+liquidGlass = "1.0.2"
 # The Android Gradle Plugin's own libraries, raised past advisories as in platforms/android.
 bouncyCastle = "1.86"
 jose4j = "0.9.7"

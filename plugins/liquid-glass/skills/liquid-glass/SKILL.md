@@ -15,9 +15,9 @@ Liquid Glass Engineering renders the same optical glass on four platforms: a bev
 
 | Target | Library | Skill |
 | --- | --- | --- |
-| iOS 17+, macOS 14+ (SwiftUI) | Swift package product `LiquidGlass` from `https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android` (`from: "1.0.1"`) | `liquid-glass-swiftui` |
-| Android 7+ with glass on 13+ (Jetpack Compose) | `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1` (repository `maven("https://liquid-glass-engineering.vercel.app/maven")`, not Maven Central) | `liquid-glass-compose` |
-| Windows 10 1809+ / 11 (WPF on .NET Framework 4.8, .NET 8 or .NET 10) | NuGet `LiquidGlassEngineering.Wpf` 1.0.1 (feed `https://liquid-glass-engineering.vercel.app/nuget/index.json`, not nuget.org) | `liquid-glass-wpf` |
+| iOS 17+, macOS 14+ (SwiftUI) | Swift package product `LiquidGlass` from `https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android` (`from: "1.0.2"`) | `liquid-glass-swiftui` |
+| Android 7+ with glass on 13+ (Jetpack Compose) | `io.github.rookasrudzianskas:liquid-glass-compose:1.0.2` (repository `maven("https://liquid-glass-engineering.vercel.app/maven")`, not Maven Central) | `liquid-glass-compose` |
+| Windows 10 1809+ / 11 (WPF on .NET Framework 4.8, .NET 8 or .NET 10) | NuGet `LiquidGlassEngineering.Wpf` 1.0.2 (feed `https://liquid-glass-engineering.vercel.app/nuget/index.json`, not nuget.org) | `liquid-glass-wpf` |
 | Anything else (Flutter, Unity, web canvas, games) | the shared optical model | `liquid-glass-port` |
 
 Read the platform skill before writing code. If the project mixes platforms, keep the same material, radius and tint choices everywhere: the optical model is identical, so matching options give matching pixels.

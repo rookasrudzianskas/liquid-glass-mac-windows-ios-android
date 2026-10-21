@@ -34,7 +34,7 @@ dependencyResolutionManagement {
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.1")
+    implementation("io.github.rookasrudzianskas:liquid-glass-compose:1.0.2")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.9.3")         // setContent, enableEdgeToEdge, BackHandler
     implementation("androidx.compose.material:material-icons-core")   // only for Icons.Filled.* in the examples
@@ -45,7 +45,7 @@ Alternative, JitPack (a secondary route: it builds `platforms/android` from the 
 
 ```kotlin
 // settings.gradle.kts: repositories { maven("https://jitpack.io") }
-implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.1")
+implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-android:1.0.2")
 ```
 
 | Requirement | Value |
@@ -53,7 +53,7 @@ implementation("com.github.rookasrudzianskas:liquid-glass-mac-windows-ios-androi
 | minSdk | 24 (Android 7.0) |
 | GPU glass | Android 13 (API 33) and newer: AGSL `RuntimeShader` + `RenderEffect` |
 | Below 33 | Fallback material, automatically (see [Fallbacks](#fallbacks)) |
-| Built with | Kotlin 2.0.21, Compose UI/Foundation 1.7.6, AGP 8.7.3, compileSdk 35, JVM target 11 |
+| Built with | Kotlin 2.4.21 at language and API version 2.0 (Kotlin metadata 2.0.0, standard library 2.0.21), Compose UI/Foundation 1.7.6, AGP 9.4.1, Gradle 9.8.2, compileSdk 35, JVM target 11 |
 | Your app | Kotlin 2.0+ with the Compose compiler plugin (`org.jetbrains.kotlin.plugin.compose`), `buildFeatures { compose = true }`, compileSdk 34 or newer |
 | Dependencies | Exposed (api): `androidx.compose.ui:ui`, `androidx.compose.foundation:foundation` 1.7.6. Internal only (runtime): `androidx.activity:activity-compose` 1.9.3, so declare it yourself for `setContent`, `enableEdgeToEdge` and `BackHandler`. No Material dependency. No ProGuard/R8 rules needed. |
 | Package | `io.github.rookasrudzianskas.liquidglass` (one import per name: `import io.github.rookasrudzianskas.liquidglass.GlassScene`) |
@@ -440,7 +440,7 @@ SideEffect {
 
 ## Checklist
 
-- [ ] Maven repository added in `settings.gradle.kts`; `io.github.rookasrudzianskas:liquid-glass-compose:1.0.1` and `androidx.activity:activity-compose` in the app module; Compose compiler plugin on; `enableEdgeToEdge()` in the activity.
+- [ ] Maven repository added in `settings.gradle.kts`; `io.github.rookasrudzianskas:liquid-glass-compose:1.0.2` and `androidx.activity:activity-compose` in the app module; Compose compiler plugin on; `enableEdgeToEdge()` in the activity.
 - [ ] One `GlassScene(Modifier.fillMaxSize())` per screen; its first child is `GlassContent(Modifier.fillMaxSize())` holding everything glass should refract, painted opaque; no glass inside its own content.
 - [ ] Glass that must cover other glass sits in an outer scene with the inner scene inside the outer `GlassContent`; options passed to both scenes.
 - [ ] No `Dialog`/`Popup`/`ModalBottomSheet` for glass; menus use `GlassMenu`, wrapped in a `Box` to place the trigger; sheets and scrims built in the scene.

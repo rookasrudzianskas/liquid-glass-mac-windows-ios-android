@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.rookasrudzianskas.liquidglass.hello"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildFeatures {
@@ -42,7 +42,7 @@ kotlin {
 }
 
 dependencies {
-    // Liquid Glass, published as io.github.rookasrudzianskas:liquid-glass-compose:1.0.1.
+    // Liquid Glass, published as io.github.rookasrudzianskas:liquid-glass-compose:1.0.2.
     implementation(libs.liquid.glass.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)

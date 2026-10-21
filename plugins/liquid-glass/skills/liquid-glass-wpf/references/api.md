@@ -1,4 +1,4 @@
-# API reference: LiquidGlassEngineering.Wpf 1.0.1
+# API reference: LiquidGlassEngineering.Wpf 1.0.2
 
 Every public type of the WPF package (`LiquidGlass.Wpf.dll`, namespace `LiquidGlass.Wpf`) and of the optical model it
 depends on (`LiquidGlass.Core.dll`, namespace `LiquidGlass`), as declared in the source. Dependency properties are

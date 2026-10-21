@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <!-- The release this example ships with; keep app.manifest's assemblyIdentity version in step. -->
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The executable's icon, which the window's title bar and the taskbar show too. -->
     <ApplicationIcon>Assets\HelloGlass.ico</ApplicationIcon>
@@ -23,7 +23,7 @@
     <RestoreAdditionalProjectSources>https://liquid-glass-engineering.vercel.app/nuget/index.json</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.1" />
+    <PackageReference Include="LiquidGlassEngineering.Wpf" Version="1.0.2" />
   </ItemGroup>
   -->
 

@@ -11,7 +11,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Liquid Glass Engineering</Authors>
     <Company>Liquid Glass Engineering</Company>
     <Product>Liquid Glass Engineering</Product>
@@ -23,7 +23,7 @@
     <PackageProjectUrl>https://liquid-glass-engineering.vercel.app</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>Liquid Glass Engineering 1.0.1: legible menus (the open panel's glass mixed toward a solid backing in every material, labels chosen for it, an 8% highlight) and a menu that draws again when it is opened a second time. Changes: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageReleaseNotes>Liquid Glass Engineering 1.0.2: a patch release with no change to the Core and WPF libraries, whose code and API are those of the previous release; it brings a new build toolchain for the Android library, its sources and javadoc on JitPack, and the website and security work. Changes: https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android/blob/main/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
