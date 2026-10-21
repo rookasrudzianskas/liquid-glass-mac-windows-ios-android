@@ -283,11 +283,13 @@ function xmlEscape(s) {
 }
 
 // Version number embedded in an artifact file name ("studio-1.2.0-rc.1-macos.zip" -> "1.2.0-rc.1").
-// Only common pre-release tags count, so "app-1.0.0-release.apk" yields "1.0.0".
+// Only common pre-release tags count, so "app-1.0.0-release.apk" yields "1.0.0". The numbers after the tag
+// (rc1, rc.1, preview.1.2) are digits, then dot-and-digits groups: each string matches one way only, so a long run of
+// digits that fails to match cannot backtrack exponentially, as (?:\.?\d+)* could.
 function versionFromName(name) {
   const stem = name.replace(/(\.(xcframework|app))?\.(zip|apk|aar|nupkg|snupkg)$/i, "").replace(/\.(app|xcframework)$/i, "");
   const m =
-    /(?:^|[^0-9A-Za-z.])v?(\d+\.\d+(?:\.\d+){0,2}(?:-(?:alpha|beta|rc|preview|pre|dev)(?:\.?\d+)*)?)(?=$|[^0-9A-Za-z])/i.exec(
+    /(?:^|[^0-9A-Za-z.])v?(\d+\.\d+(?:\.\d+){0,2}(?:-(?:alpha|beta|rc|preview|pre|dev)\d*(?:\.\d+)*)?)(?=$|[^0-9A-Za-z])/i.exec(
       stem,
     );
   return m ? m[1] : null;
@@ -1150,9 +1152,23 @@ function parseDependencies(xml) {
   return deps;
 }
 
+// The text without its XML comments (<!-- to the first -->), removed again until none is left: taking one out can join
+// the text around it into another (<!<!-- a -->-- b --> leaves <!-- b -->), whose contents the regexes below would
+// read. XML ends a comment at --> alone: -- may not occur inside one, so --!> makes the file malformed rather than
+// ending the comment as in HTML.
+function stripXmlComments(text) {
+  let xml = text;
+  let previous;
+  do {
+    previous = xml;
+    xml = xml.replace(/<!--[\s\S]*?-->/g, "");
+  } while (xml !== previous);
+  return xml;
+}
+
 // Reads the metadata the feed needs from a .nuspec with careful regexes (no XML parser).
 function parseNuspec(xmlText) {
-  const xml = xmlText.replace(/^\uFEFF/, "").replace(/<!--[\s\S]*?-->/g, "");
+  const xml = stripXmlComments(xmlText.replace(/^\uFEFF/, ""));
   const meta = new RegExp(`<${NS}metadata\\b([^>]*)>([\\s\\S]*?)<\\/${NS}metadata\\s*>`).exec(xml);
   if (!meta) throw new Error("the .nuspec has no <metadata> element");
   const metaAttrs = parseXmlAttributes(meta[1]);
