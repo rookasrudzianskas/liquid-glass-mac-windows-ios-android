@@ -91,6 +91,33 @@ jobs:
           path: examples/compose/HelloGlass/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+  dependencies:
+    name: Dependency graph (${{ matrix.build }})
+    # GitHub does not read version catalogs, so each Gradle build (the library with the Studio, and the Hello Glass
+    # example) submits its resolved dependencies to the repository's dependency graph, where Dependabot alerts watch
+    # them. Pushes and manual runs only: a pull request's token cannot write the graph.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [platforms/android, examples/compose/HelloGlass]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      # The MIT basic cache provider, as in the build job. The graph is submitted, not kept as an artifact.
+      - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          build-root-directory: ${{ matrix.build }}
+          cache-provider: basic
+          dependency-graph: generate-and-submit
+
   gpu:
     name: GPU rendering tests (emulator, API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
