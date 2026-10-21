@@ -5,7 +5,6 @@ import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -21,7 +20,8 @@ val signingProperties = Properties().apply {
 
 android {
     namespace = "io.github.rookasrudzianskas.liquidglass.studio"
-    compileSdk = 35
+    // Compose 1.12 (the BOM below) needs compileSdk 37. The library itself stays at 35.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.rookasrudzianskas.liquidglass.studio"
@@ -63,7 +63,7 @@ android {
 
     lint {
         abortOnError = true
-        // targetSdk stays at the compileSdk this Android Gradle Plugin release supports (35).
+        // targetSdk stays at 35, the level 1.0.1 shipped with; raising it changes how the platform runs the app.
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 }
@@ -97,7 +97,7 @@ dependencies {
 }
 
 /** Fails when the release APK lacks the library's LICENSE and NOTICE.md (META-INF/liquid-glass-compose/). */
-val verifyReleaseApkLicense by tasks.registering {
+val verifyReleaseApkLicense = tasks.register("verifyReleaseApkLicense") {
     group = "verification"
     description = "Checks that the release APK carries LICENSE and NOTICE.md."
     val apks = layout.buildDirectory.dir("outputs/apk/release")

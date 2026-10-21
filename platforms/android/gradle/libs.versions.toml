@@ -1,8 +1,11 @@
 [versions]
-agp = "8.7.3"
-kotlin = "2.0.21"
+agp = "9.4.1"
+kotlin = "2.4.21"
+# The Kotlin standard library the library's publication depends on, and the Compose UI/Foundation it compiles
+# against and exposes: the floors of every app that uses it (see liquidglass/build.gradle.kts).
+kotlinStdlib = "2.0.21"
 compose = "1.7.6"
-composeBom = "2024.12.01"
+composeBom = "2026.09.00"
 activityCompose = "1.9.3"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -10,6 +13,12 @@ kotlinxSerialization = "1.7.3"
 androidxTestRunner = "1.6.2"
 androidxTestCore = "1.6.1"
 androidxTestExtJunit = "1.2.1"
+# Libraries on the build's own classpath (the Android Gradle Plugin's), raised past the advisories that affect the
+# versions it brings (see build.gradle.kts).
+bouncyCastle = "1.86"
+jose4j = "0.9.7"
+jdom2 = "2.0.6.1"
+commonsLang3 = "3.21.0"
 
 [libraries]
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }
@@ -28,9 +37,15 @@ androidx-test-runner = { module = "androidx.test:runner", version.ref = "android
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "compose" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncyCastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
+bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncyCastle" }
+jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
+jdom2 = { module = "org.jdom:jdom2", version.ref = "jdom2" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

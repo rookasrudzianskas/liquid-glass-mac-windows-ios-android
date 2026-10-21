@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     `maven-publish`
 }
@@ -24,6 +24,11 @@ android {
     defaultConfig {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The Android Gradle Plugin 9 writes the library's compileSdk (35) into the AAR's metadata as the lowest
+        // compileSdk an app using it may have; the 1.0.1 AAR says 1 and leaves that floor to its dependencies (34).
+        aarMetadata {
+            minCompileSdk = 1
+        }
     }
 
     buildFeatures {
@@ -38,8 +43,8 @@ android {
 
     // The CPU reference of the shader, used by both test suites.
     sourceSets {
-        getByName("test").kotlin.srcDir("src/sharedTest/kotlin")
-        getByName("androidTest").kotlin.srcDir("src/sharedTest/kotlin")
+        getByName("test").kotlin.directories += "src/sharedTest/kotlin"
+        getByName("androidTest").kotlin.directories += "src/sharedTest/kotlin"
     }
 
     testOptions {
@@ -118,7 +123,7 @@ androidComponents {
 }
 
 /** Fails when the release AAR's classes.jar lacks LICENSE or NOTICE.md; the publication and exportAar depend on it. */
-val verifyReleaseAarLicense by tasks.registering {
+val verifyReleaseAarLicense = tasks.register("verifyReleaseAarLicense") {
     group = "verification"
     description = "Checks that the release AAR carries LICENSE and NOTICE.md."
     dependsOn("bundleReleaseAar")
@@ -139,10 +144,17 @@ val verifyReleaseAarLicense by tasks.registering {
 
 tasks.matching { it.name.startsWith("publishReleasePublication") }.configureEach { dependsOn(verifyReleaseAarLicense) }
 
+// Kotlin 2.4 compiles the library at language and API version 2.0, and the publication depends on the 2.0.21
+// standard library, as 1.0.1 did: the classes keep Kotlin metadata version 2.0.0 and use no newer standard library
+// API, so apps on Kotlin 2.0 can still compile against the library. Kotlin 2.4 supports language version 2.0 and
+// warns that it is deprecated.
 kotlin {
     explicitApi()
+    coreLibrariesVersion = libs.versions.kotlinStdlib.get()
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
+        languageVersion.set(KotlinVersion.KOTLIN_2_0)
+        apiVersion.set(KotlinVersion.KOTLIN_2_0)
     }
 }
 
@@ -239,7 +251,7 @@ publishing {
 }
 
 /** Copies the release AAR next to the Maven repository for direct downloads. */
-val exportAar by tasks.registering(Copy::class) {
+tasks.register<Copy>("exportAar") {
     group = "distribution"
     description = "Copies the release AAR to artifacts/android."
     dependsOn("assembleRelease", verifyReleaseAarLicense)

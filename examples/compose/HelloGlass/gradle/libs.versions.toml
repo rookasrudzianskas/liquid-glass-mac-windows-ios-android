@@ -1,11 +1,16 @@
 # The same Android Gradle Plugin, Kotlin and Compose versions as platforms/android: a composite
 # build uses one Android Gradle Plugin version for both builds.
 [versions]
-agp = "8.7.3"
-kotlin = "2.0.21"
-composeBom = "2024.12.01"
+agp = "9.4.1"
+kotlin = "2.4.21"
+composeBom = "2026.09.00"
 activityCompose = "1.9.3"
 liquidGlass = "1.0.1"
+# The Android Gradle Plugin's own libraries, raised past advisories as in platforms/android.
+bouncyCastle = "1.86"
+jose4j = "0.9.7"
+jdom2 = "2.0.6.1"
+commonsLang3 = "3.21.0"
 
 [libraries]
 liquid-glass-compose = { module = "io.github.rookasrudzianskas:liquid-glass-compose", version.ref = "liquidGlass" }
@@ -13,8 +18,14 @@ compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeB
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-icons = { module = "androidx.compose.material:material-icons-core" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncyCastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncyCastle" }
+bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncyCastle" }
+jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
+jdom2 = { module = "org.jdom:jdom2", version.ref = "jdom2" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

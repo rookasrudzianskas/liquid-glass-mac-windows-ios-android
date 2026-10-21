@@ -423,7 +423,7 @@ adb shell am start -n io.github.rookasrudzianskas.liquidglass.studio/.MainActivi
 
 ## Building and testing
 
-The Gradle project lives in `platforms/android`. It needs JDK 17 and the Android SDK (platform 35); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties`:
+The Gradle project lives in `platforms/android`. It needs JDK 17 and the Android SDK (platforms 35 and 37: the library compiles against 35, the Studio against 37); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties`:
 
 ```sh
 cd platforms/android

@@ -2,13 +2,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "io.github.rookasrudzianskas.liquidglass.hello"
-    compileSdk = 35
+    // Compose 1.12 (the BOM in the version catalog) needs compileSdk 37.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.rookasrudzianskas.liquidglass.hello"
@@ -25,7 +25,7 @@ android {
 
     lint {
         abortOnError = true
-        // The versions are pinned to platforms/android's, whose Android Gradle Plugin supports targetSdk 35.
+        // targetSdk stays at 35, the level 1.0.1 shipped with, as in the Studio (platforms/android).
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 

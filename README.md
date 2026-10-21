@@ -335,7 +335,7 @@ jitpack.yml                           JitPack build of the Android library
 | Part | Toolchain | Build and test |
 | --- | --- | --- |
 | Apple | Xcode 16 or later | `xcodebuild test -scheme LiquidGlass -destination 'platform=macOS'` |
-| Android | JDK 17 and the Android SDK (platform 35); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties` (the Gradle wrapper is included) | `cd platforms/android && ./gradlew :liquidglass:testDebugUnitTest` |
+| Android | JDK 17 and the Android SDK (platforms 35 and 37); set `ANDROID_HOME`, or `sdk.dir` in `platforms/android/local.properties` (the Gradle wrapper is included) | `cd platforms/android && ./gradlew :liquidglass:testDebugUnitTest` |
 | Windows | .NET 10 SDK (builds on macOS and Linux; the WPF tests need Windows) | `cd platforms/windows && scripts/dotnet.sh test tests/LiquidGlass.Core.Tests` |
 | Website | Node 22 (20.19 or later) | `cd website && npm ci && npm run build` |
 
