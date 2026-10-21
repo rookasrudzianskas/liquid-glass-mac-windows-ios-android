@@ -1,0 +1,82 @@
+name: CodeQL
+
+# Code scanning for every language in the repository. GitHub's default setup cannot build the Android library
+# (its Gradle build lives in platforms/android), so this workflow builds the Kotlin and Swift code itself; the
+# other languages need no build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+            os: ubuntu-latest
+          - language: javascript-typescript
+            build-mode: none
+            os: ubuntu-latest
+          - language: csharp
+            build-mode: none
+            os: ubuntu-latest
+          - language: java-kotlin
+            build-mode: manual
+            os: ubuntu-latest
+          - language: swift
+            build-mode: manual
+            os: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      # The MIT basic cache provider, as in the Android workflow.
+      - if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      # CodeQL extracts Kotlin by watching the compiler, so the release sources of the library and the Studio are
+      # compiled from scratch in this process: no Gradle daemon, no Kotlin daemon, no build cache.
+      - if: matrix.language == 'java-kotlin'
+        working-directory: platforms/android
+        run: >-
+          ./gradlew --no-daemon --no-build-cache --rerun-tasks
+          -Pkotlin.compiler.execution.strategy=in-process
+          :liquidglass:compileReleaseKotlin :studio:compileReleaseKotlin
+      # The Swift package with its Metal library, built for macOS with the runner's default Xcode.
+      - if: matrix.language == 'swift'
+        run: >-
+          xcodebuild build -scheme LiquidGlass -destination 'generic/platform=macOS'
+          -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: "/language:${{ matrix.language }}"
