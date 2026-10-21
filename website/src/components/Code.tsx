@@ -71,6 +71,21 @@ function decode(unit: string) {
   return NAMED[body] ?? unit;
 }
 
+/**
+ * The text of HTML, still escaped: its tags (a "<" up to the next ">") removed until none is
+ * left, and every "<" or ">" left over, which opens or closes no tag (a "<" with no ">" after
+ * it, a lone ">"), escaped, so nothing in it is markup and each of its units stays one unit.
+ */
+function htmlText(html: string) {
+  let text = html;
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, "");
+  } while (text !== previous);
+  return text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 interface Piece {
   /** The wrappers the piece sits in, outermost first: "lead", "flag:3", "name:5", "part:5.1". */
   path: string[];
@@ -229,7 +244,7 @@ function wrappable(html: string) {
       const close = body.lastIndexOf("</span>", body.endsWith("</code></pre>") ? body.length - "</code></pre>".length - 1 : body.length - 1);
       const inner = body.slice(0, close);
       const tail = body.slice(close);
-      const text = inner.replace(/<[^>]*>/g, "");
+      const text = htmlText(inner);
       const indent = /^ */.exec(text)?.[0].length ?? 0;
       return `${line.slice(0, at)}<span class="line" style="--indent:${indent}">${wrapLine(inner) ?? inner}${tail}`;
     })
@@ -430,7 +445,7 @@ function inlineCodeElement(escaped: string, before: string, after: string) {
 }
 
 /** The length in characters of HTML-escaped text without its tags, spaces trimmed. */
-const textLength = (html: string) => (html.replace(/<[^>]*>/g, "").trim().match(UNITS) ?? []).length;
+const textLength = (html: string) => (htmlText(html).trim().match(UNITS) ?? []).length;
 
 /**
  * A table's code chip without the breaks content.mjs marks that would leave a prefix of
