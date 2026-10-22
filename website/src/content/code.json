@@ -1,7 +1,7 @@
 {
   "spm": {
     "lang": "swift",
-    "code": "// Package.swift\ndependencies: [\n    .package(url: \"https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android\", from: \"{{VERSION}}\"),\n],\ntargets: [\n    .target(name: \"App\", dependencies: [\n        .product(name: \"LiquidGlass\", package: \"liquid-glass-mac-windows-ios-android\"),\n    ]),\n]"
+    "code": "// Package.swift\ndependencies: [\n    .package(url: \"https://github.com/rookasrudzianskas/liquid-glass-mac-windows-ios-android\", from: \"{{VERSION}}\"),\n],\ntargets: [\n    .target(name: \"MyApp\", dependencies: [\n        .product(name: \"LiquidGlass\", package: \"liquid-glass-mac-windows-ios-android\"),\n    ]),\n]"
   },
   "gradleRepo": {
     "lang": "kotlin",
@@ -17,7 +17,7 @@
   },
   "nugetCli": {
     "lang": "shellscript",
-    "code": "dotnet nuget add source {{SITE_URL}}/nuget/index.json --name liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"
+    "code": "dotnet nuget add source {{SITE_URL}}/nuget/index.json -n liquid-glass\ndotnet add package {{NUGET_ID}} --version {{VERSION}}"
   },
   "nugetConfig": {
     "lang": "xml",
