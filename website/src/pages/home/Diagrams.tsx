@@ -162,6 +162,9 @@ export function RimDiagram() {
       shade: Math.max(0, shadeRim[3] - shadeRim[0]),
     });
   }
+  // A segment drawn at opacity 0.00 adds nothing but a node (and a blur filter for the shade), so it is left out.
+  const shades = segs.map((s) => ({ ...s, opacity: f(s.shade * 0.9) })).filter((s) => Number(s.opacity) > 0);
+  const lights = segs.map((s) => ({ ...s, opacity: f(Math.min(1, s.light * 1.1)) })).filter((s) => Number(s.opacity) > 0);
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="diagram diagram--rim" role="img" aria-label="A bright specular line along the top and bottom of the outline, darker shading on the left and right">
       <defs>
@@ -176,12 +179,17 @@ export function RimDiagram() {
       </defs>
       <rect x="0" y="0" width={w} height={h} rx="18" fill="url(#dg-rim-bg)" />
       <rect x={(w - sw) / 2} y={(h - sh) / 2} width={sw} height={sh} rx={sh / 2} fill="rgba(255,255,255,0.14)" />
-      {segs.map((s, i) => (
-        <line key={`s${i}`} x1={f(s.x1)} y1={f(s.y1)} x2={f(s.x2)} y2={f(s.y2)} stroke="#000" strokeOpacity={f(s.shade * 0.9)} strokeWidth="5" strokeLinecap="round" filter="url(#dg-glow)" />
-      ))}
-      {segs.map((s, i) => (
-        <line key={`l${i}`} x1={f(s.x1)} y1={f(s.y1)} x2={f(s.x2)} y2={f(s.y2)} stroke="#fff" strokeOpacity={f(Math.min(1, s.light * 1.1))} strokeWidth="2.2" strokeLinecap="round" />
-      ))}
+      {/* Stroke, width and cap are inherited from the group; the filter is not, so each shade keeps its own. */}
+      <g stroke="#000" strokeWidth="5" strokeLinecap="round">
+        {shades.map((s, i) => (
+          <line key={i} x1={f(s.x1)} y1={f(s.y1)} x2={f(s.x2)} y2={f(s.y2)} strokeOpacity={s.opacity} filter="url(#dg-glow)" />
+        ))}
+      </g>
+      <g stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
+        {lights.map((s, i) => (
+          <line key={i} x1={f(s.x1)} y1={f(s.y1)} x2={f(s.x2)} y2={f(s.y2)} strokeOpacity={s.opacity} />
+        ))}
+      </g>
     </svg>
   );
 }

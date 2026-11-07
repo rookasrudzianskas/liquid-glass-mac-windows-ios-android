@@ -19,6 +19,8 @@ for (const m of template.matchAll(/<link rel="stylesheet"[^>]*href="\/(assets\/[
 }
 const manifest = JSON.parse(await readFile(path.join(dist, ".vite/manifest.json"), "utf8"));
 const { render, paths } = await import(pathToFileURL(path.join(site, "dist-ssr/entry-server.js")).href);
+// The chunks Vite already preloads for the entry: the page's hints leave them out.
+const preloaded = new Set([...template.matchAll(/<link rel="modulepreload"[^>]*href="\/([^"]+)"/g)].map((m) => m[1]));
 
 function preloads(modules) {
   const seen = new Set();
@@ -27,7 +29,7 @@ function preloads(modules) {
     const chunk = manifest[key];
     if (!chunk || seen.has(key)) return;
     seen.add(key);
-    if (!chunk.isEntry) files.push(chunk.file);
+    if (!chunk.isEntry && !preloaded.has(chunk.file)) files.push(chunk.file);
     for (const imp of chunk.imports ?? []) visit(imp);
   };
   for (const m of modules) visit(m);
