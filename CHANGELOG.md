@@ -8,6 +8,10 @@ All notable changes to Liquid Glass Engineering are recorded here. The project f
 
 - Website: the home page is 34 kB lighter (241.7 kB, was 275.8 kB) and paints the Rim light diagram with 252 SVG lines instead of 392. The 140 segments drawn at opacity 0.00 are left out, 78 of them with a blur filter each, and the stroke, width and cap move to a group per layer; the diagram renders pixel for pixel as before. Every prerendered page names each chunk once in its `modulepreload` hints, where the entry's own chunks were listed twice (13 hints on the home page, now 9, for the same chunks).
 
+### Fixed
+
+- Website: the text links with an arrow (Open the materials lab and Downloads on the home page, Docs and About skills on /downloads) and the playground's Auto refraction toggle are 24 px targets, the minimum of WCAG 2.5.8; they were 23.25 px and 22 px tall. Their hit area reaches 1 px past what they draw above and below, so nothing on the page moves.
+
 ## [1.0.2] - 2026-10-21
 
 A patch release: the libraries' code is unchanged on every platform. The Android library is built with a new toolchain (the Android Gradle Plugin 9.4.1, Gradle 9.8.2, Kotlin 2.4.21) in the same published form, its sources and javadoc resolve on JitPack, and the release AAR is the build JitPack makes from the tag; the website's nav bar, playground, snippets and docs tables are reworked, and CodeQL code scanning, Dependabot and secret scanning check the repository.

@@ -413,8 +413,16 @@
 }
 
 .text-link {
+  position: relative;
   font-weight: 600;
   font-size: 15px;
+}
+
+/* The line box is 23.25 px tall: the hit area reaches 1 px past it above and below, so the link is a 24 px target (WCAG 2.5.8) without moving anything. */
+.text-link::after {
+  content: "";
+  position: absolute;
+  inset: -1px 0;
 }
 
 /* Intro statement */

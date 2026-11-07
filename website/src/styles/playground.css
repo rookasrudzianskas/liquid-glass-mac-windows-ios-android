@@ -221,6 +221,7 @@
 
 /* Refraction's Auto toggle: on, the glass follows its size; off, the slider value is used. */
 .pg-auto {
+  position: relative;
   margin-left: auto;
   margin-right: 8px;
   height: 22px;
@@ -242,6 +243,13 @@
 
 .pg-auto:focus-visible {
   outline-offset: 2px;
+}
+
+/* The pill stays 22 px tall; its hit area reaches 1 px past it above and below, a 24 px target (WCAG 2.5.8). */
+.pg-auto::after {
+  content: "";
+  position: absolute;
+  inset: -1px 0;
 }
 
 .pg-segmented {
